@@ -178,23 +178,32 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Run algorithm with defaults and load result layer (crash-free)."""
+        """Open algorithm dialog using QGIS native AlgorithmDialog."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
         alg = QgsApplication.processingRegistry().algorithmById(alg_id)
-        name = alg.displayName() if alg else alg_id
-        import processing
-        import contextlib
-        with contextlib.suppress(Exception):
-            result = processing.runAndLoadResults(alg_id, {"INPUT": self.layer_combo.currentLayer()})
-            if result:
-                self.iface.messageBar().pushSuccess("Parametric Process", f"'{name}' completed — result layer loaded.")
-                return
-        self.iface.messageBar().pushInfo(
-            "Parametric Process",
-            f"Open Processing → Toolbox → Urban Analytics → '{name}' to configure parameters."
-        )
+        if alg is None:
+            return
+        try:
+            from processing.gui.AlgorithmDialog import AlgorithmDialog
+            instance = alg.create() if hasattr(alg, 'create') else alg.createInstance()
+            dlg = AlgorithmDialog(instance)
+            dlg.setModal(True)
+            dlg.exec_()
+        except Exception as exc:
+            # Fallback: run with defaults
+            import processing
+            import contextlib
+            with contextlib.suppress(Exception):
+                result = processing.runAndLoadResults(alg_id, {"INPUT": self.layer_combo.currentLayer()})
+                if result:
+                    self.iface.messageBar().pushSuccess("Parametric Process", f"'{alg.displayName()}' completed.")
+                    return
+            self.iface.messageBar().pushInfo(
+                "Parametric Process",
+                f"Use Processing → Toolbox → Urban Analytics → '{alg.displayName()}'"
+            )
 
     # ------------------------------------------------------------------ #
     # Cockpit server
