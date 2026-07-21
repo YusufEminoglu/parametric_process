@@ -97,8 +97,8 @@
     <!-- Left Tool Drawer Palette -->
     <aside class="hud-bar glass-panel" aria-label="Tool Palette">
         <div class="palette-category">🎨 Visual Heatmap</div>
-        <label class="hud-chip heatmap-chip">
-            <span>Heatmap Mode</span>
+        <div class="hud-chip heatmap-chip">
+            <span class="chip-title">Heatmap Mode</span>
             <select id="input-heatmap-mode" aria-label="Heatmap mode">
                 <option value="score">PlanX Performance Score</option>
                 <option value="svf">🌌 Sky View Factor (SVF)</option>
@@ -110,7 +110,12 @@
                 <option value="density">Urban Density (PpHa)</option>
                 <option value="carbon">Embodied & Operational Carbon</option>
             </select>
-        </label>
+            <div id="heatmap-legend" class="drawer-legend-box">
+                <span id="legend-title">Score Heatmap</span>
+                <div class="legend-ramp"></div>
+                <small id="legend-note">Red underperforms, amber watchlist, green optimal.</small>
+            </div>
+        </div>
 
         <div class="palette-category">🌬️ Physics & Analysis</div>
         <div id="btn-toggle-cfd" class="hud-chip hud-btn" title="Toggle aerodynamic CFD wind vector arrow flows">CFD Aerodynamic Flow</div>
@@ -603,13 +608,6 @@
             <strong id="city-carbon">-</strong>
         </div>
     </section>
-
-    <!-- Heatmap Ramp Legend -->
-    <div id="heatmap-legend" class="heatmap-legend glass-panel">
-        <span id="legend-title">Score Heatmap</span>
-        <div class="legend-ramp"></div>
-        <small id="legend-note">Red underperforms, amber watchlist, green optimal.</small>
-    </div>
 
     <!-- Centered Toast Notifications -->
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>

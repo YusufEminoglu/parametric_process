@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.9] - 2026-07-22
+
+- Parametric Process Studio v1.9.9 Release: Re-architected Heatmap Legend directly into the Left Tool Drawer to eliminate 3D viewport overlaps
+
 ## [1.9.8] - 2026-07-22
 
 - Parametric Process Studio v1.9.8 Release: Fix targetCenter centroid calculation in 1.85m Human POV camera handler
