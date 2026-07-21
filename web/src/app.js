@@ -7112,6 +7112,7 @@ const btnPreviewPhenotype = document.getElementById('btn-preview-phenotype');
 const btnSyncWallaceiQgis = document.getElementById('btn-sync-wallacei-qgis');
 
 // --- Tab Switching ---
+const controlDockEl = document.getElementById('control-dock');
 if (tabBtnParametric && tabBtnWallacei) {
     tabBtnParametric.addEventListener('click', () => {
         tabBtnParametric.classList.add('active');
@@ -7119,6 +7120,7 @@ if (tabBtnParametric && tabBtnWallacei) {
         parametricView.classList.remove('hidden');
         wallaceiView.classList.add('hidden');
         if (editorControls) editorControls.classList.remove('hidden');
+        if (controlDockEl) controlDockEl.classList.remove('wide-dock');
     });
 
     tabBtnWallacei.addEventListener('click', () => {
@@ -7127,6 +7129,7 @@ if (tabBtnParametric && tabBtnWallacei) {
         wallaceiView.classList.remove('hidden');
         parametricView.classList.add('hidden');
         if (editorControls) editorControls.classList.add('hidden');
+        if (controlDockEl) controlDockEl.classList.add('wide-dock');
     });
 }
 

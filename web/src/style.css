@@ -120,17 +120,23 @@ body, html {
 /* Side Dock Panel */
 #control-dock {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 340px;
-    max-height: calc(100vh - 40px);
+    top: 16px;
+    right: 16px;
+    width: 350px;
+    max-height: calc(100vh - 32px);
     overflow-y: auto;
     scroll-behavior: smooth;
-    padding: 20px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    border-top: 2px solid rgba(16,185,129,0.4);
+    gap: 14px;
+    border-top: 3px solid var(--accent);
+    transition: width 0.25s ease, box-shadow 0.25s ease;
+    z-index: 25;
+}
+
+#control-dock.wide-dock {
+    width: 520px;
 }
 
 .dock-title-row {
@@ -387,21 +393,30 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* HUD Top-Left Bar */
 .hud-bar {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 16px;
+    left: 16px;
+    max-width: calc(100vw - 390px);
     display: flex;
-    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
     padding: 8px 12px;
+    z-index: 20;
+}
+
+#control-dock.wide-dock ~ .hud-bar {
+    max-width: calc(100vw - 560px);
 }
 
 .hud-chip {
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.72);
-    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 5px 10px;
     border-radius: 6px;
     letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
 .heatmap-chip {
@@ -494,25 +509,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .city-scorecard {
     position: absolute;
-    left: 20px;
-    bottom: 20px;
-    z-index: 9;
-    display: grid;
-    grid-template-columns: 118px repeat(4, 96px);
-    gap: 1px;
+    left: 16px;
+    bottom: 16px;
+    z-index: 15;
+    display: flex;
+    flex-wrap: wrap;
+    max-width: calc(100vw - 390px);
     overflow: hidden;
     padding: 0;
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 8px;
+    box-shadow: var(--shadow-soft);
+}
+
+#control-dock.wide-dock ~ #city-scorecard {
+    max-width: calc(100vw - 560px);
 }
 
 .scorecell {
-    min-height: 64px;
-    padding: 11px 12px;
+    min-height: 54px;
+    padding: 8px 14px;
     background: rgba(248, 250, 252, 0.86);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
+    border-right: 1px solid var(--border-color);
 }
 
 .scorecell-primary {
@@ -523,27 +545,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .score-label {
     color: inherit;
     opacity: 0.72;
-    font-size: 0.64rem;
+    font-size: 0.62rem;
     font-weight: 900;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
 .scorecell strong {
-    font-size: 1rem;
+    font-size: 0.95rem;
     line-height: 1;
 }
 
 .scorecell-primary strong {
-    font-size: 1.55rem;
+    font-size: 1.4rem;
 }
 
 .heatmap-legend {
     position: absolute;
-    left: 20px;
-    bottom: 96px;
-    z-index: 9;
-    width: 268px;
+    left: 16px;
+    bottom: 84px;
+    z-index: 15;
+    width: 250px;
     padding: 10px 12px;
 }
 
@@ -572,10 +594,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .toast-container {
-    position: absolute;
-    right: 380px;
-    bottom: 22px;
-    z-index: 30;
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
     display: flex;
     flex-direction: column;
     gap: 8px;
