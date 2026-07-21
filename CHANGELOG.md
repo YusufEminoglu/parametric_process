@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [0.2.1] - 2026-07-21
+
+- Add elite brand icon and comprehensive showcase documentation
+
 ## [0.2.0] - 2026-07-21
 
 - WallaceiX-grade evolutionary studio upgrade with SPEA-2, K-Means clustering, streaming engine, PCP brushing, and QGIS Processing algorithms
