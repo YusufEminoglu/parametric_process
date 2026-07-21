@@ -88,26 +88,74 @@ class ParametricProcessPlugin:
     def initGui(self) -> None:
         self.provider = ParametricProcessProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
-        self.action = QAction(QIcon(self.icon_path), "Parametric Process", self.iface.mainWindow())
+
+        # 1. Main Studio Cockpit Action
+        self.action = QAction(QIcon(self.icon_path), "Parametric Process Studio", self.iface.mainWindow())
         self.action.setStatusTip("Parametric Generative Design & Evolutionary Optimization Studio")
         self.action.triggered.connect(self.show_dialog)
-        self.iface.addToolBarIcon(self.action)
-        self.iface.addPluginToMenu(self.MENU_NAME, self.action)
+
+        # 2. Sub-Tool Actions with Dedicated Icons
+        icon_nsga3 = os.path.join(self.plugin_dir, "icons", "icon_nsga3.png")
+        self.action_nsga3 = QAction(QIcon(icon_nsga3), "NSGA-III & MOEA/D Solvers", self.iface.mainWindow())
+        self.action_nsga3.setStatusTip("Launch Evolutionary Multi-Objective Pareto Solvers")
+        self.action_nsga3.triggered.connect(lambda: self.show_dialog_tab(1))
+
+        icon_morph = os.path.join(self.plugin_dir, "icons", "icon_morphology.png")
+        self.action_morphology = QAction(QIcon(icon_morph), "Urban Morphology & Canyon H/W", self.iface.mainWindow())
+        self.action_morphology.setStatusTip("Compute Street Canyon H/W, Enclosure Index, SA/V & Shannon Entropy")
+        self.action_morphology.triggered.connect(self.show_dialog)
+
+        icon_grammar = os.path.join(self.plugin_dir, "icons", "icon_grammar.png")
+        self.action_grammar = QAction(QIcon(icon_grammar), "Procedural Shape Grammar", self.iface.mainWindow())
+        self.action_grammar.setStatusTip("Subdivide Urban Blocks into Procedural Sub-Lots")
+        self.action_grammar.triggered.connect(self.show_dialog)
+
+        icon_district = os.path.join(self.plugin_dir, "icons", "icon_district.png")
+        self.action_district = QAction(QIcon(icon_district), "Multi-Parcel District Coupling", self.iface.mainWindow())
+        self.action_district.setStatusTip("Simulate Mutual Solar Shadowing & Canyon Wind Wake")
+        self.action_district.triggered.connect(lambda: self.show_dialog_tab(2))
+
+        icon_cityjson = os.path.join(self.plugin_dir, "icons", "icon_cityjson.png")
+        self.action_cityjson = QAction(QIcon(icon_cityjson), "3D CityJSON & Mesh Exporter", self.iface.mainWindow())
+        self.action_cityjson.setStatusTip("Export Pareto Massings to CityJSON 1.1 or OBJ 3D Mesh")
+        self.action_cityjson.triggered.connect(self.show_dialog)
+
+        # Add all to toolbar & menu
+        self.actions = [
+            self.action,
+            self.action_nsga3,
+            self.action_morphology,
+            self.action_grammar,
+            self.action_district,
+            self.action_cityjson,
+        ]
+
+        for act in self.actions:
+            self.iface.addToolBarIcon(act)
+            self.iface.addPluginToMenu(self.MENU_NAME, act)
 
     def unload(self) -> None:
         if self.provider:
             QgsApplication.processingRegistry().removeProvider(self.provider)
             self.provider = None
-        if self.action:
-            self.iface.removePluginMenu(self.MENU_NAME, self.action)
-            self.iface.removeToolBarIcon(self.action)
-            self.action = None
+
+        if hasattr(self, "actions") and self.actions:
+            for act in self.actions:
+                self.iface.removePluginMenu(self.MENU_NAME, act)
+                self.iface.removeToolBarIcon(act)
+            self.actions = []
+
         if self.dialog:
             self.dialog.close()
             self.dialog = None
         if self.server:
             self.server.stop()
             self.server = None
+
+    def show_dialog_tab(self, tab_idx: int = 0) -> None:
+        self.show_dialog()
+        if self.dialog and hasattr(self.dialog, "tabs"):
+            self.dialog.tabs.setCurrentIndex(tab_idx)
 
     def show_dialog(self) -> None:
         if self.dialog is None:

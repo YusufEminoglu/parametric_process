@@ -1,5 +1,15 @@
 # Changelog - Parametric Process
 
+## [1.0.0] - 2026-07-21
+
+- v1.0.0 MAJOR RELEASE: PlanX-grade multi-tool icon suite, dedicated toolbar actions, and complete academic workflow
+
+## [1.0.0] - 2026-07-21 - MAJOR RELEASE
+
+### Added
+- **Dedicated Sub-Tool Icon & Toolbar Suite**: Individual PNG icons (`icon_nsga3.png`, `icon_morphology.png`, `icon_grammar.png`, `icon_district.png`, `icon_cityjson.png`) and dedicated QGIS toolbar & menu entry points matching PlanX suite conventions.
+- **Multi-Tool Execution Architecture**: 6 discrete action triggers for direct workflow access.
+
 ## [0.9.0] - 2026-07-21
 
 ### Added
