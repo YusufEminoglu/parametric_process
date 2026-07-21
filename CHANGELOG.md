@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.2] - 2026-07-21
+
+- Per-algorithm icons in Processing Toolbox: each of 6 tools now has distinct icon in dock tree
+
 ## [1.4.1] - 2026-07-21
 
 - Hotfix: repair 52 escaped backtick + 56 escaped dollar-sign corruptions in app.js template literals

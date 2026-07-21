@@ -5,6 +5,8 @@ Provides headless evolutionary optimization and multi-domain urban physics evalu
 """
 from __future__ import annotations
 
+import os
+
 from qgis.core import (
     QgsFeature,
     QgsFeatureSink,
@@ -18,6 +20,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
 )
 from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtGui import QIcon
 
 from .nsga2_engine import (
     evaluate_phenotype,
@@ -27,8 +30,17 @@ from .nsga2_engine import (
     run_moead_optimization,
 )
 
+PLUGIN_DIR = os.path.dirname(__file__)
+
+
+def _icon(filename: str) -> QIcon:
+    path = os.path.join(PLUGIN_DIR, "icons", filename)
+    return QIcon(path) if os.path.exists(path) else QIcon()
+
 
 class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
+    ICON = "icon_nsga3.png"
+
     def name(self):
         return 'parametric_optimization'
 
@@ -40,6 +52,9 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'urban_analytics'
+
+    def icon(self):
+        return _icon(self.ICON)
 
     def createInstance(self):
         return ParametricOptimizationAlgorithm()
@@ -213,6 +228,8 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
 
 
 class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
+    ICON = "icon.png"
+
     def name(self):
         return 'urban_physics_evaluator'
 
@@ -224,6 +241,9 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'urban_analytics'
+
+    def icon(self):
+        return _icon(self.ICON)
 
     def createInstance(self):
         return UrbanPhysicsEvaluatorAlgorithm()
@@ -329,6 +349,8 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
 
 
 class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
+    ICON = "icon_morphology.png"
+
     def name(self):
         return 'urban_morphology_analytics'
 
@@ -340,6 +362,9 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'urban_analytics'
+
+    def icon(self):
+        return _icon(self.ICON)
 
     def createInstance(self):
         return UrbanMorphologyAnalyticsAlgorithm()
@@ -400,6 +425,8 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
 
 
 class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
+    ICON = "icon_grammar.png"
+
     def name(self):
         return 'procedural_shape_grammar'
 
@@ -411,6 +438,9 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'urban_analytics'
+
+    def icon(self):
+        return _icon(self.ICON)
 
     def createInstance(self):
         return ProceduralShapeGrammarAlgorithm()
@@ -478,6 +508,8 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
 
 
 class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
+    ICON = "icon_district.png"
+
     def name(self):
         return 'district_environmental_coupling'
 
@@ -489,6 +521,9 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'urban_analytics'
+
+    def icon(self):
+        return _icon(self.ICON)
 
     def createInstance(self):
         return MultiParcelDistrictCouplingAlgorithm()
@@ -548,6 +583,7 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
 
 class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
     """PPUD Sequential Pipeline: Plot Layout → Building Config → Incremental Fabric."""
+    ICON = "icon_ppud.png"
 
     def name(self):
         return 'ppud_pipeline'
@@ -560,6 +596,9 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
 
     def groupId(self):
         return 'urban_analytics'
+
+    def icon(self):
+        return _icon(self.ICON)
 
     def createInstance(self):
         return PpudPipelineAlgorithm()
