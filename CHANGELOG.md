@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.1] - 2026-07-22
+
+- Parametric Process Studio v2.0.1 Release: Animated Urban Mobility Traffic flow (cars, buses, cyclists) and distinct Asphalt (+18.5°C) vs Park/Tree (-8.5°C) surface thermal physics
+
 ## [2.0.0] - 2026-07-22
 
 - Parametric Process Studio v2.0.0 Release: Inverse Distance Weighting (IDW) Kernel Interpolation Engine with 1-meter height sensitivity across all heatmaps

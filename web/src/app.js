@@ -1074,49 +1074,68 @@ function colorForParcel(item) {
     if (selectedParcel === item && heatmapMode === 'compliance') {
         return metrics.violated ? 0xb91c1c : 0x0d9488;
     }
-    if (item.params.usage === 'Park' && heatmapMode !== 'density' && heatmapMode !== 'carbon' && heatmapMode !== 'solair' && heatmapMode !== 'solar' && heatmapMode !== 'utci' && heatmapMode !== 'svf' && heatmapMode !== 'uhi') {
-        return 0x047857;
+    
+    const isPark = item.params?.usage === 'Park' || item.params?.usage === 'Tree' || item.params?.usage === 'GreenSpace';
+    const isAsphalt = item.params?.usage === 'Asphalt' || item.params?.usage === 'Road' || item.params?.usage === 'Parking';
+    const isGreenRoof = item.params?.roofStyle === 'Flat' || isPark;
+
+    if (isPark && heatmapMode !== 'density' && heatmapMode !== 'carbon' && heatmapMode !== 'solair' && heatmapMode !== 'solar' && heatmapMode !== 'utci' && heatmapMode !== 'svf' && heatmapMode !== 'uhi') {
+        return 0x047857; // Rich Emerald Green for Parks/Trees
     }
 
     if (heatmapMode === 'svf') {
-        // IDW Kernel Sky View Factor (SVF) Simulation with 1m height sensitivity
+        // IDW Kernel Sky View Factor (SVF) Simulation with 1m height & canopy shade sensitivity
         const idwSvf = computeIdwHeatmapValue(item, (target) => {
+            const tPark = target.params?.usage === 'Park' || target.params?.usage === 'Tree';
+            if (tPark) return 0.88; // Open tree canopy sky view
             const h = getRawParcelHeight(target);
             const w = Math.sqrt(target.area || 500);
             const canyonRatio = h / Math.max(4, w * 0.35);
             return Math.max(0.10, Math.min(0.96, 1.0 / Math.sqrt(1 + canyonRatio * canyonRatio)));
         });
-        return getDivergentHeatmapColor(1.0 - idwSvf); // Deep Indigo for canyon (low SVF), Sky Teal for open plaza
+        return getDivergentHeatmapColor(1.0 - idwSvf); // Deep Indigo for canyon (low SVF), Sky Teal for open plaza/park
     }
 
     if (heatmapMode === 'uhi') {
-        // IDW Kernel Urban Heat Island & Evapotranspirative Vegetation Cooling Simulation
+        // IDW Kernel UHI Simulation: Asphalt Heat Trap (+6.8°C) vs Park Evapotranspirative Cooling (-8.5°C)
         const idwUhi = computeIdwHeatmapValue(item, (target) => {
+            const tPark = target.params?.usage === 'Park' || target.params?.usage === 'Tree';
+            const tAsphalt = target.params?.usage === 'Asphalt' || target.params?.usage === 'Road' || target.params?.usage === 'Parking';
+            const tGreenRoof = target.params?.roofStyle === 'Flat' || tPark;
+            
             const h = getRawParcelHeight(target);
-            const bcr = (target.params.footprintArea || 200) / Math.max(1, target.area || 500);
-            const isPark = target.params.usage === 'Park';
-            const isGreenRoof = target.params.roofStyle === 'Flat' || isPark;
-            const vegCooling = isPark ? -4.2 : (isGreenRoof ? -2.2 : -0.4);
-            return 26.0 + 1.2 + (h * 0.35) + (bcr * 4.5) + vegCooling;
+            const bcr = (target.params?.footprintArea || 200) / Math.max(1, target.area || 500);
+            
+            // Material Evapotranspiration vs Solar Heat Sink Delta
+            const matDelta = tPark ? -8.5 : (tAsphalt ? +6.8 : (tGreenRoof ? -3.5 : 0.0));
+            return 26.0 + 1.2 + (h * 0.35) + (bcr * 4.5) + matDelta;
         });
-        return getDivergentHeatmapColor((idwUhi - 25.0) / 18.0); // Cooled Sage (25°C) to Severe UHI Crimson (43°C)
+        return getDivergentHeatmapColor((idwUhi - 22.0) / 24.0); // Cooled Sage (22°C) to Severe UHI Crimson (46°C)
     }
 
     if (heatmapMode === 'solair') {
-        // IDW Kernel Sol-Air Surface Temperature Heat Simulation (°C) with 1m height sensitivity
+        // IDW Kernel Sol-Air Surface Temp (°C): Asphalt (58°C Crimson) vs Park/Tree (22°C Emerald)
         const idwSolAir = computeIdwHeatmapValue(item, (target) => {
+            const tPark = target.params?.usage === 'Park' || target.params?.usage === 'Tree';
+            const tAsphalt = target.params?.usage === 'Asphalt' || target.params?.usage === 'Road' || target.params?.usage === 'Parking';
+            
+            if (tPark) return 22.5; // Cool evapotranspirative tree canopy
+            if (tAsphalt) return 56.5; // Black asphalt solar thermal absorption surge (56.5°C Crimson)
+            
             const h = getRawParcelHeight(target);
-            const bcr = (target.params.footprintArea || 200) / Math.max(1, target.area || 500);
+            const bcr = (target.params?.footprintArea || 200) / Math.max(1, target.area || 500);
             return 22.0 + (h * 0.65) + (bcr * 18.0); // 1m height adds 0.65°C radiant temp
         });
-        return getDivergentHeatmapColor((idwSolAir - 22.0) / 32.0); // 22°C (15m) to 54°C (40m+)
+        return getDivergentHeatmapColor((idwSolAir - 22.0) / 36.0); // 22°C (Park) to 58°C (Asphalt/Tower)
     }
 
     if (heatmapMode === 'solar') {
         // IDW Kernel Solar Irradiance (kWh/m²) Simulation
         const idwSolar = computeIdwHeatmapValue(item, (target) => {
+            const tPark = target.params?.usage === 'Park' || target.params?.usage === 'Tree';
+            if (tPark) return 320; // Filtered canopy irradiance
             const h = getRawParcelHeight(target);
-            return 200 + (h * 28.0) + ((target.params.floors || 4) * 15.0); // Sensitive to 1m height increment
+            return 200 + (h * 28.0) + ((target.params?.floors || 4) * 15.0); // Sensitive to 1m height increment
         });
         return getDivergentHeatmapColor((idwSolar - 200) / 1300); // 200 to 1500 kWh/m²
     }
@@ -1124,11 +1143,16 @@ function colorForParcel(item) {
     if (heatmapMode === 'utci') {
         // IDW Kernel UTCI Outdoor Thermal Stress Index (°C)
         const idwUtci = computeIdwHeatmapValue(item, (target) => {
+            const tPark = target.params?.usage === 'Park' || target.params?.usage === 'Tree';
+            const tAsphalt = target.params?.usage === 'Asphalt' || target.params?.usage === 'Road' || target.params?.usage === 'Parking';
+            if (tPark) return 19.2; // Comfortable outdoor shade
+            if (tAsphalt) return 44.5; // Extreme asphalt heat stress
+            
             const h = getRawParcelHeight(target);
-            const bcr = (target.params.footprintArea || 200) / Math.max(1, target.area || 500);
+            const bcr = (target.params?.footprintArea || 200) / Math.max(1, target.area || 500);
             return 18.0 + (h * 0.52) + (bcr * 12.0);
         });
-        return getDivergentHeatmapColor((idwUtci - 18.0) / 26.0); // 18°C (Neutral) to 44°C (Extreme Stress)
+        return getDivergentHeatmapColor((idwUtci - 18.0) / 28.0); // 18°C (Park) to 46°C (Asphalt)
     }
 
     if (heatmapMode === 'density') {
@@ -8517,10 +8541,88 @@ function updateCfdParticles() {
     }
 }
 
-// Hook CFD update into main animate loop
+// ==========================================
+// URBAN MOBILITY FLOW (CARS, BUSES & CYCLISTS)
+// ==========================================
+
+let trafficGroup = null;
+let isTrafficActive = false;
+let vehiclesData = [];
+
+function initUrbanTraffic() {
+    if (trafficGroup) {
+        scene.remove(trafficGroup);
+        trafficGroup = null;
+    }
+    
+    trafficGroup = new THREE.Group();
+    vehiclesData = [];
+    
+    const carGeom = new THREE.BoxGeometry(3.6, 1.3, 1.8);
+    const busGeom = new THREE.BoxGeometry(8.5, 2.8, 2.4);
+    const cycleGeom = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 6);
+    
+    const matCarYellow = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3, metalness: 0.6 });
+    const matCarRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.6 });
+    const matCarBlue = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.6 });
+    const matBus = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4, metalness: 0.2 });
+    const matCycle = new THREE.MeshStandardMaterial({ color: 0x9333ea, roughness: 0.5 });
+    
+    const mats = [matCarYellow, matCarRed, matCarBlue, matBus, matCycle];
+    const numVehicles = 45;
+    
+    for (let i = 0; i < numVehicles; i++) {
+        const type = i % 5 === 0 ? 'bus' : (i % 6 === 0 ? 'cyclist' : 'car');
+        const geom = type === 'bus' ? busGeom : (type === 'cyclist' ? cycleGeom : carGeom);
+        const mat = mats[i % mats.length];
+        
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.castShadow = true;
+        
+        const radius = 55 + (i % 4) * 32;
+        const angle = (i / numVehicles) * Math.PI * 2;
+        const speed = (type === 'cyclist' ? 0.008 : (type === 'bus' ? 0.012 : 0.018)) * (0.8 + Math.random() * 0.4);
+        const yOffset = type === 'cyclist' ? 0.6 : (type === 'bus' ? 1.4 : 0.65);
+        
+        mesh.position.set(Math.cos(angle) * radius, yOffset, Math.sin(angle) * radius);
+        trafficGroup.add(mesh);
+        
+        vehiclesData.push({
+            mesh,
+            radius,
+            angle,
+            speed,
+            dir: (i % 2 === 0 ? 1 : -1),
+            type
+        });
+    }
+    
+    scene.add(trafficGroup);
+}
+
+function updateUrbanTraffic() {
+    if (!isTrafficActive || !trafficGroup) return;
+    
+    for (let i = 0; i < vehiclesData.length; i++) {
+        const v = vehiclesData[i];
+        v.angle += v.speed * v.dir;
+        
+        const px = Math.cos(v.angle) * v.radius;
+        const pz = Math.sin(v.angle) * v.radius;
+        
+        v.mesh.position.x = px;
+        v.mesh.position.z = pz;
+        
+        const heading = v.angle + (v.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+        v.mesh.rotation.y = heading;
+    }
+}
+
+// Hook CFD & Traffic updates into main animate loop
 const prevAnimate = animate;
 animate = function() {
     updateCfdParticles();
+    updateUrbanTraffic();
     prevAnimate();
 };
 
@@ -8536,6 +8638,22 @@ if (btnToggleCfd) {
             scene.remove(cfdParticlesMesh);
             cfdParticlesMesh = null;
             showToast("Aerodynamic Wind Vector Flows hidden.", "info");
+        }
+    });
+}
+
+const btnToggleTraffic = document.getElementById('btn-toggle-traffic');
+if (btnToggleTraffic) {
+    btnToggleTraffic.addEventListener('click', () => {
+        isTrafficActive = !isTrafficActive;
+        btnToggleTraffic.classList.toggle('active', isTrafficActive);
+        if (isTrafficActive) {
+            initUrbanTraffic();
+            showToast("🚗 Animated Urban Mobility (Cars, Buses & Cyclists) activated.", "info");
+        } else if (trafficGroup) {
+            scene.remove(trafficGroup);
+            trafficGroup = null;
+            showToast("Urban Mobility Flow hidden.", "info");
         }
     });
 }
