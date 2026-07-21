@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.3.1] - 2026-07-21
+
+- Fix: single toolbar icon + Processing Toolbox pattern (removed 6 redundant sub-tool icons)
+
 ## [1.3.0] - 2026-07-21
 
 - PPUD Pipeline: 3-stage sequential urban design pipeline (Plot Layout → Building Config → Incremental Fabric), 6 subdivision strategies, 5 block typologies, form-based code export

@@ -226,12 +226,17 @@ class PluginDialog(QDialog):
         about_layout = QVBoxLayout(tab_about)
         info_label = QLabel(
             "<b>Parametric Process Studio v1.3.0</b><br><br>"
-            "Standalone generative parametric urban design, procedural shape grammar, and multi-objective evolutionary optimization lab for QGIS.<br><br>"
-            "• <b>Solvers:</b> NSGA-II, NSGA-III (Ref Points), MOEA/D (Decomposition), SPEA-2<br>"
-            "• <b>AI Acceleration:</b> Pure-Python Surrogate Model (&lt;0.1ms/eval)<br>"
-            "• <b>Morphology Suite:</b> Canyon H/W, Enclosure Index, SA/V Compactness, Shannon Entropy<br>"
-            "• <b>Physics Engine:</b> Sol-Air Temp, Solar PV, CFD Wind Arrow Particles, UTCI Thermal Comfort<br>"
-            "• <b>Exporters:</b> 3D CityJSON 1.1, Wavefront OBJ Mesh, 3D GeoPackage, Executive HTML Reports<br><br>"
+            "Generative parametric urban design, procedural shape grammar, and multi-objective "
+            "evolutionary optimization lab for QGIS.<br><br>"
+            "<b>Processing Toolbox</b> — All 6 algorithms available under <i>Urban Analytics</i>:<br>"
+            "&nbsp;&nbsp;1. Parametric Multi-Objective Evolutionary Optimization<br>"
+            "&nbsp;&nbsp;2. Urban Physics & Microclimate Multi-Domain Evaluator<br>"
+            "&nbsp;&nbsp;3. Urban Morphology & Canyon Analytics<br>"
+            "&nbsp;&nbsp;4. Procedural Shape Grammar Block Subdivider<br>"
+            "&nbsp;&nbsp;5. Multi-Parcel District Environmental Coupling<br>"
+            "&nbsp;&nbsp;6. PPUD Sequential Pipeline (Plot→Building→Fabric)<br><br>"
+            "<b>Interactive 3D Cockpit</b> — WebGL studio with Pareto analytics, PCP brushing, "
+            "K-means clustering, sensitivity analysis, and bidirectional QGIS sync.<br><br>"
             "Developed by <b>Yusuf Eminoğlu</b>."
         )
         info_label.setWordWrap(True)
