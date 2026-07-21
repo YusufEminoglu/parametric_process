@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.1] - 2026-07-22
+
+- Parametric Process Studio v1.9.1: 7-stop high-divergence spectral heatmaps, Sol-Air surface temp & UTCI heat stress, 3D CFD wind flow vectors, fixed pitched roof rendering, fixed sun sphere sky altitude, and Qt6 node graphics fixes
+
 ## [1.9.0] - 2026-07-21
 
 - **Explicit Pairwise 3D Distance District Coupling**: Upgraded `evaluate_district_coupling` in `district_engine.py` to evaluate explicit 3D pairwise centroid distances for directional solar shadow masking %, wind canyon wake acceleration, and pedestrian comfort scores.
