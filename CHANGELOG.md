@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.2.0] - 2026-07-21
+
+- v1.2.0: AI Code Review enhancements (Real Perimeter Compactness, Directional Solar Shadow Azimuth, and Typology JSON Disk Persistence)
+
 ## [1.1.0] - 2026-07-21
 
 - v1.1.0 ULTIMATE FEATURE RELEASE: Complete 5 Processing Toolbox algorithms, Custom Typology Engine, and Morris Spatial Sensitivity Analysis
@@ -7,6 +11,13 @@
 ## [1.0.0] - 2026-07-21
 
 - v1.0.0 MAJOR RELEASE: PlanX-grade multi-tool icon suite, dedicated toolbar actions, and complete academic workflow
+
+## [1.2.0] - 2026-07-21 - AI CODE REVIEW ENHANCEMENTS
+
+### Added & Enhanced
+- **Real Geometry Perimeter Compactness (`morphology_engine.py`)**: Enhanced `calculate_compactness_sav` to evaluate real polygon perimeter input for non-square, L-shaped, and U-shaped building footprints.
+- **Directional 3D Solar Azimuth Shadowing (`district_engine.py`)**: Enhanced `calculate_mutual_solar_obstruction` with `sun_azimuth_deg` projection factors.
+- **JSON Disk Persistence for Custom Typologies (`typologies.py`)**: Added `save_custom_typologies_to_disk` & `load_custom_typologies_from_disk` to preserve custom typologies across QGIS sessions.
 
 ## [1.1.1] - 2026-07-21
 

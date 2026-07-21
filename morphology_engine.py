@@ -25,12 +25,19 @@ def calculate_enclosure_index(height_m: float, setback: float = 3.0) -> float:
     return round(enclosure, 1)
 
 
-def calculate_compactness_sav(footprint_area: float, height_m: float, floors: int = 4) -> float:
+def calculate_compactness_sav(
+    footprint_area: float,
+    height_m: float,
+    floors: int = 4,
+    perimeter: float | None = None
+) -> float:
     """Calculates building Surface Area to Volume ratio (SA/V). Lower is more energy compact."""
     if footprint_area <= 0 or height_m <= 0:
         return 0.0
-    side = math.sqrt(footprint_area)
-    perimeter = 4.0 * side
+    if perimeter is None or perimeter <= 0:
+        side = math.sqrt(footprint_area)
+        perimeter = 4.0 * side
+
     facade_area = perimeter * height_m
     roof_area = footprint_area
     total_surface = facade_area + (2.0 * roof_area)

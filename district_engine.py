@@ -15,16 +15,23 @@ def calculate_mutual_solar_obstruction(
     h1: float,
     h2: float,
     distance_m: float,
-    sun_altitude_deg: float = 45.0
+    sun_altitude_deg: float = 45.0,
+    sun_azimuth_deg: float = 180.0
 ) -> float:
-    """Calculates solar obstruction percentage cast by neighboring massing h1 onto h2."""
+    """Calculates directional 3D solar obstruction percentage cast by neighboring massing h1 onto h2."""
     if distance_m <= 0:
         return 50.0
+
     shadow_length = h1 / math.tan(math.radians(max(10.0, sun_altitude_deg)))
-    if shadow_length <= distance_m:
+    # Directional azimuth projection factor (higher obstruction when sun aligns with inter-building axis)
+    azimuth_factor = max(0.2, math.cos(math.radians(abs(sun_azimuth_deg - 180.0))))
+    effective_shadow = shadow_length * azimuth_factor
+
+    if effective_shadow <= distance_m:
         return 0.0
-    overlap_m = shadow_length - distance_m
-    loss_pct = min(60.0, (overlap_m / max(1.0, h2)) * 35.0)
+
+    overlap_m = effective_shadow - distance_m
+    loss_pct = min(65.0, (overlap_m / max(1.0, h2)) * 38.0)
     return round(loss_pct, 1)
 
 

@@ -100,11 +100,47 @@ def register_custom_typology(
         "is_custom": True
     }
     _custom_registry[clean_name] = spec
+    save_custom_typologies_to_disk()
     return spec
+
+
+def save_custom_typologies_to_disk(filepath: str | None = None) -> bool:
+    """Saves custom registered typologies to disk JSON file for persistence across QGIS sessions."""
+    import json
+    import os
+    if filepath is None:
+        filepath = os.path.join(os.path.dirname(__file__), "custom_typologies.json")
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(_custom_registry, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+
+def load_custom_typologies_from_disk(filepath: str | None = None) -> bool:
+    """Loads custom registered typologies from disk JSON file on plugin load."""
+    import json
+    import os
+    if filepath is None:
+        filepath = os.path.join(os.path.dirname(__file__), "custom_typologies.json")
+    if not os.path.exists(filepath):
+        return False
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                _custom_registry.update(data)
+                return True
+    except Exception:
+        return False
+    return False
 
 
 def get_typology_spec(name: str) -> Dict[str, Any]:
     """Retrieves full specification dictionary for a given typology name."""
+    if not _custom_registry:
+        load_custom_typologies_from_disk()
     if name in _custom_registry:
         return _custom_registry[name]
     return BUILTIN_TYPOLOGIES.get(name, BUILTIN_TYPOLOGIES["Tower"])
@@ -112,4 +148,6 @@ def get_typology_spec(name: str) -> Dict[str, Any]:
 
 def list_available_typologies() -> List[str]:
     """Returns list of all available builtin and custom typology names."""
+    if not _custom_registry:
+        load_custom_typologies_from_disk()
     return list(BUILTIN_TYPOLOGIES.keys()) + list(_custom_registry.keys())

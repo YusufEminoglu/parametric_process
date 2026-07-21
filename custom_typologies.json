@@ -1,0 +1,11 @@
+{
+  "EcoSlopeTerrace": {
+    "description": "User-defined custom parametric typology.",
+    "footprint_ratio": 0.42,
+    "courtyard_ratio": 0.15,
+    "height_modifier": 1.1,
+    "setback_profile": "Custom",
+    "category": "Custom",
+    "is_custom": true
+  }
+}
