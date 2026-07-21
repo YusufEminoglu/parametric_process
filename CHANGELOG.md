@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.4] - 2026-07-22
+
+- Parametric Process Studio v1.9.4 Release: Rounded circular architectural icon emblem and warm porcelain academic studio palette matching 00_SAVUNMA_MERKEZI design system
+
 ## [1.9.3] - 2026-07-22
 
 - Parametric Process Studio v1.9.3 Release: Classy mechanical architectural studio icon, soft warm classy studio web palette, 7-stop high-divergence heatmaps, and Qt6 graphics fixes

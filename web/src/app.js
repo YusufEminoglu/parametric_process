@@ -1232,10 +1232,10 @@ function updateSolarPhysics(timeVal) {
             skyUniforms.uZenithColor.value.setHex(0x000005);
             skyUniforms.uStarIntensity.value = 0.9;
         } else {
-            scene.background = new THREE.Color(0xe9f7ff);
-            if (renderer) renderer.setClearColor(0xe9f7ff, 1);
-            skyUniforms.uHorizonColor.value.setHex(0xf6fbff);
-            skyUniforms.uZenithColor.value.setHex(0x9ed8ff);
+            scene.background = new THREE.Color(0xfaf6f0);
+            if (renderer) renderer.setClearColor(0xfaf6f0, 1);
+            skyUniforms.uHorizonColor.value.setHex(0xf3ece2);
+            skyUniforms.uZenithColor.value.setHex(0xe2f2ef);
             skyUniforms.uStarIntensity.value = 0.0;
         }
     }
