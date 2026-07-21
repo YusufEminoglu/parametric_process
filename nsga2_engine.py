@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 import random
+import time
 from typing import Any, Dict, List, Tuple
 
 
@@ -169,7 +170,30 @@ def evaluate_phenotype(
         "Civic": 48.0,
         "Park": 5.0,
     }.get(usage, 50.0)
-    carbon_kg = round(gfa * emission_per_sqm, 1)
+    operational_carbon_kg = round(gfa * emission_per_sqm, 1)
+
+    if floors <= 3:
+        mat_intensity = 220.0  # Timber-ish
+    elif floors <= 8:
+        mat_intensity = 380.0  # Concrete-ish
+    else:
+        mat_intensity = 450.0  # Steel-ish
+    embodied_carbon_kg = round(gfa * mat_intensity, 1)
+    
+    total_lca_carbon_kg = round(embodied_carbon_kg + (50.0 * operational_carbon_kg), 1)
+    carbon_kg = total_lca_carbon_kg  # map to carbon_kg for existing objective functions
+
+    sol_air_temp_celsius = round(30.0 + (0.7 * 900.0 - 4.0 * 4.0) / 17.0, 1)
+
+    # Financial NPV and IRR
+    annual_cash_flow = total_revenue * 0.08
+    npv_factor = sum(1.0 / ((1.0 + 0.06) ** t) for t in range(1, 21))
+    net_present_value_usd = round((annual_cash_flow * npv_factor) - total_construction_cost, 2)
+    
+    irr_percentage = 0.0
+    if total_construction_cost > 0 and annual_cash_flow > 0:
+        ratio = annual_cash_flow / total_construction_cost
+        irr_percentage = round((ratio - 0.02) * 100.0, 1)  # Approximation of IRR
 
     roof_coeff = {"Flat": 0.85, "Hipped": 0.92, "Gable": 0.90, "Mansard": 0.88}.get(roof_style, 0.85)
     runoff_m3 = round((footprint_area * roof_coeff * 0.8) + (open_space_m2 * 0.3 * 0.8), 1)
@@ -213,6 +237,12 @@ def evaluate_phenotype(
         "pollution_dispersion": pollution_dispersion,
         "mrt_temp_celsius": mrt_temp_celsius,
         "utci_score": utci_score,
+        "sol_air_temp_celsius": sol_air_temp_celsius,
+        "embodied_carbon_kg": embodied_carbon_kg,
+        "operational_carbon_kg": operational_carbon_kg,
+        "total_lca_carbon_kg": total_lca_carbon_kg,
+        "net_present_value_usd": net_present_value_usd,
+        "irr_percentage": irr_percentage,
         "roi_percentage": roi_percentage,
         "total_revenue_usd": round(total_revenue, 0),
     }
@@ -260,6 +290,15 @@ class ProcessIndividual:
 
     def dominates(self, other: ProcessIndividual) -> bool:
         """Returns True if self dominates other in Pareto sense."""
+        p1 = self.metrics.get("constraint_penalty", 0.0)
+        p2 = other.metrics.get("constraint_penalty", 0.0)
+        if p1 == 0.0 and p2 > 0.0:
+            return True
+        if p1 > 0.0 and p2 == 0.0:
+            return False
+        if p1 > 0.0 and p2 > 0.0:
+            return p1 < p2
+
         better_in_any = False
         for f1, f2 in zip(self.fitness_vector, other.fitness_vector):
             if f1 > f2:
@@ -516,4 +555,714 @@ def run_nsga2_optimization(
         "pareto_solutions": pareto_solutions,
         "history": history,
         "all_solutions": [ind.to_dict() for ind in population],
+    }
+
+def kmeans_cluster(solutions: List[Dict[str, Any]], k: int = 5, max_iter: int = 50) -> Dict[str, Any]:
+    """K-means clustering on solution metrics. Returns cluster assignments and centroids."""
+    if not solutions or k <= 0:
+        return {"assignments": [], "centroids": [], "k": k}
+    
+    if not solutions[0].get("objectives"):
+        return {"assignments": [-1]*len(solutions), "centroids": [], "k": k}
+        
+    obj_keys = list(solutions[0]["objectives"].keys())
+    if not obj_keys:
+        return {"assignments": [-1]*len(solutions), "centroids": [], "k": k}
+        
+    points = []
+    for sol in solutions:
+        points.append([sol["objectives"][key] for key in obj_keys])
+        
+    n_dims = len(obj_keys)
+    min_vals = [min(p[d] for p in points) for d in range(n_dims)]
+    max_vals = [max(p[d] for p in points) for d in range(n_dims)]
+    
+    def normalize(p):
+        return [0.0 if max_vals[d] == min_vals[d] else (p[d] - min_vals[d]) / (max_vals[d] - min_vals[d]) for d in range(n_dims)]
+        
+    norm_points = [normalize(p) for p in points]
+    
+    k = min(k, len(norm_points))
+    centroids = random.sample(norm_points, k)
+    assignments = [-1] * len(norm_points)
+    
+    def distance(p1, p2):
+        return sum((a - b)**2 for a, b in zip(p1, p2))
+    
+    for _ in range(max_iter):
+        new_assignments = []
+        for p in norm_points:
+            dists = [distance(p, c) for c in centroids]
+            new_assignments.append(dists.index(min(dists)))
+            
+        if new_assignments == assignments:
+            break
+        assignments = new_assignments
+        
+        for i in range(k):
+            cluster_points = [norm_points[j] for j in range(len(norm_points)) if assignments[j] == i]
+            if cluster_points:
+                centroids[i] = [sum(p[d] for p in cluster_points) / len(cluster_points) for d in range(n_dims)]
+                
+    def denormalize(c):
+        return [c[d] * (max_vals[d] - min_vals[d]) + min_vals[d] for d in range(n_dims)]
+        
+    denorm_centroids = [denormalize(c) for c in centroids]
+    centroid_dicts = [{obj_keys[d]: round(c[d], 4) for d in range(n_dims)} for c in denorm_centroids]
+    
+    return {"assignments": assignments, "centroids": centroid_dicts, "k": k}
+
+def find_optimal_k(solutions: List[Dict[str, Any]], max_k: int = 10) -> int:
+    """Find optimal K for K-means using a simple elbow method heuristic."""
+    if not solutions:
+        return 1
+    max_k = min(max_k, len(solutions))
+    if max_k <= 2:
+        return max_k
+        
+    obj_keys = list(solutions[0].get("objectives", {}).keys())
+    if not obj_keys:
+        return 1
+        
+    points = []
+    for sol in solutions:
+        points.append([sol["objectives"][key] for key in obj_keys])
+        
+    n_dims = len(obj_keys)
+    min_vals = [min(p[d] for p in points) for d in range(n_dims)]
+    max_vals = [max(p[d] for p in points) for d in range(n_dims)]
+    
+    norm_points = []
+    for p in points:
+        norm_points.append([0.0 if max_vals[d] == min_vals[d] else (p[d] - min_vals[d]) / (max_vals[d] - min_vals[d]) for d in range(n_dims)])
+        
+    wcss_values = []
+    
+    def distance(p1, p2):
+        return sum((a - b)**2 for a, b in zip(p1, p2))
+        
+    for k in range(1, max_k + 1):
+        centroids = random.sample(norm_points, k)
+        assignments = [-1] * len(norm_points)
+        for _ in range(20):
+            new_assignments = []
+            for p in norm_points:
+                dists = [distance(p, c) for c in centroids]
+                new_assignments.append(dists.index(min(dists)))
+            if new_assignments == assignments:
+                break
+            assignments = new_assignments
+            for i in range(k):
+                cluster_points = [norm_points[j] for j in range(len(norm_points)) if assignments[j] == i]
+                if cluster_points:
+                    centroids[i] = [sum(p[d] for p in cluster_points) / len(cluster_points) for d in range(n_dims)]
+                    
+        wcss = 0
+        for j, p in enumerate(norm_points):
+            wcss += distance(p, centroids[assignments[j]])
+        wcss_values.append(wcss)
+        
+    if len(wcss_values) < 3:
+        return 2
+        
+    p1 = (1, wcss_values[0])
+    p2 = (max_k, wcss_values[-1])
+    
+    max_dist = -1
+    opt_k = 2
+    for i in range(1, len(wcss_values) - 1):
+        k = i + 1
+        p0 = (k, wcss_values[i])
+        dist = abs((p2[1]-p1[1])*p0[0] - (p2[0]-p1[0])*p0[1] + p2[0]*p1[1] - p2[1]*p1[0]) / math.sqrt((p2[1]-p1[1])**2 + (p2[0]-p1[0])**2 + 1e-9)
+        if dist > max_dist:
+            max_dist = dist
+            opt_k = k
+            
+    return opt_k
+
+def compute_generation_statistics(population: List[ProcessIndividual], objective_specs: List[Dict[str, str]]) -> Dict[str, Dict[str, float]]:
+    """Compute min, max, mean, std_dev for each objective across population."""
+    stats = {}
+    pop_size = len(population)
+    if pop_size == 0:
+        return stats
+        
+    for spec in objective_specs:
+        name = spec["name"]
+        vals = [ind.objectives.get(name, 0.0) for ind in population]
+        mean_val = sum(vals) / pop_size
+        variance = sum((v - mean_val) ** 2 for v in vals) / pop_size
+        std_dev = math.sqrt(variance)
+        stats[name] = {
+            "min": round(min(vals), 4),
+            "max": round(max(vals), 4),
+            "mean": round(mean_val, 4),
+            "std_dev": round(std_dev, 4)
+        }
+    return stats
+
+def compute_hypervolume_2d(pareto_front: List[ProcessIndividual], ref_point: Tuple[float, float]) -> float:
+    """Compute 2D hypervolume indicator for the Pareto front."""
+    if not pareto_front:
+        return 0.0
+    
+    if len(pareto_front[0].fitness_vector) < 2:
+        return 0.0
+        
+    pts = sorted([(ind.fitness_vector[0], ind.fitness_vector[1]) for ind in pareto_front])
+    
+    hv = 0.0
+    last_f1 = ref_point[0]
+    last_f2 = ref_point[1]
+    
+    for f1, f2 in pts:
+        if f1 >= ref_point[0] or f2 >= ref_point[1]:
+            continue
+        width = ref_point[0] - f1
+        height = last_f2 - f2
+        if width > 0 and height > 0:
+            hv += width * height
+        last_f2 = min(last_f2, f2)
+        
+    return round(hv, 4)
+
+def compute_sensitivity(population: List[ProcessIndividual], objective_specs: List[Dict[str, str]]) -> Dict[str, Dict[str, float]]:
+    """Compute Pearson correlation between each gene and each objective."""
+    if len(population) < 2:
+        return {}
+        
+    pop_size = len(population)
+    genes = list(population[0].genotype.keys())
+    objs = [spec["name"] for spec in objective_specs]
+    
+    sensitivity = {g: {} for g in genes}
+    
+    for g in genes:
+        val_sample = population[0].genotype[g]
+        if not isinstance(val_sample, (int, float)):
+            continue
+            
+        g_vals = [float(ind.genotype[g]) for ind in population]
+        g_mean = sum(g_vals) / pop_size
+        g_std = math.sqrt(sum((v - g_mean)**2 for v in g_vals) / pop_size)
+        
+        for o in objs:
+            o_vals = [float(ind.objectives.get(o, 0.0)) for ind in population]
+            o_mean = sum(o_vals) / pop_size
+            o_std = math.sqrt(sum((v - o_mean)**2 for v in o_vals) / pop_size)
+            
+            if g_std == 0 or o_std == 0:
+                sensitivity[g][o] = 0.0
+            else:
+                cov = sum((g_vals[i] - g_mean) * (o_vals[i] - o_mean) for i in range(pop_size)) / pop_size
+                corr = cov / (g_std * o_std)
+                sensitivity[g][o] = round(corr, 4)
+                
+    return {g: v for g, v in sensitivity.items() if v}
+
+def run_nsga2_streaming(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+):
+    """Generator that yields generation-by-generation results for streaming."""
+    start_time = time.time()
+    
+    if not objective_specs:
+        objective_specs = [
+            {"name": "gfa", "direction": "max"},
+            {"name": "planx_score", "direction": "max"},
+            {"name": "wind_ventilation", "direction": "max"},
+            {"name": "roi_percentage", "direction": "max"},
+            {"name": "carbon_kg", "direction": "min"},
+        ]
+
+    population: List[ProcessIndividual] = []
+    for i in range(pop_size):
+        g = create_random_genotype(bounds)
+        ind = ProcessIndividual(f"gen0_ind{i+1}", g, generation=0)
+        ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+        population.append(ind)
+
+    ref_point = [0.0, 0.0]
+    if population and len(population[0].fitness_vector) >= 2:
+        max_f1 = max(ind.fitness_vector[0] for ind in population)
+        max_f2 = max(ind.fitness_vector[1] for ind in population)
+        ref_point = [max_f1 + abs(max_f1)*0.1 + 1.0, max_f2 + abs(max_f2)*0.1 + 1.0]
+
+    for gen in range(generations):
+        fronts = fast_non_dominated_sort(population)
+        for front in fronts:
+            calculate_crowding_distance(front)
+
+        gen_individuals = [ind.to_dict() for ind in population]
+        pareto_front_inds = fronts[0] if fronts else []
+        pareto_rank1 = [ind.to_dict() for ind in pareto_front_inds]
+        
+        stats = compute_generation_statistics(population, objective_specs)
+        hv = compute_hypervolume_2d(pareto_front_inds, ref_point)
+        
+        elapsed = time.time() - start_time
+        
+        yield_data = {
+            "generation": gen,
+            "individuals": gen_individuals,
+            "pareto_front": pareto_rank1,
+            "statistics": stats,
+            "hypervolume": hv,
+            "elapsed_time": elapsed,
+        }
+        
+        if gen == generations - 1:
+            all_sols = [ind.to_dict() for ind in population]
+            opt_k = find_optimal_k(all_sols, max_k=min(10, len(all_sols)))
+            clusters = kmeans_cluster(all_sols, k=opt_k)
+            sens = compute_sensitivity(population, objective_specs)
+            
+            yield_data["all_solutions"] = all_sols
+            yield_data["pareto_solutions"] = pareto_rank1
+            yield_data["k_means_clusters"] = clusters
+            yield_data["sensitivity"] = sens
+            yield yield_data
+            break
+            
+        yield yield_data
+
+        offspring: List[ProcessIndividual] = []
+        offspring_count = 0
+        while offspring_count < pop_size:
+            p1 = binary_tournament_selection(population)
+            p2 = binary_tournament_selection(population)
+
+            if random.random() < crossover_rate:
+                child_g = crossover_genotypes(p1.genotype, p2.genotype)
+            else:
+                child_g = dict(p1.genotype)
+
+            child_g = mutate_genotype(child_g, mutation_rate, bounds)
+            child_ind = ProcessIndividual(f"gen{gen+1}_ind{offspring_count+1}", child_g, generation=gen + 1)
+            child_ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+            offspring.append(child_ind)
+            offspring_count += 1
+
+        combined = population + offspring
+        combined_fronts = fast_non_dominated_sort(combined)
+        new_pop: List[ProcessIndividual] = []
+
+        for front in combined_fronts:
+            calculate_crowding_distance(front)
+            if len(new_pop) + len(front) <= pop_size:
+                new_pop.extend(front)
+            else:
+                front.sort(key=lambda ind: ind.crowding_distance, reverse=True)
+                needed = pop_size - len(new_pop)
+                new_pop.extend(front[:needed])
+                break
+
+        population = new_pop
+
+# ==========================================
+# MULTI-PARCEL MASTER-PLAN OPTIMIZER
+# ==========================================
+
+class MultiParcelIndividual(ProcessIndividual):
+    def evaluate_multi(
+        self,
+        parcels_data: List[Dict[str, Any]],
+        objective_specs: List[Dict[str, str]],
+        max_bcr: float = 0.45,
+        max_far: float = 2.5,
+        max_height: float = 18.0,
+        sim_params: Dict[str, Any] | None = None,
+    ) -> None:
+        total_gfa = 0.0
+        total_area = 0.0
+        total_footprint = 0.0
+        total_open_space = 0.0
+        total_profit = 0.0
+        total_cost = 0.0
+        total_carbon = 0.0
+        typologies = []
+        wind_scores = []
+        solar_scores = []
+        total_penalty = 0.0
+
+        sim_params = sim_params or {}
+
+        for pdata in parcels_data:
+            pid = pdata["id"]
+            parea = pdata.get("area", 1000.0)
+            sub_genotype = self.genotype.get(f"parcel_{pid}", {})
+            metrics = evaluate_phenotype(sub_genotype, parea, max_bcr, max_far, max_height, sim_params)
+
+            total_gfa += metrics["gfa"]
+            total_area += max(1.0, parea)
+            total_footprint += metrics["footprint_area"]
+            total_open_space += metrics["open_space_m2"]
+            typologies.append(sub_genotype.get("typology", "Tower"))
+            wind_scores.append(metrics["wind_ventilation"])
+            solar_scores.append(metrics["solar_radiation_kwh"])
+            total_penalty += metrics["constraint_penalty"]
+
+            const_cost_sqm = float(sim_params.get("const_cost", 750.0))
+            cost = metrics["gfa"] * const_cost_sqm
+            rev = metrics["total_revenue_usd"]
+            total_cost += cost
+            total_profit += (rev - cost)
+            total_carbon += metrics.get("total_lca_carbon_kg", metrics.get("carbon_kg", 0.0))
+
+        site_far = total_gfa / total_area
+        site_bcr = total_footprint / total_area
+        open_space_ratio = total_open_space / total_area
+        site_wind_score = sum(wind_scores) / max(1, len(wind_scores))
+        site_solar_kwh = sum(solar_scores) / max(1, len(solar_scores))
+        site_roi_percentage = (total_profit / max(1.0, total_cost)) * 100.0 if total_cost > 0 else 0.0
+
+        from collections import Counter
+        counts = Counter(typologies)
+        typology_diversity = 0.0
+        for count in counts.values():
+            p = count / len(typologies)
+            if p > 0:
+                typology_diversity -= p * math.log(p)
+
+        self.metrics = {
+            "total_gfa": round(total_gfa, 1),
+            "site_far": round(site_far, 2),
+            "site_bcr": round(site_bcr, 3),
+            "open_space_ratio": round(open_space_ratio, 3),
+            "typology_diversity": round(typology_diversity, 3),
+            "site_wind_score": round(site_wind_score, 1),
+            "site_solar_kwh": round(site_solar_kwh, 1),
+            "site_roi_percentage": round(site_roi_percentage, 1),
+            "total_site_carbon_kg": round(total_carbon, 1),
+            "constraint_penalty": round(total_penalty, 2)
+        }
+
+        self.objectives = {}
+        self.fitness_vector = []
+        for spec in objective_specs:
+            name = spec["name"]
+            direction = spec.get("direction", "max").lower()
+            val = float(self.metrics.get(name, 0.0))
+            self.objectives[name] = val
+            if direction == "max":
+                self.fitness_vector.append(-val)
+            else:
+                self.fitness_vector.append(val)
+
+
+def run_multiparcel_nsga2_streaming(
+    parcels_data: List[Dict[str, Any]],
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+):
+    start_time = time.time()
+    if not objective_specs:
+        objective_specs = [
+            {"name": "total_gfa", "direction": "max"},
+            {"name": "typology_diversity", "direction": "max"},
+            {"name": "site_wind_score", "direction": "max"},
+            {"name": "site_roi_percentage", "direction": "max"},
+            {"name": "total_site_carbon_kg", "direction": "min"},
+        ]
+
+    population: List[MultiParcelIndividual] = []
+    for i in range(pop_size):
+        g = {}
+        for pdata in parcels_data:
+            g[f"parcel_{pdata['id']}"] = create_random_genotype(bounds)
+        ind = MultiParcelIndividual(f"gen0_ind{i+1}", g, generation=0)
+        ind.evaluate_multi(parcels_data, objective_specs, max_bcr, max_far, max_height, sim_params)
+        population.append(ind)
+
+    ref_point = [0.0, 0.0]
+    if population and len(population[0].fitness_vector) >= 2:
+        max_f1 = max(ind.fitness_vector[0] for ind in population)
+        max_f2 = max(ind.fitness_vector[1] for ind in population)
+        ref_point = [max_f1 + abs(max_f1)*0.1 + 1.0, max_f2 + abs(max_f2)*0.1 + 1.0]
+
+    for gen in range(generations):
+        fronts = fast_non_dominated_sort(population)
+        for front in fronts:
+            calculate_crowding_distance(front)
+
+        gen_individuals = [ind.to_dict() for ind in population]
+        pareto_front_inds = fronts[0] if fronts else []
+        pareto_rank1 = [ind.to_dict() for ind in pareto_front_inds]
+
+        stats = compute_generation_statistics(population, objective_specs)
+        hv = compute_hypervolume_2d(pareto_front_inds, ref_point)
+
+        elapsed = time.time() - start_time
+
+        yield_data = {
+            "generation": gen,
+            "individuals": gen_individuals,
+            "pareto_front": pareto_rank1,
+            "statistics": stats,
+            "hypervolume": hv,
+            "elapsed_time": elapsed,
+        }
+
+        if gen == generations - 1:
+            all_sols = [ind.to_dict() for ind in population]
+            yield_data["all_solutions"] = all_sols
+            yield_data["pareto_solutions"] = pareto_rank1
+            yield yield_data
+            break
+
+        yield yield_data
+
+        offspring: List[MultiParcelIndividual] = []
+        offspring_count = 0
+        while offspring_count < pop_size:
+            p1 = binary_tournament_selection(population)
+            p2 = binary_tournament_selection(population)
+
+            child_g = {}
+            for pdata in parcels_data:
+                pid = pdata["id"]
+                pk = f"parcel_{pid}"
+                if random.random() < crossover_rate:
+                    child_g[pk] = crossover_genotypes(p1.genotype.get(pk, {}), p2.genotype.get(pk, {}))
+                else:
+                    child_g[pk] = dict(p1.genotype.get(pk, {}))
+                child_g[pk] = mutate_genotype(child_g[pk], mutation_rate, bounds)
+
+            child_ind = MultiParcelIndividual(f"gen{gen+1}_ind{offspring_count+1}", child_g, generation=gen + 1)
+            child_ind.evaluate_multi(parcels_data, objective_specs, max_bcr, max_far, max_height, sim_params)
+            offspring.append(child_ind)
+            offspring_count += 1
+
+        combined = population + offspring
+        combined_fronts = fast_non_dominated_sort(combined)
+        new_pop: List[MultiParcelIndividual] = []
+
+        for front in combined_fronts:
+            calculate_crowding_distance(front)
+            if len(new_pop) + len(front) <= pop_size:
+                new_pop.extend(front)
+            else:
+                front.sort(key=lambda ind: ind.crowding_distance, reverse=True)
+                needed = pop_size - len(new_pop)
+                new_pop.extend(front[:needed])
+                break
+
+        population = new_pop
+
+
+# ==========================================
+# SPEA-2 ENGINE
+# ==========================================
+
+def calculate_spea2_fitness(combined: List[ProcessIndividual]) -> None:
+    n = len(combined)
+    if n == 0: return
+    k = int(math.sqrt(n))
+    if k >= n: k = n - 1
+
+    dominates_matrix = [[False]*n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            if i != j and combined[i].dominates(combined[j]):
+                dominates_matrix[i][j] = True
+
+    strength = [0]*n
+    for i in range(n):
+        strength[i] = sum(1 for j in range(n) if dominates_matrix[i][j])
+
+    raw_fitness = [0]*n
+    for i in range(n):
+        raw_fitness[i] = sum(strength[j] for j in range(n) if dominates_matrix[j][i])
+
+    for i in range(n):
+        dists = []
+        for j in range(n):
+            if i != j:
+                d = math.sqrt(sum((combined[i].fitness_vector[m] - combined[j].fitness_vector[m])**2 for m in range(len(combined[i].fitness_vector))))
+                dists.append(d)
+        dists.sort()
+        dk = dists[k-1] if dists and k-1 < len(dists) else (dists[-1] if dists else 0.0)
+        density = 1.0 / (dk + 2.0)
+        combined[i].spea2_fitness = raw_fitness[i] + density
+
+def environmental_selection_spea2(combined: List[ProcessIndividual], pop_size: int) -> List[ProcessIndividual]:
+    calculate_spea2_fitness(combined)
+    archive = [ind for ind in combined if getattr(ind, 'spea2_fitness', 1.0) < 1.0]
+
+    if len(archive) == pop_size:
+        return archive
+    elif len(archive) < pop_size:
+        combined.sort(key=lambda x: getattr(x, 'spea2_fitness', 1.0))
+        for ind in combined:
+            if getattr(ind, 'spea2_fitness', 1.0) >= 1.0 and ind not in archive:
+                archive.append(ind)
+                if len(archive) == pop_size:
+                    break
+        return archive
+    else:
+        while len(archive) > pop_size:
+            n = len(archive)
+            dist_matrix = []
+            for i in range(n):
+                dists = []
+                for j in range(n):
+                    if i != j:
+                        d = sum((archive[i].fitness_vector[m] - archive[j].fitness_vector[m])**2 for m in range(len(archive[i].fitness_vector)))
+                        dists.append(d)
+                dists.sort()
+                dist_matrix.append((dists, i))
+
+            dist_matrix.sort(key=lambda x: x[0])
+            to_remove = dist_matrix[0][1]
+            archive.pop(to_remove)
+
+        return archive
+
+def spea2_binary_tournament(population: List[ProcessIndividual]) -> ProcessIndividual:
+    p1, p2 = random.sample(population, 2)
+    f1 = getattr(p1, 'spea2_fitness', float('inf'))
+    f2 = getattr(p2, 'spea2_fitness', float('inf'))
+    return p1 if f1 < f2 else p2
+
+def run_spea2_streaming(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+):
+    start_time = time.time()
+
+    if not objective_specs:
+        objective_specs = [
+            {"name": "gfa", "direction": "max"},
+            {"name": "planx_score", "direction": "max"},
+            {"name": "wind_ventilation", "direction": "max"},
+            {"name": "roi_percentage", "direction": "max"},
+            {"name": "carbon_kg", "direction": "min"},
+        ]
+
+    population: List[ProcessIndividual] = []
+    for i in range(pop_size):
+        g = create_random_genotype(bounds)
+        ind = ProcessIndividual(f"gen0_ind{i+1}", g, generation=0)
+        ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+        population.append(ind)
+
+    archive: List[ProcessIndividual] = []
+    ref_point = [0.0, 0.0]
+
+    for gen in range(generations):
+        combined = population + archive
+        archive = environmental_selection_spea2(combined, pop_size)
+
+        pareto_front_inds = [ind for ind in archive if getattr(ind, 'spea2_fitness', 1.0) < 1.0]
+        if not pareto_front_inds:
+            pareto_front_inds = archive
+
+        gen_individuals = [ind.to_dict() for ind in archive]
+        pareto_rank1 = [ind.to_dict() for ind in pareto_front_inds]
+
+        stats = compute_generation_statistics(archive, objective_specs)
+
+        if ref_point == [0.0, 0.0] and archive and len(archive[0].fitness_vector) >= 2:
+            max_f1 = max(ind.fitness_vector[0] for ind in archive)
+            max_f2 = max(ind.fitness_vector[1] for ind in archive)
+            ref_point = [max_f1 + abs(max_f1)*0.1 + 1.0, max_f2 + abs(max_f2)*0.1 + 1.0]
+
+        hv = compute_hypervolume_2d(pareto_front_inds, ref_point)
+        elapsed = time.time() - start_time
+
+        yield_data = {
+            "generation": gen,
+            "individuals": gen_individuals,
+            "pareto_front": pareto_rank1,
+            "statistics": stats,
+            "hypervolume": hv,
+            "elapsed_time": elapsed,
+        }
+
+        if gen == generations - 1:
+            all_sols = [ind.to_dict() for ind in archive]
+            yield_data["all_solutions"] = all_sols
+            yield_data["pareto_solutions"] = pareto_rank1
+            yield yield_data
+            break
+
+        yield yield_data
+
+        offspring: List[ProcessIndividual] = []
+        offspring_count = 0
+        while offspring_count < pop_size:
+            p1 = spea2_binary_tournament(archive)
+            p2 = spea2_binary_tournament(archive)
+
+            if random.random() < crossover_rate:
+                child_g = crossover_genotypes(p1.genotype, p2.genotype)
+            else:
+                child_g = dict(p1.genotype)
+
+            child_g = mutate_genotype(child_g, mutation_rate, bounds)
+            child_ind = ProcessIndividual(f"gen{gen+1}_ind{offspring_count+1}", child_g, generation=gen + 1)
+            child_ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+            offspring.append(child_ind)
+            offspring_count += 1
+
+        population = offspring
+
+def run_spea2_optimization(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    generator = run_spea2_streaming(
+        parcel_area, objective_specs, pop_size, generations,
+        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params
+    )
+    last_data = None
+    history = []
+    for data in generator:
+        history.append(data)
+        last_data = data
+
+    return {
+        "status": "ok",
+        "generations": generations,
+        "pop_size": pop_size,
+        "objective_specs": objective_specs,
+        "pareto_solutions": last_data.get("pareto_solutions", []) if last_data else [],
+        "history": history,
+        "all_solutions": last_data.get("all_solutions", []) if last_data else [],
     }

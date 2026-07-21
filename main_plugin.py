@@ -20,10 +20,12 @@ from qgis.core import (
     QgsJsonExporter,
     QgsGeometry,
     QgsPointXY,
+    QgsApplication,
 )
 
 from .dialog import PluginDialog
 from .server import ParametricProcessServer
+from .processing_provider import ParametricProcessProvider
 
 
 def _make_field(name: str, kind: str):
@@ -81,8 +83,11 @@ class ParametricProcessPlugin:
         self.crs_transformed = False
         self.export_crs = None
         self.sync_bridge = _SyncBridge(self)
+        self.provider = None
 
     def initGui(self) -> None:
+        self.provider = ParametricProcessProvider()
+        QgsApplication.processingRegistry().addProvider(self.provider)
         self.action = QAction(QIcon(self.icon_path), "Parametric Process", self.iface.mainWindow())
         self.action.setStatusTip("Parametric Generative Design & Evolutionary Optimization Studio")
         self.action.triggered.connect(self.show_dialog)
@@ -90,6 +95,9 @@ class ParametricProcessPlugin:
         self.iface.addPluginToMenu(self.MENU_NAME, self.action)
 
     def unload(self) -> None:
+        if self.provider:
+            QgsApplication.processingRegistry().removeProvider(self.provider)
+            self.provider = None
         if self.action:
             self.iface.removePluginMenu(self.MENU_NAME, self.action)
             self.iface.removeToolBarIcon(self.action)

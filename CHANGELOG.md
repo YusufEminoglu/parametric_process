@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [0.2.0] - 2026-07-21
+
+- WallaceiX-grade evolutionary studio upgrade with SPEA-2, K-Means clustering, streaming engine, PCP brushing, and QGIS Processing algorithms
+
 All notable changes to the **Parametric Process** QGIS plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

@@ -6917,17 +6917,32 @@ function buildDetailedCar(colorHex, scale = 1.0) {
 
 /* ==========================================================================
    Evolutionary Studio & Analytics Engine Logic (Parametric Process)
+/* ==========================================================================
+   Evolutionary Studio & Analytics Engine Logic (Parametric Process)
    ========================================================================== */
 
+// State Variables
 let wallaceiResult = null;
 let activeParetoSolution = null;
 let activeWallaceiSubtab = 'scatter';
+let streamingRunId = null;
+let streamingPollTimer = null;
+let generationHistory = [];
+let currentClusterResult = null;
+let pcpBrushFilters = {};
+let filteredSolutionIds = null;
+let viewGeneration = -1;
 
+const CLUSTER_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+
+// DOM Elements - Tabs and Views
 const tabBtnParametric = document.getElementById('tab-btn-parametric');
 const tabBtnWallacei = document.getElementById('tab-btn-wallacei');
 const parametricView = document.getElementById('parametric-cockpit-view');
 const wallaceiView = document.getElementById('wallacei-studio-view');
+const editorControls = document.getElementById('editor-controls');
 
+// DOM Elements - Wallacei Params
 const inWallaceiPop = document.getElementById('input-wallacei-pop');
 const valWallaceiPop = document.getElementById('val-wallacei-pop');
 const inWallaceiGen = document.getElementById('input-wallacei-gen');
@@ -6937,39 +6952,92 @@ const valWallaceiCross = document.getElementById('val-wallacei-cross');
 const inWallaceiMut = document.getElementById('input-wallacei-mut');
 const valWallaceiMut = document.getElementById('val-wallacei-mut');
 
+// Bounds
+const inBoundMinFloors = document.getElementById('bound-min-floors');
+const inBoundMaxFloors = document.getElementById('bound-max-floors');
+const inBoundMinSetback = document.getElementById('bound-min-setback');
+const inBoundMaxSetback = document.getElementById('bound-max-setback');
+
+// DOM Elements - Run/Progress
 const btnRunWallacei = document.getElementById('btn-run-wallacei');
+const btnStopWallacei = document.getElementById('btn-stop-wallacei');
 const wallaceiProgress = document.getElementById('wallacei-progress');
 const wallaceiProgressFill = document.getElementById('wallacei-progress-fill');
 const wallaceiProgressText = document.getElementById('wallacei-progress-text');
+const progGenCounter = document.getElementById('prog-gen-counter');
+const progElapsed = document.getElementById('prog-elapsed');
+const progEta = document.getElementById('prog-eta');
+const progParetoCount = document.getElementById('prog-pareto-count');
+const progHv = document.getElementById('prog-hv');
+
+// DOM Elements - Analytics & Subtabs
 const wallaceiAnalyticsContainer = document.getElementById('wallacei-analytics-container');
 
-const subtabScatter = document.getElementById('subtab-scatter');
-const subtabPcp = document.getElementById('subtab-pcp');
-const subtabRadar = document.getElementById('subtab-radar');
-const subtabConvergence = document.getElementById('subtab-convergence');
+const subtabsMap = [
+    { btn: document.getElementById('subtab-scatter'), view: document.getElementById('view-scatter'), name: 'scatter' },
+    { btn: document.getElementById('subtab-pcp'), view: document.getElementById('view-pcp'), name: 'pcp' },
+    { btn: document.getElementById('subtab-fitness'), view: document.getElementById('view-fitness'), name: 'fitness' },
+    { btn: document.getElementById('subtab-radar'), view: document.getElementById('view-radar'), name: 'radar' },
+    { btn: document.getElementById('subtab-cluster'), view: document.getElementById('view-cluster'), name: 'cluster' },
+    { btn: document.getElementById('subtab-population'), view: document.getElementById('view-population'), name: 'population' }
+];
 
-const viewScatter = document.getElementById('view-scatter');
-const viewPcp = document.getElementById('view-pcp');
-const viewRadar = document.getElementById('view-radar');
-const viewConvergence = document.getElementById('view-convergence');
-
+// DOM Elements - Scatter
 const scatterAxisX = document.getElementById('scatter-axis-x');
 const scatterAxisY = document.getElementById('scatter-axis-y');
-
+const scatterColorMode = document.getElementById('scatter-color-mode');
 const canvasScatter = document.getElementById('canvas-pareto-scatter');
-const canvasPcp = document.getElementById('canvas-pcp');
-const canvasRadar = document.getElementById('canvas-radar');
-const canvasConvergence = document.getElementById('canvas-convergence');
 
+// DOM Elements - PCP
+const canvasPcp = document.getElementById('canvas-pcp');
+
+// DOM Elements - Fitness
+const fitnessMetricSelect = document.getElementById('fitness-metric-select');
+const canvasFitness = document.getElementById('canvas-fitness');
+
+// DOM Elements - Radar
+const canvasRadar = document.getElementById('canvas-radar');
+
+// DOM Elements - Cluster
+const kmeansK = document.getElementById('kmeans-k');
+const btnAutoK = document.getElementById('btn-auto-k');
+const btnRunKmeans = document.getElementById('btn-run-kmeans');
+const canvasCluster = document.getElementById('canvas-cluster');
+const clusterSummary = document.getElementById('cluster-summary');
+
+// DOM Elements - Population
+const popFilter = document.getElementById('pop-filter');
+const popSort = document.getElementById('pop-sort');
+const popTableBody = document.getElementById('pop-table-body');
+const popCountLabel = document.getElementById('pop-count-label');
+const btnExportSolutions = document.getElementById('btn-export-solutions');
+const btnExportJson = document.getElementById('btn-export-json');
+
+// DOM Elements - Gen Slider
+const genSlider = document.getElementById('gen-slider');
+const genSliderVal = document.getElementById('gen-slider-val');
+const genPopCount = document.getElementById('gen-pop-count');
+const genParetoCount = document.getElementById('gen-pareto-count');
+const genHypervolume = document.getElementById('gen-hypervolume');
+
+// DOM Elements - Selection
+const selectionMethod = document.getElementById('selection-method');
+
+// DOM Elements - Solution Card & Sync
+const solIdBadge = document.getElementById('sol-id-badge');
+const solScoreBadge = document.getElementById('sol-score-badge');
+const solMetricsGrid = document.getElementById('sol-metrics-grid');
 const btnPreviewPhenotype = document.getElementById('btn-preview-phenotype');
 const btnSyncWallaceiQgis = document.getElementById('btn-sync-wallacei-qgis');
 
+// --- Tab Switching ---
 if (tabBtnParametric && tabBtnWallacei) {
     tabBtnParametric.addEventListener('click', () => {
         tabBtnParametric.classList.add('active');
         tabBtnWallacei.classList.remove('active');
         parametricView.classList.remove('hidden');
         wallaceiView.classList.add('hidden');
+        if (editorControls) editorControls.classList.remove('hidden');
     });
 
     tabBtnWallacei.addEventListener('click', () => {
@@ -6977,27 +7045,23 @@ if (tabBtnParametric && tabBtnWallacei) {
         tabBtnParametric.classList.remove('active');
         wallaceiView.classList.remove('hidden');
         parametricView.classList.add('hidden');
+        if (editorControls) editorControls.classList.add('hidden');
     });
 }
 
-if (inWallaceiPop) inWallaceiPop.addEventListener('input', e => valWallaceiPop.textContent = e.target.value);
-if (inWallaceiGen) inWallaceiGen.addEventListener('input', e => valWallaceiGen.textContent = e.target.value);
-if (inWallaceiCross) inWallaceiCross.addEventListener('input', e => valWallaceiCross.textContent = parseFloat(e.target.value).toFixed(2));
-if (inWallaceiMut) inWallaceiMut.addEventListener('input', e => valWallaceiMut.textContent = parseFloat(e.target.value).toFixed(2));
+// --- Slider Input Handlers ---
+if (inWallaceiPop) inWallaceiPop.addEventListener('input', e => { if (valWallaceiPop) valWallaceiPop.textContent = e.target.value; });
+if (inWallaceiGen) inWallaceiGen.addEventListener('input', e => { if (valWallaceiGen) valWallaceiGen.textContent = e.target.value; });
+if (inWallaceiCross) inWallaceiCross.addEventListener('input', e => { if (valWallaceiCross) valWallaceiCross.textContent = parseFloat(e.target.value).toFixed(2); });
+if (inWallaceiMut) inWallaceiMut.addEventListener('input', e => { if (valWallaceiMut) valWallaceiMut.textContent = parseFloat(e.target.value).toFixed(2); });
 
-const subtabsMap = [
-    { btn: subtabScatter, view: viewScatter, name: 'scatter' },
-    { btn: subtabPcp, view: viewPcp, name: 'pcp' },
-    { btn: subtabRadar, view: viewRadar, name: 'radar' },
-    { btn: subtabConvergence, view: viewConvergence, name: 'convergence' }
-];
-
+// --- Subtab Switching ---
 subtabsMap.forEach(item => {
-    if (item.btn) {
+    if (item.btn && item.view) {
         item.btn.addEventListener('click', () => {
             subtabsMap.forEach(s => {
-                s.btn.classList.remove('active');
-                s.view.classList.add('hidden');
+                if (s.btn) s.btn.classList.remove('active');
+                if (s.view) s.view.classList.add('hidden');
             });
             item.btn.classList.add('active');
             item.view.classList.remove('hidden');
@@ -7007,43 +7071,41 @@ subtabsMap.forEach(item => {
     }
 });
 
-if (scatterAxisX) scatterAxisX.addEventListener('change', () => renderParetoScatter());
-if (scatterAxisY) scatterAxisY.addEventListener('change', () => renderParetoScatter());
+// --- Objective Specs Builder ---
+function buildObjectiveSpecs() {
+    const specs = [];
+    const mapping = [
+        { id: 'obj-gfa', dir: 'dir-gfa', name: 'gfa' },
+        { id: 'obj-score', dir: 'dir-score', name: 'planx_score' },
+        { id: 'obj-wind', dir: 'dir-wind', name: 'wind_ventilation' },
+        { id: 'obj-solar', dir: 'dir-solar', name: 'solar_radiation_kwh' },
+        { id: 'obj-pollution', dir: 'dir-pollution', name: 'pollution_dispersion' },
+        { id: 'obj-svf', dir: 'dir-svf', name: 'sky_view_factor' },
+        { id: 'obj-constraint', dir: 'dir-constraint', name: 'constraint_penalty' },
+        { id: 'obj-carbon', dir: 'dir-carbon', name: 'carbon_kg' },
+        { id: 'obj-daylight', dir: 'dir-daylight', name: 'daylight_index' },
+        { id: 'obj-runoff', dir: 'dir-runoff', name: 'runoff_m3' },
+        { id: 'obj-utci', dir: 'dir-utci', name: 'utci_score' },
+        { id: 'obj-roi', dir: 'dir-roi', name: 'roi_percentage' },
+        { id: 'obj-pv', dir: 'dir-pv', name: 'pv_yield_mwh' },
+        { id: 'obj-openspace', dir: 'dir-openspace', name: 'open_space_ratio' },
+        { id: 'obj-pedcomfort', dir: 'dir-pedcomfort', name: 'pedestrian_wind_comfort' }
+    ];
 
+    mapping.forEach(m => {
+        const cb = document.getElementById(m.id);
+        const d = document.getElementById(m.dir);
+        if (cb && cb.checked) {
+            specs.push({ name: m.name, direction: d ? d.value : 'max' });
+        }
+    });
+    return specs;
+}
+
+// --- Streaming Optimization Client ---
 if (btnRunWallacei) {
     btnRunWallacei.addEventListener('click', async () => {
-        const objectiveSpecs = [];
-        if (document.getElementById('obj-gfa')?.checked) {
-            objectiveSpecs.push({ name: 'gfa', direction: document.getElementById('dir-gfa')?.value || 'max' });
-        }
-        if (document.getElementById('obj-score')?.checked) {
-            objectiveSpecs.push({ name: 'planx_score', direction: document.getElementById('dir-score')?.value || 'max' });
-        }
-        if (document.getElementById('obj-wind')?.checked) {
-            objectiveSpecs.push({ name: 'wind_ventilation', direction: document.getElementById('dir-wind')?.value || 'max' });
-        }
-        if (document.getElementById('obj-solar')?.checked) {
-            objectiveSpecs.push({ name: 'solar_radiation_kwh', direction: document.getElementById('dir-solar')?.value || 'max' });
-        }
-        if (document.getElementById('obj-pollution')?.checked) {
-            objectiveSpecs.push({ name: 'pollution_dispersion', direction: document.getElementById('dir-pollution')?.value || 'max' });
-        }
-        if (document.getElementById('obj-svf')?.checked) {
-            objectiveSpecs.push({ name: 'sky_view_factor', direction: document.getElementById('dir-svf')?.value || 'max' });
-        }
-        if (document.getElementById('obj-constraint')?.checked) {
-            objectiveSpecs.push({ name: 'constraint_penalty', direction: document.getElementById('dir-constraint')?.value || 'min' });
-        }
-        if (document.getElementById('obj-carbon')?.checked) {
-            objectiveSpecs.push({ name: 'carbon_kg', direction: document.getElementById('dir-carbon')?.value || 'min' });
-        }
-        if (document.getElementById('obj-daylight')?.checked) {
-            objectiveSpecs.push({ name: 'daylight_index', direction: document.getElementById('dir-daylight')?.value || 'max' });
-        }
-        if (document.getElementById('obj-runoff')?.checked) {
-            objectiveSpecs.push({ name: 'runoff_m3', direction: document.getElementById('dir-runoff')?.value || 'min' });
-        }
-
+        const objectiveSpecs = buildObjectiveSpecs();
         if (objectiveSpecs.length === 0) {
             showToast('Select at least one objective function.', 'warning');
             return;
@@ -7055,76 +7117,208 @@ if (btnRunWallacei) {
         const mutationRate = parseFloat(inWallaceiMut?.value || '0.15');
 
         let targetArea = 1200.0;
-        if (selectedParcel && selectedParcel.area) {
-            targetArea = selectedParcel.area;
-        } else if (parcelFeatures.length > 0) {
-            const sum = parcelFeatures.reduce((acc, p) => acc + (p.area || 1000), 0);
-            targetArea = sum / parcelFeatures.length;
+        if (selectedParcel && selectedParcel.area) targetArea = selectedParcel.area;
+        else if (parcelFeatures.length > 0) targetArea = parcelFeatures.reduce((acc, p) => acc + (p.area || 1000), 0) / parcelFeatures.length;
+
+        // Collect Bounds
+        const bounds = {
+            min_floors: parseInt(inBoundMinFloors?.value || '1', 10),
+            max_floors: parseInt(inBoundMaxFloors?.value || '30', 10),
+            min_setback: parseFloat(inBoundMinSetback?.value || '0'),
+            max_setback: parseFloat(inBoundMaxSetback?.value || '10')
+        };
+
+        if (wallaceiProgress) wallaceiProgress.classList.remove('hidden');
+        if (wallaceiProgressFill) wallaceiProgressFill.style.width = '5%';
+        if (wallaceiProgressText) wallaceiProgressText.textContent = \`Starting optimization...\`;
+        btnRunWallacei.disabled = true;
+        if (btnStopWallacei) btnStopWallacei.disabled = false;
+
+        generationHistory = [];
+        wallaceiResult = null;
+        viewGeneration = -1;
+        if (genSlider) {
+            genSlider.max = generations;
+            genSlider.value = generations;
         }
 
-        wallaceiProgress.classList.remove('hidden');
-        wallaceiProgressFill.style.width = '20%';
-        wallaceiProgressText.textContent = `Running NSGA-II (${generations} gens, ${popSize} pop)...`;
-        btnRunWallacei.disabled = true;
-
         try {
-            const resp = await fetch('/api/optimize', {
+            const resp = await fetch('/api/optimize/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    algorithm: document.getElementById('input-algorithm')?.value || 'nsga2',
                     parcel_area: targetArea,
+                    parcels_data: parcelFeatures.map(p => ({ id: p.fid, area: p.area || 1000 })),
                     objective_specs: objectiveSpecs,
                     pop_size: popSize,
                     generations: generations,
                     crossover_rate: crossoverRate,
-                    mutation_rate: mutationRate
+                    mutation_rate: mutationRate,
+                    bounds: bounds
                 })
             });
 
-            wallaceiProgressFill.style.width = '90%';
-
-            if (!resp.ok) throw new Error(`Server returned HTTP ${resp.status}`);
-
+            if (!resp.ok) throw new Error(\`Server returned HTTP \${resp.status}\`);
             const data = await resp.json();
-            if (data.status === 'error') throw new Error(data.message);
+            if (data.status === 'error') throw new Error(data.message || 'Error starting optimization');
 
-            wallaceiResult = data;
-            wallaceiProgressFill.style.width = '100%';
-            wallaceiProgressText.textContent = `Completed! ${data.pareto_solutions.length} Rank 1 solutions found.`;
-
-            setTimeout(() => {
-                wallaceiProgress.classList.add('hidden');
-            }, 1200);
-
-            wallaceiAnalyticsContainer.classList.remove('hidden');
-
-            if (data.pareto_solutions && data.pareto_solutions.length > 0) {
-                activeParetoSolution = data.pareto_solutions[0];
-                displaySolutionCard(activeParetoSolution);
-                applyPhenotypeTo3D(activeParetoSolution);
-            }
-
-            renderWallaceiCharts();
-            showToast(`Parametric Process Optimization complete! ${data.pareto_solutions.length} Pareto solutions found.`, 'success');
+            streamingRunId = data.run_id;
+            startPollingStatus(streamingRunId);
         } catch (err) {
-            wallaceiProgress.classList.add('hidden');
-            showToast(`Optimization failed: ${err.message}`, 'error');
-        } finally {
+            if (wallaceiProgress) wallaceiProgress.classList.add('hidden');
+            showToast(\`Failed to start optimization: \${err.message}\`, 'error');
             btnRunWallacei.disabled = false;
+            if (btnStopWallacei) btnStopWallacei.disabled = true;
         }
     });
 }
 
+if (btnStopWallacei) {
+    btnStopWallacei.addEventListener('click', async () => {
+        if (!streamingRunId) return;
+        try {
+            await fetch(\`/api/optimize/stop/\${streamingRunId}\`, { method: 'POST' });
+            showToast('Stop requested...', 'info');
+        } catch (err) {
+            console.error('Stop error', err);
+        }
+    });
+}
+
+function startPollingStatus(runId) {
+    if (streamingPollTimer) clearInterval(streamingPollTimer);
+    streamingPollTimer = setInterval(async () => {
+        try {
+            const resp = await fetch(\`/api/optimize/status/\${runId}\`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            if (data.status === 'error') {
+                clearInterval(streamingPollTimer);
+                showToast(\`Optimization Error: \${data.message || 'Unknown error'}\`, 'error');
+                btnRunWallacei.disabled = false;
+                if (btnStopWallacei) btnStopWallacei.disabled = true;
+                if (wallaceiProgress) wallaceiProgress.classList.add('hidden');
+                return;
+            }
+
+            const currentGen = data.current_generation || 0;
+            const totalGen = data.total_generations || 1;
+            const pct = (currentGen / totalGen) * 100;
+
+            if (wallaceiProgressFill) wallaceiProgressFill.style.width = \`\${pct}%\`;
+            if (wallaceiProgressText) wallaceiProgressText.textContent = \`Generation \${currentGen} / \${totalGen}\`;
+            if (progGenCounter) progGenCounter.textContent = \`\${currentGen}/\${totalGen}\`;
+
+            if (data.elapsed_seconds !== undefined) {
+                if (progElapsed) progElapsed.textContent = \`\${data.elapsed_seconds.toFixed(1)}s\`;
+                if (currentGen > 0 && progEta) {
+                    const secPerGen = data.elapsed_seconds / currentGen;
+                    const eta = secPerGen * (totalGen - currentGen);
+                    progEta.textContent = \`\${eta.toFixed(1)}s\`;
+                }
+            }
+
+            if (data.generation_data) {
+                const gdata = data.generation_data;
+                generationHistory[gdata.generation] = gdata;
+                
+                if (progParetoCount) progParetoCount.textContent = (gdata.pareto_front || []).length;
+                if (progHv && gdata.hypervolume !== undefined) progHv.textContent = gdata.hypervolume.toFixed(4);
+                if (genParetoCount) genParetoCount.textContent = (gdata.pareto_front || []).length;
+                if (genHypervolume && gdata.hypervolume !== undefined) genHypervolume.textContent = gdata.hypervolume.toFixed(4);
+
+                if (wallaceiAnalyticsContainer && !wallaceiAnalyticsContainer.classList.contains('hidden')) {
+                    renderWallaceiCharts();
+                }
+            }
+
+            if (data.status === 'completed' || data.status === 'stopped') {
+                clearInterval(streamingPollTimer);
+                wallaceiResult = data;
+                if (data.generation_data && data.generation_data.k_means_clusters) {
+                    currentClusterResult = data.generation_data.k_means_clusters;
+                }
+                btnRunWallacei.disabled = false;
+                if (btnStopWallacei) btnStopWallacei.disabled = true;
+                
+                setTimeout(() => { if (wallaceiProgress) wallaceiProgress.classList.add('hidden'); }, 1200);
+
+                if (wallaceiAnalyticsContainer) wallaceiAnalyticsContainer.classList.remove('hidden');
+
+                if (wallaceiResult.pareto_solutions && wallaceiResult.pareto_solutions.length > 0) {
+                    activeParetoSolution = wallaceiResult.pareto_solutions[0];
+                    displaySolutionCard(activeParetoSolution);
+                    applyPhenotypeTo3D(activeParetoSolution);
+                }
+                
+                if (genSlider) {
+                    genSlider.max = totalGen;
+                    genSlider.value = totalGen;
+                }
+
+                renderWallaceiCharts();
+                showToast(\`Optimization \${data.status}!\`, data.status === 'completed' ? 'success' : 'warning');
+            }
+        } catch (err) {
+            console.error('Poll error', err);
+        }
+    }, 500);
+}
+
+// --- Generation Slider ---
+if (genSlider) {
+    genSlider.addEventListener('input', e => {
+        const val = parseInt(e.target.value, 10);
+        const max = parseInt(genSlider.max, 10);
+        if (val >= max) {
+            viewGeneration = -1;
+            if (genSliderVal) genSliderVal.textContent = 'All';
+            const latest = generationHistory[generationHistory.length - 1];
+            if (latest) {
+                if (genPopCount) genPopCount.textContent = (latest.individuals || []).length;
+                if (genParetoCount) genParetoCount.textContent = (latest.pareto_front || []).length;
+                if (genHypervolume) genHypervolume.textContent = (latest.hypervolume || 0).toFixed(4);
+            }
+        } else {
+            viewGeneration = val;
+            if (genSliderVal) genSliderVal.textContent = \`Gen \${val}\`;
+            const gdata = generationHistory[val];
+            if (gdata) {
+                if (genPopCount) genPopCount.textContent = (gdata.individuals || []).length;
+                if (genParetoCount) genParetoCount.textContent = (gdata.pareto_front || []).length;
+                if (genHypervolume) genHypervolume.textContent = (gdata.hypervolume || 0).toFixed(4);
+            } else {
+                if (genPopCount) genPopCount.textContent = '-';
+                if (genParetoCount) genParetoCount.textContent = '-';
+                if (genHypervolume) genHypervolume.textContent = '-';
+            }
+        }
+        renderWallaceiCharts();
+    });
+}
+
+function getCurrentSolutions() {
+    if (viewGeneration === -1) {
+        return wallaceiResult?.all_solutions || [];
+    }
+    const gdata = generationHistory[viewGeneration];
+    return gdata?.individuals || [];
+}
+
+// --- Chart Renderers ---
 function renderWallaceiCharts() {
-    if (!wallaceiResult) return;
     if (activeWallaceiSubtab === 'scatter') renderParetoScatter();
     else if (activeWallaceiSubtab === 'pcp') renderPCP();
     else if (activeWallaceiSubtab === 'radar') renderRadar();
-    else if (activeWallaceiSubtab === 'convergence') renderConvergence();
+    else if (activeWallaceiSubtab === 'fitness') renderFitnessChart();
+    else if (activeWallaceiSubtab === 'cluster') renderClusterChart();
+    else if (activeWallaceiSubtab === 'population') renderPopulationTable();
 }
 
 function renderParetoScatter() {
-    if (!canvasScatter || !wallaceiResult) return;
+    if (!canvasScatter) return;
     const ctx = canvasScatter.getContext('2d');
     const w = canvasScatter.width;
     const h = canvasScatter.height;
@@ -7132,12 +7326,13 @@ function renderParetoScatter() {
 
     const xKey = scatterAxisX ? scatterAxisX.value : 'gfa';
     const yKey = scatterAxisY ? scatterAxisY.value : 'planx_score';
+    const colorMode = scatterColorMode ? scatterColorMode.value : 'rank';
 
-    const solutions = wallaceiResult.all_solutions || [];
-    if (solutions.length === 0) return;
+    const solutions = getCurrentSolutions();
+    if (!solutions || solutions.length === 0) return;
 
-    let xVals = solutions.map(s => s.metrics[xKey] ?? s.objectives[xKey] ?? 0);
-    let yVals = solutions.map(s => s.metrics[yKey] ?? s.objectives[yKey] ?? 0);
+    let xVals = solutions.map(s => s.metrics?.[xKey] ?? s.objectives?.[xKey] ?? 0);
+    let yVals = solutions.map(s => s.metrics?.[yKey] ?? s.objectives?.[yKey] ?? 0);
 
     let minX = Math.min(...xVals), maxX = Math.max(...xVals);
     let minY = Math.min(...yVals), maxY = Math.max(...yVals);
@@ -7168,8 +7363,10 @@ function renderParetoScatter() {
     ctx.restore();
 
     solutions.forEach(sol => {
-        const xVal = sol.metrics[xKey] ?? sol.objectives[xKey] ?? 0;
-        const yVal = sol.metrics[yKey] ?? sol.objectives[yKey] ?? 0;
+        if (filteredSolutionIds && !filteredSolutionIds.has(sol.id)) return;
+
+        const xVal = sol.metrics?.[xKey] ?? sol.objectives?.[xKey] ?? 0;
+        const yVal = sol.metrics?.[yKey] ?? sol.objectives?.[yKey] ?? 0;
 
         const px = pad + ((xVal - minX) / (maxX - minX)) * plotW;
         const py = (h - pad) - ((yVal - minY) / (maxY - minY)) * plotH;
@@ -7184,13 +7381,20 @@ function renderParetoScatter() {
             ctx.fillStyle = '#06b6d4';
             ctx.shadowColor = '#06b6d4';
             ctx.shadowBlur = 8;
-        } else if (isRank1) {
-            ctx.fillStyle = '#10b981';
-            ctx.shadowColor = '#10b981';
-            ctx.shadowBlur = 4;
         } else {
-            ctx.fillStyle = '#94a3b8';
-            ctx.shadowBlur = 0;
+            if (colorMode === 'rank') {
+                ctx.fillStyle = isRank1 ? '#10b981' : '#94a3b8';
+            } else if (colorMode === 'cluster') {
+                const clusterIdx = sol.cluster_id !== undefined ? sol.cluster_id : 0;
+                ctx.fillStyle = CLUSTER_COLORS[clusterIdx % CLUSTER_COLORS.length];
+            } else if (colorMode === 'generation') {
+                const genNorm = sol.generation ? sol.generation / (wallaceiResult?.total_generations || 1) : 0;
+                const r = Math.floor(255 * genNorm);
+                const b = Math.floor(255 * (1 - genNorm));
+                ctx.fillStyle = \`rgb(\${r}, 0, \${b})\`;
+            }
+            ctx.shadowBlur = isRank1 ? 4 : 0;
+            ctx.shadowColor = ctx.fillStyle;
         }
         ctx.fill();
         ctx.shadowBlur = 0;
@@ -7205,7 +7409,8 @@ function renderParetoScatter() {
 
 if (canvasScatter) {
     canvasScatter.addEventListener('click', e => {
-        if (!wallaceiResult || !wallaceiResult.all_solutions) return;
+        const solutions = getCurrentSolutions();
+        if (!solutions || solutions.length === 0) return;
         const rect = canvasScatter.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
@@ -7219,9 +7424,8 @@ if (canvasScatter) {
         const xKey = scatterAxisX ? scatterAxisX.value : 'gfa';
         const yKey = scatterAxisY ? scatterAxisY.value : 'planx_score';
 
-        const solutions = wallaceiResult.all_solutions;
-        let xVals = solutions.map(s => s.metrics[xKey] ?? s.objectives[xKey] ?? 0);
-        let yVals = solutions.map(s => s.metrics[yKey] ?? s.objectives[yKey] ?? 0);
+        let xVals = solutions.map(s => s.metrics?.[xKey] ?? s.objectives?.[xKey] ?? 0);
+        let yVals = solutions.map(s => s.metrics?.[yKey] ?? s.objectives?.[yKey] ?? 0);
 
         let minX = Math.min(...xVals), maxX = Math.max(...xVals);
         let minY = Math.min(...yVals), maxY = Math.max(...yVals);
@@ -7233,8 +7437,9 @@ if (canvasScatter) {
         let minDist = Infinity;
 
         solutions.forEach(sol => {
-            const xVal = sol.metrics[xKey] ?? sol.objectives[xKey] ?? 0;
-            const yVal = sol.metrics[yKey] ?? sol.objectives[yKey] ?? 0;
+            if (filteredSolutionIds && !filteredSolutionIds.has(sol.id)) return;
+            const xVal = sol.metrics?.[xKey] ?? sol.objectives?.[xKey] ?? 0;
+            const yVal = sol.metrics?.[yKey] ?? sol.objectives?.[yKey] ?? 0;
 
             const px = pad + ((xVal - minX) / (maxX - minX)) * plotW;
             const py = (h - pad) - ((yVal - minY) / (maxY - minY)) * plotH;
@@ -7256,7 +7461,7 @@ if (canvasScatter) {
 }
 
 function renderPCP() {
-    if (!canvasPcp || !wallaceiResult) return;
+    if (!canvasPcp) return;
     const ctx = canvasPcp.getContext('2d');
     const w = canvasPcp.width;
     const h = canvasPcp.height;
@@ -7268,48 +7473,52 @@ function renderPCP() {
         { name: 'gfa', label: 'GFA' },
         { name: 'planx_score', label: 'Score' },
         { name: 'wind_ventilation', label: 'Wind' },
-        { name: 'solar_radiation_kwh', label: 'Solar' },
-        { name: 'pollution_dispersion', label: 'Air' }
+        { name: 'carbon_kg', label: 'Carbon' },
+        { name: 'roi_percentage', label: 'ROI' }
     ];
 
-    const solutions = wallaceiResult.all_solutions || [];
-    if (solutions.length === 0) return;
+    const solutions = getCurrentSolutions();
+    if (!solutions || solutions.length === 0) return;
 
-    const padX = 25;
-    const padY = 30;
+    const padX = 35;
+    const padY = 40;
     const numAxes = axes.length;
     const axisGap = (w - 2 * padX) / (numAxes - 1);
 
     const axisRanges = axes.map(ax => {
-        const vals = solutions.map(s => s.genotype[ax.name] ?? s.metrics[ax.name] ?? 0);
+        const vals = solutions.map(s => s.genotype?.[ax.name] ?? s.metrics?.[ax.name] ?? 0);
         let min = Math.min(...vals);
         let max = Math.max(...vals);
         if (min === max) { max += 1; min -= 1; }
         return { min, max };
     });
 
-    axes.forEach((ax, i) => {
-        const x = padX + i * axisGap;
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(x, padY);
-        ctx.lineTo(x, h - padY);
-        ctx.stroke();
-
-        ctx.fillStyle = '#475569';
-        ctx.font = '9px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(ax.label, x, padY - 8);
+    // Determine filtered set based on brushes
+    filteredSolutionIds = new Set();
+    solutions.forEach(sol => {
+        let passed = true;
+        axes.forEach((ax, i) => {
+            if (pcpBrushFilters[i]) {
+                const val = sol.genotype?.[ax.name] ?? sol.metrics?.[ax.name] ?? 0;
+                const range = axisRanges[i];
+                const norm = (val - range.min) / (range.max - range.min);
+                if (norm < pcpBrushFilters[i].min || norm > pcpBrushFilters[i].max) passed = false;
+            }
+        });
+        if (passed) filteredSolutionIds.add(sol.id);
     });
 
+    // Draw lines
     solutions.forEach(sol => {
-        const isRank1 = sol.rank === 1;
         const isSelected = activeParetoSolution && activeParetoSolution.id === sol.id;
+        const isRank1 = sol.rank === 1;
+        const isFilteredOut = !filteredSolutionIds.has(sol.id);
+
+        if (isFilteredOut && !isSelected) return; 
 
         ctx.beginPath();
         axes.forEach((ax, i) => {
-            const val = sol.genotype[ax.name] ?? sol.metrics[ax.name] ?? 0;
+            const val = sol.genotype?.[ax.name] ?? sol.metrics?.[ax.name] ?? 0;
             const range = axisRanges[i];
             const norm = (val - range.min) / (range.max - range.min);
             const x = padX + i * axisGap;
@@ -7322,6 +7531,9 @@ function renderPCP() {
         if (isSelected) {
             ctx.strokeStyle = '#06b6d4';
             ctx.lineWidth = 2.5;
+        } else if (isFilteredOut) {
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.05)';
+            ctx.lineWidth = 0.5;
         } else if (isRank1) {
             ctx.strokeStyle = 'rgba(16, 185, 129, 0.65)';
             ctx.lineWidth = 1.2;
@@ -7331,14 +7543,175 @@ function renderPCP() {
         }
         ctx.stroke();
     });
+
+    // Draw axes and brushes
+    axes.forEach((ax, i) => {
+        const x = padX + i * axisGap;
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, padY);
+        ctx.lineTo(x, h - padY);
+        ctx.stroke();
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ax.label, x, padY - 12);
+        
+        ctx.font = '8px sans-serif';
+        ctx.fillText(axisRanges[i].max.toFixed(1), x, padY - 2);
+        ctx.fillText(axisRanges[i].min.toFixed(1), x, h - padY + 10);
+
+        // Brush rect
+        if (pcpBrushFilters[i]) {
+            const b = pcpBrushFilters[i];
+            const y1 = (h - padY) - b.max * (h - 2 * padY);
+            const y2 = (h - padY) - b.min * (h - 2 * padY);
+            ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
+            ctx.fillRect(x - 4, y1, 8, y2 - y1);
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)';
+            ctx.strokeRect(x - 4, y1, 8, y2 - y1);
+        }
+    });
+}
+
+// Basic PCP Interaction
+let pcpDraggingAxis = -1;
+let pcpDragStartY = 0;
+if (canvasPcp) {
+    canvasPcp.addEventListener('mousedown', e => {
+        const rect = canvasPcp.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const w = canvasPcp.width;
+        const padX = 35;
+        const numAxes = 7; 
+        const axisGap = (w - 2 * padX) / (numAxes - 1);
+
+        for (let i = 0; i < numAxes; i++) {
+            const axX = padX + i * axisGap;
+            if (Math.abs(x - axX) < 15) {
+                pcpDraggingAxis = i;
+                pcpDragStartY = y;
+                pcpBrushFilters[i] = null; 
+                break;
+            }
+        }
+    });
+    canvasPcp.addEventListener('mousemove', e => {
+        if (pcpDraggingAxis === -1) return;
+        const rect = canvasPcp.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const h = canvasPcp.height;
+        const padY = 40;
+
+        let n1 = 1 - (pcpDragStartY - padY) / (h - 2 * padY);
+        let n2 = 1 - (y - padY) / (h - 2 * padY);
+        
+        n1 = Math.max(0, Math.min(1, n1));
+        n2 = Math.max(0, Math.min(1, n2));
+
+        pcpBrushFilters[pcpDraggingAxis] = {
+            min: Math.min(n1, n2),
+            max: Math.max(n1, n2)
+        };
+        renderWallaceiCharts();
+    });
+    window.addEventListener('mouseup', () => {
+        pcpDraggingAxis = -1;
+    });
+}
+
+function renderFitnessChart() {
+    if (!canvasFitness) return;
+    const ctx = canvasFitness.getContext('2d');
+    const w = canvasFitness.width;
+    const h = canvasFitness.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const metric = fitnessMetricSelect ? fitnessMetricSelect.value : 'planx_score';
+    const validHistory = generationHistory.filter(g => g !== undefined && g.statistics && g.statistics[metric]);
+    
+    if (validHistory.length === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Run optimization or wait for data...', w / 2, h / 2);
+        return;
+    }
+
+    const pad = 30;
+    const plotW = w - 2 * pad;
+    const plotH = h - 2 * pad;
+
+    let minVal = Infinity, maxVal = -Infinity;
+    validHistory.forEach(g => {
+        const s = g.statistics[metric];
+        if (s.min < minVal) minVal = s.min;
+        if (s.max > maxVal) maxVal = s.max;
+    });
+    if (minVal === maxVal) { maxVal += 1; minVal -= 1; }
+
+    // Draw Axes
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, pad);
+    ctx.lineTo(pad, h - pad);
+    ctx.lineTo(w - pad, h - pad);
+    ctx.stroke();
+
+    const getX = (idx) => pad + (idx / Math.max(1, validHistory.length - 1)) * plotW;
+    const getY = (val) => (h - pad) - ((val - minVal) / (maxVal - minVal)) * plotH;
+
+    // Draw Std Dev band
+    ctx.beginPath();
+    validHistory.forEach((g, i) => {
+        const s = g.statistics[metric];
+        ctx[i === 0 ? 'moveTo' : 'lineTo'](getX(i), getY(s.mean + s.std_dev));
+    });
+    for(let i = validHistory.length - 1; i >= 0; i--) {
+        const s = validHistory[i].statistics[metric];
+        ctx.lineTo(getX(i), getY(s.mean - s.std_dev));
+    }
+    ctx.fillStyle = 'rgba(13, 148, 136, 0.15)';
+    ctx.fill();
+
+    // Draw Max
+    ctx.beginPath();
+    validHistory.forEach((g, i) => ctx[i===0?'moveTo':'lineTo'](getX(i), getY(g.statistics[metric].max)));
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Draw Min
+    ctx.beginPath();
+    validHistory.forEach((g, i) => ctx[i===0?'moveTo':'lineTo'](getX(i), getY(g.statistics[metric].min)));
+    ctx.strokeStyle = '#ef4444'; ctx.stroke();
+
+    // Draw Mean
+    ctx.beginPath();
+    validHistory.forEach((g, i) => ctx[i===0?'moveTo':'lineTo'](getX(i), getY(g.statistics[metric].mean)));
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke();
+}
+
+if (fitnessMetricSelect) {
+    fitnessMetricSelect.addEventListener('change', renderWallaceiCharts);
 }
 
 function renderRadar() {
-    if (!canvasRadar || !activeParetoSolution) return;
+    if (!canvasRadar) return;
     const ctx = canvasRadar.getContext('2d');
     const w = canvasRadar.width;
     const h = canvasRadar.height;
     ctx.clearRect(0, 0, w, h);
+
+    if (!activeParetoSolution) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Select a solution', w / 2, h / 2);
+        return;
+    }
 
     const metrics = activeParetoSolution.metrics || {};
     const objectives = [
@@ -7347,11 +7720,13 @@ function renderRadar() {
         { name: 'wind_ventilation', label: 'Wind Vent', max: 100 },
         { name: 'solar_radiation_kwh', label: 'Solar Rad', max: 2000 },
         { name: 'pollution_dispersion', label: 'Air Disp', max: 100 },
-        { name: 'sky_view_factor', label: 'Sky View (SVF)', max: 1.0 }
+        { name: 'sky_view_factor', label: 'SVF', max: 1.0 },
+        { name: 'utci_score', label: 'UTCI', max: 100 },
+        { name: 'roi_percentage', label: 'ROI %', max: 200 }
     ];
 
     const cx = w / 2;
-    const cy = h / 2 + 5;
+    const cy = h / 2;
     const radius = Math.min(w, h) / 2 - 32;
     const num = objectives.length;
 
@@ -7381,10 +7756,10 @@ function renderRadar() {
         ctx.lineTo(x, y);
         ctx.stroke();
 
-        const lx = cx + (radius + 14) * Math.cos(angle);
-        const ly = cy + (radius + 14) * Math.sin(angle);
+        const lx = cx + (radius + 18) * Math.cos(angle);
+        const ly = cy + (radius + 18) * Math.sin(angle);
         ctx.fillStyle = '#334155';
-        ctx.font = '9px sans-serif';
+        ctx.font = '10px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.label, lx, ly);
@@ -7394,14 +7769,16 @@ function renderRadar() {
     objectives.forEach((obj, i) => {
         let val = metrics[obj.name] ?? 0;
         let norm = Math.min(1.0, Math.max(0.0, val / obj.max));
-        if (obj.invert) norm = 1.0 - norm;
-
+        
         const angle = (i * 2 * Math.PI / num) - Math.PI / 2;
         const x = cx + radius * norm * Math.cos(angle);
         const y = cy + radius * norm * Math.sin(angle);
 
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
+        
+        ctx.fillStyle = '#0f766e';
+        ctx.fillRect(x-2, y-2, 4, 4);
     });
     ctx.closePath();
 
@@ -7412,23 +7789,40 @@ function renderRadar() {
     ctx.stroke();
 }
 
-function renderConvergence() {
-    if (!canvasConvergence || !wallaceiResult || !wallaceiResult.history) return;
-    const ctx = canvasConvergence.getContext('2d');
-    const w = canvasConvergence.width;
-    const h = canvasConvergence.height;
+function renderClusterChart() {
+    if (!canvasCluster) return;
+    const ctx = canvasCluster.getContext('2d');
+    const w = canvasCluster.width;
+    const h = canvasCluster.height;
     ctx.clearRect(0, 0, w, h);
 
-    const history = wallaceiResult.history;
-    if (history.length === 0) return;
+    if (!currentClusterResult || !currentClusterResult.assignments || !wallaceiResult) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No cluster data available', w / 2, h / 2);
+        if (clusterSummary) clusterSummary.innerHTML = '';
+        return;
+    }
 
-    const pad = 30;
+    const solutions = getCurrentSolutions();
+    if (!solutions || solutions.length === 0) return;
+
+    const keys = Object.keys(solutions[0]?.metrics || {});
+    const xKey = keys[0] || 'gfa';
+    const yKey = keys[1] || 'planx_score';
+
+    let xVals = solutions.map(s => s.metrics?.[xKey] ?? 0);
+    let yVals = solutions.map(s => s.metrics?.[yKey] ?? 0);
+    let minX = Math.min(...xVals), maxX = Math.max(...xVals);
+    let minY = Math.min(...yVals), maxY = Math.max(...yVals);
+
+    if (maxX === minX) { maxX += 1; minX -= 1; }
+    if (maxY === minY) { maxY += 1; minY -= 1; }
+
+    const pad = 35;
     const plotW = w - 2 * pad;
     const plotH = h - 2 * pad;
-
-    const scores = history.map(h => h.avg_objectives.planx_score ?? 0);
-    let minS = Math.min(...scores), maxS = Math.max(...scores);
-    if (minS === maxS) { maxS += 10; minS -= 10; }
 
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 1;
@@ -7439,51 +7833,193 @@ function renderConvergence() {
     ctx.stroke();
 
     ctx.fillStyle = '#64748b';
-    ctx.font = '9px sans-serif';
+    ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('GENERATIONS', w / 2, h - 6);
+    ctx.fillText(xKey.toUpperCase(), w / 2, h - 8);
 
-    ctx.beginPath();
-    history.forEach((gen, i) => {
-        const val = gen.avg_objectives.planx_score ?? 0;
-        const x = pad + (i / Math.max(1, history.length - 1)) * plotW;
-        const y = (h - pad) - ((val - minS) / (maxS - minS)) * plotH;
+    // Draw points
+    solutions.forEach((sol, idx) => {
+        const xVal = sol.metrics?.[xKey] ?? 0;
+        const yVal = sol.metrics?.[yKey] ?? 0;
+        const px = pad + ((xVal - minX) / (maxX - minX)) * plotW;
+        const py = (h - pad) - ((yVal - minY) / (maxY - minY)) * plotH;
+        
+        const clusterId = currentClusterResult.assignments[idx] || 0;
 
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fillStyle = CLUSTER_COLORS[clusterId % CLUSTER_COLORS.length];
+        ctx.fill();
     });
-    ctx.strokeStyle = '#0d9488';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+
+    // Draw centroids
+    (currentClusterResult.centroids || []).forEach((c, idx) => {
+        const cxVal = c[xKey] ?? (Array.isArray(c) ? c[0] : 0);
+        const cyVal = c[yKey] ?? (Array.isArray(c) ? c[1] : 0);
+        
+        const px = pad + ((cxVal - minX) / (maxX - minX)) * plotW;
+        const py = (h - pad) - ((cyVal - minY) / (maxY - minY)) * plotH;
+
+        ctx.beginPath();
+        ctx.moveTo(px, py - 8);
+        ctx.lineTo(px + 8, py);
+        ctx.lineTo(px, py + 8);
+        ctx.lineTo(px - 8, py);
+        ctx.closePath();
+        ctx.fillStyle = CLUSTER_COLORS[idx % CLUSTER_COLORS.length];
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+
+    // Summary Cards
+    if (clusterSummary) {
+        const k = currentClusterResult.k;
+        let html = '';
+        for (let i = 0; i < k; i++) {
+            const count = currentClusterResult.assignments.filter(a => a === i).length;
+            html += \`<div style="padding: 8px; border-left: 4px solid \${CLUSTER_COLORS[i % CLUSTER_COLORS.length]}; background: #f8fafc; border-radius: 4px; font-size: 11px;">
+                <strong>Cluster \${i}</strong><br>
+                Count: \${count}
+            </div>\`;
+        }
+        clusterSummary.innerHTML = html;
+    }
 }
 
-function displaySolutionCard(sol) {
-    if (!sol) return;
-    const idBadge = document.getElementById('sol-id-badge');
-    const scoreBadge = document.getElementById('sol-score-badge');
-    const metricsGrid = document.getElementById('sol-metrics-grid');
+if (btnRunKmeans) {
+    btnRunKmeans.addEventListener('click', () => {
+        showToast('K-Means recalculation not implemented in client yet.', 'info');
+    });
+}
+if (btnAutoK) {
+    btnAutoK.addEventListener('click', () => {
+        if (kmeansK) kmeansK.value = 3; 
+    });
+}
 
-    if (idBadge) idBadge.textContent = `${sol.id} (Rank ${sol.rank})`;
-    if (scoreBadge) {
-        const score = sol.metrics?.planx_score ?? 0;
-        scoreBadge.textContent = `PlanX Score: ${score}`;
+function renderPopulationTable() {
+    if (!popTableBody) return;
+    const solutions = getCurrentSolutions();
+    
+    const filter = popFilter ? popFilter.value : 'all';
+    const sort = popSort ? popSort.value : 'rank';
+
+    let list = [...solutions];
+    if (filter === 'rank1') list = list.filter(s => s.rank === 1);
+    else if (filter === 'top10') {
+        list.sort((a, b) => (b.metrics?.planx_score || 0) - (a.metrics?.planx_score || 0));
+        list = list.slice(0, 10);
     }
 
-    if (metricsGrid) {
+    if (sort === 'rank') list.sort((a, b) => a.rank - b.rank);
+    else if (sort === 'score') list.sort((a, b) => (b.metrics?.planx_score || 0) - (a.metrics?.planx_score || 0));
+    else if (sort === 'id') list.sort((a, b) => a.id.localeCompare(b.id));
+
+    if (popCountLabel) popCountLabel.textContent = \`Showing \${list.length} solutions\`;
+
+    popTableBody.innerHTML = '';
+    list.forEach(sol => {
+        const tr = document.createElement('tr');
+        if (activeParetoSolution && activeParetoSolution.id === sol.id) tr.classList.add('selected');
+        
+        const g = sol.genotype || {};
+        const m = sol.metrics || {};
+        
+        tr.innerHTML = \`
+            <td>\${sol.id}</td>
+            <td>\${sol.rank}</td>
+            <td>\${g.typology || '-'}</td>
+            <td>\${g.floors || '-'}</td>
+            <td>\${(m.planx_score || 0).toFixed(1)}</td>
+            <td>\${(m.gfa || 0).toFixed(0)}</td>
+            <td>\${(m.wind_ventilation || 0).toFixed(1)}</td>
+            <td>\${(m.carbon_kg || 0).toFixed(0)}</td>
+        \`;
+        
+        tr.addEventListener('click', () => {
+            activeParetoSolution = sol;
+            displaySolutionCard(sol);
+            applyPhenotypeTo3D(sol);
+            renderWallaceiCharts();
+        });
+        
+        popTableBody.appendChild(tr);
+    });
+}
+
+if (popFilter) popFilter.addEventListener('change', renderPopulationTable);
+if (popSort) popSort.addEventListener('change', renderPopulationTable);
+
+// --- Exports ---
+if (btnExportSolutions) {
+    btnExportSolutions.addEventListener('click', () => {
+        const solutions = wallaceiResult?.all_solutions || [];
+        if (solutions.length === 0) return;
+        
+        let csv = 'ID,Rank,Generation,Typology,Floors,Setback,GFA,Score,Wind,Solar,Air,SVF\n';
+        solutions.forEach(s => {
+            const g = s.genotype || {};
+            const m = s.metrics || {};
+            csv += `${s.id},${s.rank},${s.generation},${g.typology},${g.floors},${g.setback},${m.gfa},${m.planx_score},${m.wind_ventilation},${m.solar_radiation_kwh},${m.pollution_dispersion},${m.sky_view_factor}\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wallacei_solutions.csv';
+        a.click();
+    });
+}
+
+if (btnExportJson) {
+    btnExportJson.addEventListener('click', () => {
+        const data = wallaceiResult || {};
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'wallacei_result.json';
+        a.click();
+    });
+}
+
+// --- Solution Card ---
+function displaySolutionCard(sol) {
+    if (!sol) return;
+    if (solIdBadge) solIdBadge.textContent = \`\${sol.id} (Rank \${sol.rank})\`;
+    if (solScoreBadge) {
+        const score = sol.metrics?.planx_score ?? 0;
+        solScoreBadge.textContent = \`PlanX Score: \${score.toFixed(1)}\`;
+    }
+
+    if (solMetricsGrid) {
         const g = sol.genotype || {};
         const m = sol.metrics || {};
 
-        metricsGrid.innerHTML = `
-            <div class="sol-metric"><span class="sol-metric-lbl">Typology</span><span class="sol-metric-val">${g.typology || '-'}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Floors</span><span class="sol-metric-val">${g.floors || '-'} fl</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Wind Vent</span><span class="sol-metric-val">${m.wind_ventilation || 0}/100</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Solar Rad</span><span class="sol-metric-val">${m.solar_radiation_kwh || 0} kWh</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Air Disp</span><span class="sol-metric-val">${m.pollution_dispersion || 0}/100</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">SVF Ratio</span><span class="sol-metric-val">${m.sky_view_factor || 0}</span></div>
-        `;
+        solMetricsGrid.innerHTML = \`
+            <div class="sol-metric"><span class="sol-metric-lbl">Typology</span><span class="sol-metric-val">\${g.typology || '-'}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Floors</span><span class="sol-metric-val">\${g.floors || '-'} fl</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Usage</span><span class="sol-metric-val">\${g.usage || '-'}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Roof</span><span class="sol-metric-val">\${g.roof_style || '-'}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">GFA</span><span class="sol-metric-val">\${(m.gfa || 0).toFixed(0)} sqm</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">FAR</span><span class="sol-metric-val">\${(m.far || 0).toFixed(2)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">BCR</span><span class="sol-metric-val">\${(m.bcr || 0).toFixed(2)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Wind Vent</span><span class="sol-metric-val">\${(m.wind_ventilation || 0).toFixed(1)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Solar Rad</span><span class="sol-metric-val">\${(m.solar_radiation_kwh || 0).toFixed(0)} kWh</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Air Disp</span><span class="sol-metric-val">\${(m.pollution_dispersion || 0).toFixed(1)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">SVF Ratio</span><span class="sol-metric-val">\${(m.sky_view_factor || 0).toFixed(2)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">UTCI</span><span class="sol-metric-val">\${(m.utci_score || 0).toFixed(1)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">ROI%</span><span class="sol-metric-val">\${(m.roi_percentage || 0).toFixed(1)}%</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Carbon</span><span class="sol-metric-val">\${(m.carbon_kg || 0).toFixed(0)} kg</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">PV Yield</span><span class="sol-metric-val">\${(m.pv_yield_mwh || 0).toFixed(1)} MWh</span></div>
+        \`;
     }
 }
 
+// --- Apply Phenotype ---
 function applyPhenotypeTo3D(sol) {
     if (!sol || !sol.genotype) return;
     const g = sol.genotype;
@@ -7505,11 +8041,12 @@ function applyPhenotypeTo3D(sol) {
     }
 }
 
+// --- UI Actions ---
 if (btnPreviewPhenotype) {
     btnPreviewPhenotype.addEventListener('click', () => {
         if (activeParetoSolution) {
             applyPhenotypeTo3D(activeParetoSolution);
-            showToast(`Loaded phenotype ${activeParetoSolution.id} in 3D.`, 'info');
+            showToast(\`Loaded phenotype \${activeParetoSolution.id} in 3D.\`, 'info');
         }
     });
 }
@@ -7571,13 +8108,57 @@ if (btnSyncWallaceiQgis) {
 
             const resData = await resp.json();
             if (resData.status === 'ok') {
-                showToast(`Synced Pareto Solution ${sol.id} to QGIS feature ID ${targetParcel.fid}!`, 'success');
+                showToast(\`Synced Pareto Solution \${sol.id} to QGIS feature ID \${targetParcel.fid}!\`, 'success');
             } else {
-                showToast(`Sync error: ${resData.message}`, 'error');
+                showToast(\`Sync error: \${resData.message}\`, 'error');
             }
         } catch (err) {
-            showToast(`Sync network error: ${err.message}`, 'error');
+            showToast(\`Sync network error: \${err.message}\`, 'error');
         }
     });
 }
 
+// --- Selection Method Auto-Select ---
+if (selectionMethod) {
+    selectionMethod.addEventListener('change', e => {
+        if (!wallaceiResult || !wallaceiResult.all_solutions) return;
+        const val = e.target.value;
+        const sols = wallaceiResult.all_solutions;
+        let selected = null;
+        
+        if (val === 'pareto') {
+            selected = sols.find(s => s.rank === 1);
+        } else if (val === 'kmeans' && currentClusterResult && currentClusterResult.assignments) {
+            const counts = {};
+            currentClusterResult.assignments.forEach(c => counts[c] = (counts[c] || 0) + 1);
+            let largestCluster = 0, maxCount = 0;
+            for (const [c, count] of Object.entries(counts)) {
+                if (count > maxCount) { maxCount = count; largestCluster = parseInt(c); }
+            }
+            selected = sols.find((s, i) => currentClusterResult.assignments[i] === largestCluster);
+        } else if (val === 'repeated') {
+            const counts = {};
+            sols.forEach(s => {
+                const key = \`\${s.genotype?.typology}-\${s.genotype?.floors}\`;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+            let bestKey = null, maxCount = 0;
+            for (const [k, count] of Object.entries(counts)) {
+                if (count > maxCount) { maxCount = count; bestKey = k; }
+            }
+            selected = sols.find(s => \`\${s.genotype?.typology}-\${s.genotype?.floors}\` === bestKey);
+        }
+        
+        if (selected) {
+            activeParetoSolution = selected;
+            displaySolutionCard(selected);
+            applyPhenotypeTo3D(selected);
+            renderWallaceiCharts();
+            showToast(\`Auto-selected solution via \${val}\`, 'info');
+        }
+    });
+}
+
+if (scatterAxisX) scatterAxisX.addEventListener('change', renderWallaceiCharts);
+if (scatterAxisY) scatterAxisY.addEventListener('change', renderWallaceiCharts);
+if (scatterColorMode) scatterColorMode.addEventListener('change', renderWallaceiCharts);

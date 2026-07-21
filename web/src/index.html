@@ -101,6 +101,7 @@
 
         <!-- EVOLUTIONARY STUDIO SECTION -->
         <div id="wallacei-studio-view" class="hidden">
+            <!-- Header -->
             <div class="dock-header dock-title-row">
                 <div>
                     <p class="dock-kicker">Multi-Objective Optimization</p>
@@ -109,11 +110,7 @@
                 <span class="wallacei-badge">NSGA-II</span>
             </div>
 
-            <div class="dock-note">
-                Run evolutionary optimization to analyze Pareto-optimal design trade-offs across density, daylight, carbon, runoff, and PlanX quality scores.
-            </div>
-
-            <!-- Optimization Setup Section -->
+            <!-- Section 1: Objectives -->
             <div class="wallacei-section">
                 <div class="dock-header">
                     <h4>1. Objectives & Trade-offs</h4>
@@ -129,12 +126,27 @@
                     <label class="obj-item"><input type="checkbox" id="obj-carbon" checked> <span>Carbon</span> <select id="dir-carbon"><option value="min">MIN</option><option value="max">MAX</option></select></label>
                     <label class="obj-item"><input type="checkbox" id="obj-daylight"> <span>Daylight</span> <select id="dir-daylight"><option value="max">MAX</option><option value="min">MIN</option></select></label>
                     <label class="obj-item"><input type="checkbox" id="obj-runoff"> <span>Runoff</span> <select id="dir-runoff"><option value="min">MIN</option><option value="max">MAX</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-utci"> <span>UTCI Score</span> <select id="dir-utci"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-roi"> <span>ROI %</span> <select id="dir-roi"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-pv"> <span>PV Yield</span> <select id="dir-pv"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-openspace"> <span>Open Space</span> <select id="dir-openspace"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-pedcomfort"> <span>Pedestrian Comfort</span> <select id="dir-pedcomfort"><option value="max">MAX</option><option value="min">MIN</option></select></label>
                 </div>
             </div>
 
+            <!-- Section 2: Evolutionary Parameters -->
             <div class="wallacei-section">
                 <div class="dock-header">
                     <h4>2. Evolutionary Parameters</h4>
+                </div>
+                <div class="control-group">
+                    <label>Algorithm:
+                        <select id="input-algorithm">
+                            <option value="nsga2">NSGA-II (Non-dominated Sorting)</option>
+                            <option value="spea2">SPEA-2 (Strength Pareto EA)</option>
+                            <option value="multiparcel">Multi-Parcel Master Plan Engine</option>
+                        </select>
+                    </label>
                 </div>
                 <div class="control-group">
                     <label>Population Size: <span id="val-wallacei-pop">30</span>
@@ -156,53 +168,228 @@
                         <input type="range" id="input-wallacei-mut" min="0.01" max="0.30" step="0.01" value="0.15">
                     </label>
                 </div>
-                <button id="btn-run-wallacei" class="action-button primary-action wallacei-run-btn" type="button">🧬 Run Evolutionary Optimization</button>
+
+                <div class="dock-header" style="margin-top: 15px;">
+                    <h4>Gene Bounds</h4>
+                </div>
+                <div class="gene-bounds-grid">
+                    <div class="control-group">
+                        <label>Min/Max Floors:
+                            <div style="display:flex; gap:5px; align-items:center;">
+                                <input type="number" id="bound-min-floors" value="1" style="width:50px"> to 
+                                <input type="number" id="bound-max-floors" value="24" style="width:50px">
+                            </div>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label>Min/Max Setback (m):
+                            <div style="display:flex; gap:5px; align-items:center;">
+                                <input type="number" id="bound-min-setback" value="0" style="width:50px"> to 
+                                <input type="number" id="bound-max-setback" value="12" style="width:50px">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Section 3: Run Controls + Live Progress -->
+                <button id="btn-run-wallacei" class="action-button primary-action wallacei-run-btn" type="button" style="margin-top: 15px;">🧬 Run Evolutionary Optimization</button>
+                <button id="btn-stop-wallacei" class="action-button stop-btn hidden" type="button" style="margin-top: 5px;">⏹ Stop Optimization</button>
 
                 <div id="wallacei-progress" class="hidden" style="margin-top: 10px;">
-                    <div class="progress-bar-bg"><div id="wallacei-progress-fill" style="width: 0%;"></div></div>
+                    <div class="progress-stats-row">
+                        <span id="prog-gen-counter">Generation 0 / 0</span>
+                        <span id="prog-elapsed">00:00.0s</span>
+                        <span id="prog-eta">~00:00.0s remaining</span>
+                    </div>
+                    <div class="progress-bar-bg"><div id="wallacei-progress-fill" style="width: 0%;" class="progress-animated"></div></div>
                     <p id="wallacei-progress-text" class="dock-note" style="text-align: center; margin-top: 4px;">Initializing NSGA-II solver...</p>
+                    <div class="progress-stats-row" style="margin-top: 5px; justify-content: center; gap: 10px;">
+                        <span class="progress-chip" id="prog-pareto-count">Rank 1: 0</span>
+                        <span class="progress-chip" id="prog-hv">HV: 0.00</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Analytics Dashboard Tabs -->
+            <!-- Section 4: Analytics Dashboard (6 tabs) -->
             <div id="wallacei-analytics-container" class="hidden wallacei-section">
                 <hr class="divider">
                 <div class="dock-header">
-                    <h4>3. Pareto Analytics Studio</h4>
-                </div>
-                <div class="analytics-subtabs">
-                    <button id="subtab-scatter" class="subtab-btn active" type="button">Pareto Scatter</button>
-                    <button id="subtab-pcp" class="subtab-btn" type="button">PCP Plot</button>
-                    <button id="subtab-radar" class="subtab-btn" type="button">Radar Chart</button>
-                    <button id="subtab-convergence" class="subtab-btn" type="button">Convergence</button>
+                    <h4>Pareto Analytics Studio</h4>
                 </div>
 
+                <!-- Generation Slider -->
+                <div class="gen-slider-container">
+                    <label>Generation: <span id="gen-slider-val">All</span>
+                        <input type="range" id="gen-slider" min="0" max="100" value="100">
+                    </label>
+                    <div class="gen-slider-info">
+                        <span id="gen-pop-count">Pop: -</span>
+                        <span id="gen-pareto-count">Rank 1: -</span>
+                        <span id="gen-hypervolume">HV: -</span>
+                    </div>
+                </div>
+
+                <!-- Selection Method -->
+                <div class="selection-method-row">
+                    <label>Selection Method:
+                        <select id="selection-method">
+                            <option value="pareto">Pareto Rank 1</option>
+                            <option value="kmeans">K-Means Centroid</option>
+                            <option value="repeated">Most Repeated Fitness</option>
+                            <option value="manual">Manual Selection</option>
+                        </select>
+                    </label>
+                </div>
+
+                <!-- 6 Sub-tabs -->
+                <div class="analytics-subtabs">
+                    <button id="subtab-scatter" class="subtab-btn active" type="button">Pareto Front</button>
+                    <button id="subtab-pcp" class="subtab-btn" type="button">PCP</button>
+                    <button id="subtab-fitness" class="subtab-btn" type="button">Fitness</button>
+                    <button id="subtab-radar" class="subtab-btn" type="button">Diamond</button>
+                    <button id="subtab-cluster" class="subtab-btn" type="button">Clusters</button>
+                    <button id="subtab-population" class="subtab-btn" type="button">Population</button>
+                </div>
+
+                <!-- Pareto Front View -->
                 <div id="view-scatter" class="subtab-view">
                     <div class="chart-controls-row">
-                        <label>X: <select id="scatter-axis-x"><option value="gfa">GFA</option><option value="far">FAR</option><option value="planx_score">PlanX Score</option><option value="wind_ventilation">Wind Vent</option><option value="solar_radiation_kwh">Solar Rad</option><option value="pollution_dispersion">Air Pollution</option><option value="sky_view_factor">Sky View (SVF)</option><option value="street_canyon_hw">Canyon H/W</option><option value="carbon_kg">Carbon</option></select></label>
-                        <label>Y: <select id="scatter-axis-y"><option value="planx_score" selected>PlanX Score</option><option value="wind_ventilation">Wind Vent</option><option value="solar_radiation_kwh">Solar Rad</option><option value="pollution_dispersion">Air Pollution</option><option value="sky_view_factor">Sky View (SVF)</option><option value="gfa">GFA</option><option value="carbon_kg">Carbon</option><option value="constraint_penalty">Constraint</option></select></label>
+                        <label>X: <select id="scatter-axis-x">
+                            <option value="gfa">GFA</option>
+                            <option value="far">FAR</option>
+                            <option value="bcr">BCR</option>
+                            <option value="planx_score">PlanX Score</option>
+                            <option value="wind_ventilation">Wind Vent</option>
+                            <option value="solar_radiation_kwh">Solar Rad</option>
+                            <option value="pollution_dispersion">Air Pollution</option>
+                            <option value="sky_view_factor">Sky View (SVF)</option>
+                            <option value="street_canyon_hw">Canyon H/W</option>
+                            <option value="carbon_kg">Carbon</option>
+                            <option value="constraint_penalty">Penalty</option>
+                            <option value="roi_percentage">ROI %</option>
+                            <option value="utci_score">UTCI Score</option>
+                            <option value="pv_yield_mwh">PV Yield</option>
+                            <option value="daylight_index">Daylight</option>
+                            <option value="runoff_m3">Runoff</option>
+                            <option value="pedestrian_wind_comfort">Pedestrian Comfort</option>
+                            <option value="open_space_ratio">Open Space</option>
+                            <option value="height_m">Height</option>
+                            <option value="mrt_temp_celsius">MRT Temp</option>
+                        </select></label>
+                        <label>Y: <select id="scatter-axis-y">
+                            <option value="gfa">GFA</option>
+                            <option value="far">FAR</option>
+                            <option value="bcr">BCR</option>
+                            <option value="planx_score" selected>PlanX Score</option>
+                            <option value="wind_ventilation">Wind Vent</option>
+                            <option value="solar_radiation_kwh">Solar Rad</option>
+                            <option value="pollution_dispersion">Air Pollution</option>
+                            <option value="sky_view_factor">Sky View (SVF)</option>
+                            <option value="street_canyon_hw">Canyon H/W</option>
+                            <option value="carbon_kg">Carbon</option>
+                            <option value="constraint_penalty">Penalty</option>
+                            <option value="roi_percentage">ROI %</option>
+                            <option value="utci_score">UTCI Score</option>
+                            <option value="pv_yield_mwh">PV Yield</option>
+                            <option value="daylight_index">Daylight</option>
+                            <option value="runoff_m3">Runoff</option>
+                            <option value="pedestrian_wind_comfort">Pedestrian Comfort</option>
+                            <option value="open_space_ratio">Open Space</option>
+                            <option value="height_m">Height</option>
+                            <option value="mrt_temp_celsius">MRT Temp</option>
+                        </select></label>
+                        <label>Color: <select id="scatter-color-mode">
+                            <option value="rank">Pareto Rank</option>
+                            <option value="cluster">K-Means Cluster</option>
+                            <option value="generation">Generation</option>
+                        </select></label>
                     </div>
-                    <canvas id="canvas-pareto-scatter" width="310" height="200"></canvas>
-                    <p class="chart-caption">Gold = Pareto Rank 1. Blue = Dominated. Click any dot to load phenotype in 3D.</p>
+                    <canvas id="canvas-pareto-scatter" width="310" height="220"></canvas>
+                    <p class="chart-caption">Click any point to load its phenotype in 3D. Rank 1 = green, dominated = grey.</p>
                 </div>
 
+                <!-- PCP View -->
                 <div id="view-pcp" class="subtab-view hidden">
-                    <canvas id="canvas-pcp" width="310" height="200"></canvas>
-                    <p class="chart-caption">Parallel Coordinate Plot across genes & objectives. Interactive brush filter.</p>
+                    <canvas id="canvas-pcp" width="310" height="220"></canvas>
+                    <p class="chart-caption">Parallel Coordinates Plot. Drag on any axis to brush-filter solutions.</p>
                 </div>
 
+                <!-- Fitness / Convergence View -->
+                <div id="view-fitness" class="subtab-view hidden">
+                    <div class="chart-controls-row">
+                        <label>Metric: <select id="fitness-metric-select">
+                            <option value="planx_score">PlanX Score</option>
+                            <option value="gfa">GFA</option>
+                            <option value="wind_ventilation">Wind Vent</option>
+                            <option value="carbon_kg">Carbon</option>
+                            <option value="roi_percentage">ROI %</option>
+                            <option value="utci_score">UTCI</option>
+                            <option value="constraint_penalty">Penalty</option>
+                        </select></label>
+                    </div>
+                    <canvas id="canvas-fitness" width="310" height="220"></canvas>
+                    <p class="chart-caption">Min (red) / Mean (yellow) / Max (green) fitness + Std Dev band across generations.</p>
+                </div>
+
+                <!-- Diamond / Radar View -->
                 <div id="view-radar" class="subtab-view hidden">
-                    <canvas id="canvas-radar" width="310" height="200"></canvas>
-                    <p class="chart-caption">Diamond / Radar Phenotype chart. Outer perimeter = higher performance.</p>
+                    <canvas id="canvas-radar" width="310" height="240"></canvas>
+                    <p class="chart-caption">Diamond fitness chart. Outer perimeter = higher performance.</p>
                 </div>
 
-                <div id="view-convergence" class="subtab-view hidden">
-                    <canvas id="canvas-convergence" width="310" height="180"></canvas>
-                    <p class="chart-caption">Objective fitness trajectories across generations.</p>
+                <!-- K-Means Cluster View -->
+                <div id="view-cluster" class="subtab-view hidden">
+                    <div class="chart-controls-row">
+                        <label>Clusters (K): <input type="number" id="kmeans-k" value="5" min="2" max="10" style="width:48px"></label>
+                        <button id="btn-auto-k" class="preset-button" type="button">Auto K</button>
+                        <button id="btn-run-kmeans" class="preset-button" type="button">Cluster</button>
+                    </div>
+                    <canvas id="canvas-cluster" width="310" height="220"></canvas>
+                    <div id="cluster-summary" class="cluster-summary-grid"></div>
+                    <p class="chart-caption">2D PCA projection of solution clusters. Click a cluster to select its centroid.</p>
                 </div>
 
-                <!-- Solution Summary Card -->
-                <div id="wallacei-solution-card" class="solution-card">
+                <!-- Population Browser View -->
+                <div id="view-population" class="subtab-view hidden">
+                    <div class="pop-controls-row">
+                        <label>Filter: <select id="pop-filter">
+                            <option value="all">All Solutions</option>
+                            <option value="rank1">Rank 1 Only</option>
+                            <option value="top10">Top 10%</option>
+                        </select></label>
+                        <label>Sort: <select id="pop-sort">
+                            <option value="rank">Rank</option>
+                            <option value="planx_score">PlanX Score</option>
+                            <option value="gfa">GFA</option>
+                            <option value="carbon_kg">Carbon</option>
+                        </select></label>
+                    </div>
+                    <div id="pop-table-container" class="pop-table-container">
+                        <table id="pop-table" class="pop-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Rank</th>
+                                    <th>Typology</th>
+                                    <th>Floors</th>
+                                    <th>Score</th>
+                                    <th>GFA</th>
+                                    <th>Wind</th>
+                                    <th>Carbon</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pop-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="pop-table-footer">
+                        <span id="pop-count-label">Showing 0 solutions</span>
+                        <button id="btn-export-solutions" class="preset-button" type="button">Export CSV</button>
+                        <button id="btn-export-json" class="preset-button" type="button">Export JSON</button>
+                    </div>
+                </div>
+
+                <!-- Solution Card -->
+                <div id="wallacei-solution-card" class="solution-card" style="margin-top: 15px;">
                     <div class="sol-header">
                         <span id="sol-id-badge" class="badge">Rank 1 #1</span>
                         <span id="sol-score-badge" class="badge score-high">Score: -</span>

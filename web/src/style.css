@@ -1403,3 +1403,187 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-size: 0.75rem;
 }
 
+/* --- NEW EVOLUTIONARY STUDIO STYLES --- */
+
+/* 1. Generation Slider */
+.gen-slider-container {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(15, 118, 110, 0.05);
+    border: 1px solid rgba(15, 118, 110, 0.15);
+    border-radius: 8px;
+}
+.gen-slider-container label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.gen-slider-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    font-family: monospace;
+}
+
+/* 2. Selection Method Row */
+.selection-method-row {
+    margin: 12px 0;
+}
+.selection-method-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* 3. Cluster View */
+.cluster-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+.cluster-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.cluster-card:hover {
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(15, 118, 110, 0.1);
+}
+
+/* 4. Population Browser Table */
+.pop-controls-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.pop-controls-row label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    gap: 4px;
+}
+.pop-table-container {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: #fff;
+    margin-bottom: 8px;
+}
+.pop-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+    text-align: left;
+}
+.pop-table th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    padding: 6px 8px;
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 700;
+    color: var(--text-primary);
+    z-index: 2;
+}
+.pop-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+.pop-table tr:hover td {
+    background: rgba(15, 118, 110, 0.05);
+}
+.pop-table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* 5. Enhanced Progress Section */
+.progress-stats-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+.progress-chip {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.stop-btn {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: var(--danger) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+.stop-btn:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* 6. Gene Bounds Section */
+.gene-bounds-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(15, 23, 42, 0.03);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.gene-bounds-grid input[type="number"] {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    padding: 4px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+/* 7. Running State Animations */
+@keyframes progress-stripes {
+    0% { background-position: 0 0; }
+    100% { background-position: 30px 0; }
+}
+.progress-animated {
+    background-image: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.15) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
+        transparent 75%,
+        transparent
+    );
+    background-size: 30px 30px;
+    animation: progress-stripes 1s linear infinite;
+}
