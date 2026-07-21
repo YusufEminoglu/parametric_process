@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.5] - 2026-07-21
+
+- Fix: Evolutionary Optimization now runs per input feature (each parcel gets own optimized solutions with its own geometry)
+
 ## [1.4.4] - 2026-07-21
 
 - Fix: remove self.tr() from shortHelpString (not available on bare QgsProcessingAlgorithm)

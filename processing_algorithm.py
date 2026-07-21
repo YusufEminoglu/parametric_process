@@ -200,68 +200,84 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
             3: run_moead_optimization,
         }
         solver_fn = solver_map.get(algorithm_idx, run_nsga2_optimization)
-        res = solver_fn(
-            parcel_area=avg_area,
-            pop_size=pop_size,
-            generations=generations,
-            max_bcr=max_bcr,
-            max_far=max_far,
-            max_height=max_height,
-        )
 
-        pareto_sols = res.get('pareto_solutions', [])
-        ref_geom = features[0].geometry() if features else None
+        total_features = len(features)
 
-        for idx, sol in enumerate(pareto_sols):
+        for f_idx, feature in enumerate(features):
             if feedback.isCanceled():
                 break
 
-            g = sol.get('genotype', {})
-            m = sol.get('metrics', {})
+            geom = feature.geometry()
+            if not geom or geom.isEmpty():
+                continue
 
-            new_f = QgsFeature(fields)
-            if ref_geom:
-                new_f.setGeometry(ref_geom)
+            parcel_area = geom.area()
+            if parcel_area <= 0:
+                continue
 
-            new_f.setAttribute('far', float(m.get('far', 0)))
-            new_f.setAttribute('bcr', float(m.get('bcr', 0)))
-            new_f.setAttribute('gfa', float(m.get('gfa', 0)))
-            new_f.setAttribute('setback', float(g.get('setback', 0)))
-            new_f.setAttribute('scale_x', float(g.get('scale_x', 1)))
-            new_f.setAttribute('scale_y', float(g.get('scale_y', 1)))
-            new_f.setAttribute('floors', int(g.get('floors', 1)))
-            new_f.setAttribute('usage', str(g.get('usage', 'MixedUse')))
-            new_f.setAttribute('floor_h', float(g.get('floor_height', 3.0)))
-            new_f.setAttribute('typology', str(g.get('typology', 'Tower')))
-            new_f.setAttribute('max_bcr', float(max_bcr))
-            new_f.setAttribute('max_far', float(max_far))
-            new_f.setAttribute('max_height', float(max_height))
-            new_f.setAttribute('roof_style', str(g.get('roof_style', 'Flat')))
-            new_f.setAttribute('stepback_i', 4)
-            new_f.setAttribute('stepback_d', 1.5)
-            new_f.setAttribute('plan_score', float(m.get('planx_score', 0)))
-            new_f.setAttribute('const_load', float(m.get('constraint_penalty', 0)))
-            new_f.setAttribute('height_m', float(m.get('height_m', 0)))
-            new_f.setAttribute('z_base', 0.0)
-            new_f.setAttribute('z_top', float(m.get('height_m', 0)))
-            new_f.setAttribute('pop_est', int(round(m.get('gfa', 0) / 35)))
-            new_f.setAttribute('carbon', float(m.get('carbon_kg', 0)))
-            new_f.setAttribute('runoff', float(m.get('runoff_m3', 0)))
-            new_f.setAttribute('open_space', float(m.get('open_space_m2', 0)))
-            new_f.setAttribute('wind_score', float(m.get('wind_ventilation', 0)))
-            new_f.setAttribute('solar_kwh', float(m.get('solar_radiation_kwh', 0)))
-            new_f.setAttribute('poll_disp', float(m.get('pollution_dispersion', 0)))
-            new_f.setAttribute('svf_ratio', float(m.get('sky_view_factor', 0)))
-            new_f.setAttribute('canyon_hw', float(m.get('street_canyon_hw', 0)))
-            new_f.setAttribute('roi_yield', float(m.get('roi_percentage', 0)))
-            new_f.setAttribute('mrt_temp', float(m.get('mrt_temp_celsius', 32.0)))
-            new_f.setAttribute('utci_score', float(m.get('utci_score', 0)))
-            new_f.setAttribute('pv_kwh', float(m.get('pv_yield_mwh', 0) * 1000.0))
-            new_f.setAttribute('pareto_rank', int(sol.get('rank', 1)))
-            new_f.setAttribute('wallacei_id', str(sol.get('id', f'sol_{idx+1}')))
+            res = solver_fn(
+                parcel_area=parcel_area,
+                pop_size=pop_size,
+                generations=generations,
+                max_bcr=max_bcr,
+                max_far=max_far,
+                max_height=max_height,
+            )
 
-            sink.addFeature(new_f, QgsFeatureSink.FastInsert)
-            feedback.setProgress(int((idx + 1) / max(1, len(pareto_sols)) * 100))
+            pareto_sols = res.get('pareto_solutions', [])
+
+            for idx, sol in enumerate(pareto_sols):
+                if feedback.isCanceled():
+                    break
+
+                g = sol.get('genotype', {})
+                m = sol.get('metrics', {})
+
+                new_f = QgsFeature(fields)
+                new_f.setGeometry(geom)
+
+                new_f.setAttribute('far', float(m.get('far', 0)))
+                new_f.setAttribute('bcr', float(m.get('bcr', 0)))
+                new_f.setAttribute('gfa', float(m.get('gfa', 0)))
+                new_f.setAttribute('setback', float(g.get('setback', 0)))
+                new_f.setAttribute('scale_x', float(g.get('scale_x', 1)))
+                new_f.setAttribute('scale_y', float(g.get('scale_y', 1)))
+                new_f.setAttribute('floors', int(g.get('floors', 1)))
+                new_f.setAttribute('usage', str(g.get('usage', 'MixedUse')))
+                new_f.setAttribute('floor_h', float(g.get('floor_height', 3.0)))
+                new_f.setAttribute('typology', str(g.get('typology', 'Tower')))
+                new_f.setAttribute('max_bcr', float(max_bcr))
+                new_f.setAttribute('max_far', float(max_far))
+                new_f.setAttribute('max_height', float(max_height))
+                new_f.setAttribute('roof_style', str(g.get('roof_style', 'Flat')))
+                new_f.setAttribute('stepback_i', 4)
+                new_f.setAttribute('stepback_d', 1.5)
+                new_f.setAttribute('plan_score', float(m.get('planx_score', 0)))
+                new_f.setAttribute('const_load', float(m.get('constraint_penalty', 0)))
+                new_f.setAttribute('height_m', float(m.get('height_m', 0)))
+                new_f.setAttribute('z_base', 0.0)
+                new_f.setAttribute('z_top', float(m.get('height_m', 0)))
+                new_f.setAttribute('pop_est', int(round(m.get('gfa', 0) / 35)))
+                new_f.setAttribute('carbon', float(m.get('carbon_kg', 0)))
+                new_f.setAttribute('runoff', float(m.get('runoff_m3', 0)))
+                new_f.setAttribute('open_space', float(m.get('open_space_m2', 0)))
+                new_f.setAttribute('wind_score', float(m.get('wind_ventilation', 0)))
+                new_f.setAttribute('solar_kwh', float(m.get('solar_radiation_kwh', 0)))
+                new_f.setAttribute('poll_disp', float(m.get('pollution_dispersion', 0)))
+                new_f.setAttribute('svf_ratio', float(m.get('sky_view_factor', 0)))
+                new_f.setAttribute('canyon_hw', float(m.get('street_canyon_hw', 0)))
+                new_f.setAttribute('roi_yield', float(m.get('roi_percentage', 0)))
+                new_f.setAttribute('mrt_temp', float(m.get('mrt_temp_celsius', 32.0)))
+                new_f.setAttribute('utci_score', float(m.get('utci_score', 0)))
+                new_f.setAttribute('pv_kwh', float(m.get('pv_yield_mwh', 0) * 1000.0))
+                new_f.setAttribute('pareto_rank', int(sol.get('rank', 1)))
+                new_f.setAttribute('wallacei_id', str(sol.get('id', f'sol_{idx+1}')))
+
+                sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+
+                # Per-feature progress
+                progress = int(((f_idx * len(pareto_sols)) + idx + 1) / max(1, total_features * len(pareto_sols)) * 100)
+                feedback.setProgress(progress)
 
         return {'OUTPUT': dest_id}
 
