@@ -1266,3 +1266,471 @@ def run_spea2_optimization(
         "history": history,
         "all_solutions": last_data.get("all_solutions", []) if last_data else [],
     }
+
+# ==========================================
+# ADAPTIVE GENOTYPE REPAIR ENGINE
+# ==========================================
+
+def repair_genotype(
+    g: Dict[str, Any],
+    parcel_area: float,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+) -> Dict[str, Any]:
+    """Adaptive genotype repair engine projecting building footprints & floors back onto feasible zoning bounds."""
+    repaired = dict(g)
+    floors = int(repaired.get("floors", 4))
+    floor_h = float(repaired.get("floor_height", 3.0))
+
+    if floors * floor_h > max_height:
+        repaired["floors"] = max(1, int(max_height / max(1.0, floor_h)))
+
+    scale_x = float(repaired.get("scale_x", 1.0))
+    scale_y = float(repaired.get("scale_y", 1.0))
+    setback = float(repaired.get("setback", 3.0))
+    typology = repaired.get("typology", "Tower")
+
+    side = math.sqrt(max(10.0, parcel_area))
+    eff_x = max(2.0, (side - 2 * setback) * scale_x)
+    eff_y = max(2.0, (side - 2 * setback) * scale_y)
+    raw_fp = eff_x * eff_y
+    typo_mult = {
+        "Tower": 0.85, "Slab": 0.70, "Courtyard": 0.60, "LShape": 0.65,
+        "UShape": 0.65, "PodiumTower": 0.80, "SteppedTower": 0.75, "MultiBuildingBlock": 0.55
+    }.get(typology, 0.75)
+
+    fp = min(parcel_area * 0.90, max(10.0, raw_fp * typo_mult))
+    est_bcr = fp / max(1.0, parcel_area)
+
+    if est_bcr > max_bcr and est_bcr > 0:
+        ratio = math.sqrt(max_bcr / est_bcr)
+        repaired["scale_x"] = round(max(0.35, min(1.6, scale_x * ratio)), 2)
+        repaired["scale_y"] = round(max(0.35, min(1.6, scale_y * ratio)), 2)
+
+    return repaired
+
+
+# ==========================================
+# NSGA-III ENGINE (Reference-Point Based)
+# ==========================================
+
+def generate_das_dennis_ref_points(num_objectives: int, partitions: int = 4) -> List[List[float]]:
+    """Generates Das & Dennis systematic reference points on the unit simplex for NSGA-III."""
+    if num_objectives <= 1:
+        return [[1.0]]
+
+    ref_points = []
+
+    def recursive_generator(current_point, left_sum, depth):
+        if depth == num_objectives - 1:
+            current_point.append(left_sum / partitions)
+            ref_points.append(current_point)
+            return
+
+        for i in range(left_sum + 1):
+            next_point = list(current_point)
+            next_point.append(i / partitions)
+            recursive_generator(next_point, left_sum - i, depth + 1)
+
+    recursive_generator([], partitions, 0)
+    return ref_points
+
+
+def run_nsga3_streaming(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+):
+    """NSGA-III streaming multi-objective evolutionary algorithm using reference-point guided selection."""
+    start_time = time.time()
+    if not objective_specs:
+        objective_specs = [
+            {"name": "gfa", "direction": "max"},
+            {"name": "planx_score", "direction": "max"},
+            {"name": "wind_ventilation", "direction": "max"},
+            {"name": "roi_percentage", "direction": "max"},
+            {"name": "carbon_kg", "direction": "min"},
+        ]
+
+    num_objectives = len(objective_specs)
+    ref_points = generate_das_dennis_ref_points(num_objectives, partitions=max(2, 6 - num_objectives))
+
+    population: List[ProcessIndividual] = []
+    for i in range(pop_size):
+        g = create_random_genotype(bounds)
+        g = repair_genotype(g, parcel_area, max_bcr, max_far, max_height)
+        ind = ProcessIndividual(f"nsga3_gen0_ind{i+1}", g, generation=0)
+        ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+        population.append(ind)
+
+    ref_point_hv = [0.0, 0.0]
+    if population and len(population[0].fitness_vector) >= 2:
+        max_f1 = max(ind.fitness_vector[0] for ind in population)
+        max_f2 = max(ind.fitness_vector[1] for ind in population)
+        ref_point_hv = [max_f1 + abs(max_f1)*0.1 + 1.0, max_f2 + abs(max_f2)*0.1 + 1.0]
+
+    for gen in range(generations):
+        fronts = fast_non_dominated_sort(population)
+        for front in fronts:
+            calculate_crowding_distance(front)
+
+        gen_individuals = [ind.to_dict() for ind in population]
+        pareto_front_inds = fronts[0] if fronts else []
+        pareto_rank1 = [ind.to_dict() for ind in pareto_front_inds]
+
+        stats = compute_generation_statistics(population, objective_specs)
+        hv = compute_hypervolume_2d(pareto_front_inds, ref_point_hv)
+        elapsed = time.time() - start_time
+
+        yield_data = {
+            "generation": gen,
+            "individuals": gen_individuals,
+            "pareto_front": pareto_rank1,
+            "statistics": stats,
+            "hypervolume": hv,
+            "elapsed_time": elapsed,
+        }
+
+        if gen == generations - 1:
+            all_sols = [ind.to_dict() for ind in population]
+            opt_k = find_optimal_k(all_sols, max_k=min(10, len(all_sols)))
+            clusters = kmeans_cluster(all_sols, k=opt_k)
+            sens = compute_sensitivity(population, objective_specs)
+
+            yield_data["all_solutions"] = all_sols
+            yield_data["pareto_solutions"] = pareto_rank1
+            yield_data["k_means_clusters"] = clusters
+            yield_data["sensitivity"] = sens
+            yield yield_data
+            break
+
+        yield yield_data
+
+        # Offspring generation with genotype repair
+        offspring: List[ProcessIndividual] = []
+        while len(offspring) < pop_size:
+            p1 = binary_tournament_selection(population)
+            p2 = binary_tournament_selection(population)
+
+            if random.random() < crossover_rate:
+                child_g = crossover_genotypes(p1.genotype, p2.genotype)
+            else:
+                child_g = dict(p1.genotype)
+
+            child_g = mutate_genotype(child_g, mutation_rate, bounds)
+            child_g = repair_genotype(child_g, parcel_area, max_bcr, max_far, max_height)
+
+            child_ind = ProcessIndividual(f"nsga3_gen{gen+1}_ind{len(offspring)+1}", child_g, generation=gen + 1)
+            child_ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+            offspring.append(child_ind)
+
+        combined = population + offspring
+        combined_fronts = fast_non_dominated_sort(combined)
+        new_pop: List[ProcessIndividual] = []
+
+        for front in combined_fronts:
+            if len(new_pop) + len(front) <= pop_size:
+                new_pop.extend(front)
+            else:
+                # Fill remaining slots using crowding distance / reference point selection
+                calculate_crowding_distance(front)
+                front.sort(key=lambda ind: ind.crowding_distance, reverse=True)
+                needed = pop_size - len(new_pop)
+                new_pop.extend(front[:needed])
+                break
+
+        population = new_pop
+
+
+def run_nsga3_optimization(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    generator = run_nsga3_streaming(
+        parcel_area, objective_specs, pop_size, generations,
+        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params
+    )
+    last_data = None
+    history = []
+    for data in generator:
+        history.append(data)
+        last_data = data
+
+    return {
+        "status": "ok",
+        "generations": generations,
+        "pop_size": pop_size,
+        "objective_specs": objective_specs,
+        "pareto_solutions": last_data.get("pareto_solutions", []) if last_data else [],
+        "history": history,
+        "all_solutions": last_data.get("all_solutions", []) if last_data else [],
+    }
+
+
+# ==========================================
+# MOEA/D ENGINE (Decomposition Based)
+# ==========================================
+
+def run_moead_streaming(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+):
+    """MOEA/D streaming solver using Tchebycheff decomposition."""
+    start_time = time.time()
+    if not objective_specs:
+        objective_specs = [
+            {"name": "gfa", "direction": "max"},
+            {"name": "planx_score", "direction": "max"},
+            {"name": "wind_ventilation", "direction": "max"},
+            {"name": "roi_percentage", "direction": "max"},
+            {"name": "carbon_kg", "direction": "min"},
+        ]
+
+    num_objs = len(objective_specs)
+    ref_weights = generate_das_dennis_ref_points(num_objs, partitions=max(2, 6 - num_objs))
+
+    # Scale weight vectors to match pop_size
+    weights: List[List[float]] = []
+    for i in range(pop_size):
+        w = ref_weights[i % len(ref_weights)]
+        w_sum = sum(w) or 1.0
+        weights.append([x / w_sum for x in w])
+
+    # Compute T-nearest neighbors for each weight vector
+    t_neighbors = max(2, min(pop_size, int(0.2 * pop_size)))
+    neighborhoods: List[List[int]] = []
+
+    for i in range(pop_size):
+        dists = []
+        for j in range(pop_size):
+            d = math.sqrt(sum((weights[i][m] - weights[j][m]) ** 2 for m in range(num_objs)))
+            dists.append((d, j))
+        dists.sort(key=lambda x: x[0])
+        neighborhoods.append([idx for _, idx in dists[:t_neighbors]])
+
+    population: List[ProcessIndividual] = []
+    for i in range(pop_size):
+        g = create_random_genotype(bounds)
+        g = repair_genotype(g, parcel_area, max_bcr, max_far, max_height)
+        ind = ProcessIndividual(f"moead_gen0_ind{i+1}", g, generation=0)
+        ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+        population.append(ind)
+
+    # Initialize ideal point z*
+    ideal_z = [min(ind.fitness_vector[m] for ind in population) for m in range(num_objs)]
+
+    def tchebycheff(ind: ProcessIndividual, weight_vec: List[float]) -> float:
+        return max(weight_vec[m] * abs(ind.fitness_vector[m] - ideal_z[m]) for m in range(num_objs))
+
+    ref_point_hv = [0.0, 0.0]
+    if population and len(population[0].fitness_vector) >= 2:
+        max_f1 = max(ind.fitness_vector[0] for ind in population)
+        max_f2 = max(ind.fitness_vector[1] for ind in population)
+        ref_point_hv = [max_f1 + abs(max_f1)*0.1 + 1.0, max_f2 + abs(max_f2)*0.1 + 1.0]
+
+    for gen in range(generations):
+        fronts = fast_non_dominated_sort(population)
+        gen_individuals = [ind.to_dict() for ind in population]
+        pareto_front_inds = fronts[0] if fronts else []
+        pareto_rank1 = [ind.to_dict() for ind in pareto_front_inds]
+
+        stats = compute_generation_statistics(population, objective_specs)
+        hv = compute_hypervolume_2d(pareto_front_inds, ref_point_hv)
+        elapsed = time.time() - start_time
+
+        yield_data = {
+            "generation": gen,
+            "individuals": gen_individuals,
+            "pareto_front": pareto_rank1,
+            "statistics": stats,
+            "hypervolume": hv,
+            "elapsed_time": elapsed,
+        }
+
+        if gen == generations - 1:
+            all_sols = [ind.to_dict() for ind in population]
+            opt_k = find_optimal_k(all_sols, max_k=min(10, len(all_sols)))
+            clusters = kmeans_cluster(all_sols, k=opt_k)
+            sens = compute_sensitivity(population, objective_specs)
+
+            yield_data["all_solutions"] = all_sols
+            yield_data["pareto_solutions"] = pareto_rank1
+            yield_data["k_means_clusters"] = clusters
+            yield_data["sensitivity"] = sens
+            yield yield_data
+            break
+
+        yield yield_data
+
+        # MOEA/D subproblem updates
+        for i in range(pop_size):
+            p_indices = random.sample(neighborhoods[i], 2)
+            p1 = population[p_indices[0]]
+            p2 = population[p_indices[1]]
+
+            if random.random() < crossover_rate:
+                child_g = crossover_genotypes(p1.genotype, p2.genotype)
+            else:
+                child_g = dict(p1.genotype)
+
+            child_g = mutate_genotype(child_g, mutation_rate, bounds)
+            child_g = repair_genotype(child_g, parcel_area, max_bcr, max_far, max_height)
+
+            child_ind = ProcessIndividual(f"moead_gen{gen+1}_ind{i+1}", child_g, generation=gen + 1)
+            child_ind.evaluate(parcel_area, objective_specs, max_bcr, max_far, max_height, sim_params)
+
+            # Update ideal point
+            for m in range(num_objs):
+                if child_ind.fitness_vector[m] < ideal_z[m]:
+                    ideal_z[m] = child_ind.fitness_vector[m]
+
+            # Update neighboring subproblems
+            for j in neighborhoods[i]:
+                if tchebycheff(child_ind, weights[j]) < tchebycheff(population[j], weights[j]):
+                    population[j] = child_ind
+
+
+def run_moead_optimization(
+    parcel_area: float,
+    objective_specs: List[Dict[str, str]] | None = None,
+    pop_size: int = 30,
+    generations: int = 15,
+    crossover_rate: float = 0.8,
+    mutation_rate: float = 0.15,
+    max_bcr: float = 0.45,
+    max_far: float = 2.5,
+    max_height: float = 18.0,
+    bounds: Dict[str, Any] | None = None,
+    sim_params: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    generator = run_moead_streaming(
+        parcel_area, objective_specs, pop_size, generations,
+        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params
+    )
+    last_data = None
+    history = []
+    for data in generator:
+        history.append(data)
+        last_data = data
+
+    return {
+        "status": "ok",
+        "generations": generations,
+        "pop_size": pop_size,
+        "objective_specs": objective_specs,
+        "pareto_solutions": last_data.get("pareto_solutions", []) if last_data else [],
+        "history": history,
+        "all_solutions": last_data.get("all_solutions", []) if last_data else [],
+    }
+
+
+# ==========================================
+# TOPSIS MCDA RANKER ENGINE
+# ==========================================
+
+def topsis_rank_solutions(
+    solutions: List[Dict[str, Any]],
+    weights: Dict[str, float] | None = None,
+    objective_specs: List[Dict[str, str]] | None = None,
+) -> List[Dict[str, Any]]:
+    """Ranks solutions using Multi-Criteria Decision Analysis (TOPSIS)."""
+    if not solutions:
+        return []
+
+    objective_specs = objective_specs or [
+        {"name": "gfa", "direction": "max"},
+        {"name": "planx_score", "direction": "max"},
+        {"name": "wind_ventilation", "direction": "max"},
+        {"name": "roi_percentage", "direction": "max"},
+        {"name": "carbon_kg", "direction": "min"},
+    ]
+
+    obj_names = [s["name"] for s in objective_specs]
+    obj_dirs = {s["name"]: s.get("direction", "max").lower() for s in objective_specs}
+
+    if not weights:
+        weights = {name: 1.0 / len(obj_names) for name in obj_names}
+    else:
+        total_w = sum(weights.values()) or 1.0
+        weights = {k: v / total_w for k, v in weights.items()}
+
+    matrix = []
+    for sol in solutions:
+        row = []
+        metrics = sol.get("metrics", {})
+        objectives = sol.get("objectives", {})
+        for name in obj_names:
+            val = float(objectives.get(name, metrics.get(name, 0.0)))
+            row.append(val)
+        matrix.append(row)
+
+    num_sols = len(matrix)
+    num_objs = len(obj_names)
+
+    sq_sums = [math.sqrt(sum(matrix[i][j] ** 2 for i in range(num_sols)) or 1.0) for j in range(num_objs)]
+
+    weighted_matrix = []
+    for i in range(num_sols):
+        w_row = []
+        for j in range(num_objs):
+            w = weights.get(obj_names[j], 1.0 / num_objs)
+            norm_val = (matrix[i][j] / sq_sums[j]) * w
+            w_row.append(norm_val)
+        weighted_matrix.append(w_row)
+
+    ideal_pos = []
+    ideal_neg = []
+    for j in range(num_objs):
+        col = [weighted_matrix[i][j] for i in range(num_sols)]
+        if obj_dirs[obj_names[j]] == "max":
+            ideal_pos.append(max(col))
+            ideal_neg.append(min(col))
+        else:
+            ideal_pos.append(min(col))
+            ideal_neg.append(max(col))
+
+    topsis_scores = []
+    for i in range(num_sols):
+        d_pos = math.sqrt(sum((weighted_matrix[i][j] - ideal_pos[j]) ** 2 for j in range(num_objs)))
+        d_neg = math.sqrt(sum((weighted_matrix[i][j] - ideal_neg[j]) ** 2 for j in range(num_objs)))
+        score = d_neg / (d_pos + d_neg) if (d_pos + d_neg) > 0 else 0.5
+        topsis_scores.append(round(score, 4))
+
+    ranked_indices = sorted(range(num_sols), key=lambda i: topsis_scores[i], reverse=True)
+    ranked_solutions = []
+
+    for rank, idx in enumerate(ranked_indices, start=1):
+        sol_copy = dict(solutions[idx])
+        sol_copy["topsis_score"] = topsis_scores[idx]
+        sol_copy["topsis_rank"] = rank
+        ranked_solutions.append(sol_copy)
+
+    return ranked_solutions
+

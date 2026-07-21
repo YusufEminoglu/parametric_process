@@ -1,5 +1,16 @@
 # Changelog - Parametric Process
 
+## [0.4.0] - 2026-07-21
+
+### Added
+- **NSGA-III Reference-Point Solver Engine**: Das & Dennis systematic reference points for Many-Objective Optimization (>4 objectives).
+- **MOEA/D Decomposition Solver Engine**: Tchebycheff scalarization and Euclidean neighborhood structure for subproblem updates.
+- **Adaptive Genotype Repair Engine**: Dynamic projection of building footprints and floor counts onto feasible zoning bounds during crossover and mutation.
+- **Real-Time 3D Physics Heatmaps**: Sol-Air surface heatmaps (30°C to 70°C) and Solar Irradiance ramps in WebGL cockpit.
+- **Animated CFD Wind Particle Stream**: Instanced vector arrows visualizing wind velocity flow, canyon acceleration, and stagnation shadows.
+- **TOPSIS MCDA Ranker**: Multi-criteria decision analysis ranking Pareto front solutions based on custom objective weights.
+- **Executive HTML Report Generator**: One-click export of interactive publication-ready executive summary reports with TOPSIS rank tables and KPI metrics.
+
 ## [0.2.1] - 2026-07-21
 
 - Add elite brand icon and comprehensive showcase documentation

@@ -167,11 +167,45 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.server.active_runs[run_id] = run_state
                 
                 def run_opt():
-                    from .nsga2_engine import run_nsga2_streaming, run_spea2_streaming, run_multiparcel_nsga2_streaming
+                    from .nsga2_engine import (
+                        run_nsga2_streaming,
+                        run_spea2_streaming,
+                        run_multiparcel_nsga2_streaming,
+                        run_nsga3_streaming,
+                        run_moead_streaming,
+                    )
                     algo = data.get("algorithm", "nsga2")
                     try:
                         if algo == "spea2":
                             generator = run_spea2_streaming(
+                                parcel_area=float(data.get("parcel_area", 1000.0)),
+                                objective_specs=data.get("objective_specs"),
+                                pop_size=int(data.get("pop_size", 30)),
+                                generations=gens,
+                                crossover_rate=float(data.get("crossover_rate", 0.8)),
+                                mutation_rate=float(data.get("mutation_rate", 0.15)),
+                                max_bcr=float(data.get("max_bcr", 0.45)),
+                                max_far=float(data.get("max_far", 2.5)),
+                                max_height=float(data.get("max_height", 18.0)),
+                                bounds=data.get("bounds"),
+                                sim_params=data.get("sim_params")
+                            )
+                        elif algo == "nsga3":
+                            generator = run_nsga3_streaming(
+                                parcel_area=float(data.get("parcel_area", 1000.0)),
+                                objective_specs=data.get("objective_specs"),
+                                pop_size=int(data.get("pop_size", 30)),
+                                generations=gens,
+                                crossover_rate=float(data.get("crossover_rate", 0.8)),
+                                mutation_rate=float(data.get("mutation_rate", 0.15)),
+                                max_bcr=float(data.get("max_bcr", 0.45)),
+                                max_far=float(data.get("max_far", 2.5)),
+                                max_height=float(data.get("max_height", 18.0)),
+                                bounds=data.get("bounds"),
+                                sim_params=data.get("sim_params")
+                            )
+                        elif algo == "moead":
+                            generator = run_moead_streaming(
                                 parcel_area=float(data.get("parcel_area", 1000.0)),
                                 objective_specs=data.get("objective_specs"),
                                 pop_size=int(data.get("pop_size", 30)),
@@ -262,16 +296,70 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response_data).encode('utf-8'))
             return
 
+        if url == "/api/topsis/rank":
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                from .nsga2_engine import topsis_rank_solutions
+                solutions = data.get("solutions", [])
+                weights = data.get("weights")
+                specs = data.get("objective_specs")
+                ranked = topsis_rank_solutions(solutions, weights, specs)
+                response_data = {"status": "ok", "ranked_solutions": ranked}
+            except Exception as e:
+                response_data = {"status": "error", "message": str(e)}
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            return
+
         if url == "/api/optimize":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
                 data = json.loads(body)
-                from .nsga2_engine import run_nsga2_optimization, run_spea2_optimization, run_multiparcel_nsga2_streaming
+                from .nsga2_engine import (
+                    run_nsga2_optimization,
+                    run_spea2_optimization,
+                    run_multiparcel_nsga2_streaming,
+                    run_nsga3_optimization,
+                    run_moead_optimization,
+                )
                 algo = data.get("algorithm", "nsga2")
                 
                 if algo == "spea2":
                     response_data = run_spea2_optimization(
+                        parcel_area=float(data.get("parcel_area", 1000.0)),
+                        objective_specs=data.get("objective_specs"),
+                        pop_size=int(data.get("pop_size", 30)),
+                        generations=int(data.get("generations", 15)),
+                        crossover_rate=float(data.get("crossover_rate", 0.8)),
+                        mutation_rate=float(data.get("mutation_rate", 0.15)),
+                        max_bcr=float(data.get("max_bcr", 0.45)),
+                        max_far=float(data.get("max_far", 2.5)),
+                        max_height=float(data.get("max_height", 18.0)),
+                        bounds=data.get("bounds"),
+                        sim_params=data.get("sim_params")
+                    )
+                elif algo == "nsga3":
+                    response_data = run_nsga3_optimization(
+                        parcel_area=float(data.get("parcel_area", 1000.0)),
+                        objective_specs=data.get("objective_specs"),
+                        pop_size=int(data.get("pop_size", 30)),
+                        generations=int(data.get("generations", 15)),
+                        crossover_rate=float(data.get("crossover_rate", 0.8)),
+                        mutation_rate=float(data.get("mutation_rate", 0.15)),
+                        max_bcr=float(data.get("max_bcr", 0.45)),
+                        max_far=float(data.get("max_far", 2.5)),
+                        max_height=float(data.get("max_height", 18.0)),
+                        bounds=data.get("bounds"),
+                        sim_params=data.get("sim_params")
+                    )
+                elif algo == "moead":
+                    response_data = run_moead_optimization(
                         parcel_area=float(data.get("parcel_area", 1000.0)),
                         objective_specs=data.get("objective_specs"),
                         pop_size=int(data.get("pop_size", 30)),

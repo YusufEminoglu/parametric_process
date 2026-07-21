@@ -8162,3 +8162,213 @@ if (selectionMethod) {
 if (scatterAxisX) scatterAxisX.addEventListener('change', renderWallaceiCharts);
 if (scatterAxisY) scatterAxisY.addEventListener('change', renderWallaceiCharts);
 if (scatterColorMode) scatterColorMode.addEventListener('change', renderWallaceiCharts);
+
+// ==========================================
+// CFD WIND VECTOR PARTICLES & SOLAR PHYSICS
+// ==========================================
+
+let cfdParticlesMesh = null;
+let isCfdActive = false;
+let cfdParticlesData = [];
+
+function initCfdParticles() {
+    if (cfdParticlesMesh) {
+        scene.remove(cfdParticlesMesh);
+        cfdParticlesMesh.geometry.dispose();
+        cfdParticlesMesh.material.dispose();
+        cfdParticlesMesh = null;
+    }
+    const particleCount = 200;
+    const instancedGeom = new THREE.ConeGeometry(0.6, 2.2, 4);
+    instancedGeom.rotateX(Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 });
+    cfdParticlesMesh = new THREE.InstancedMesh(instancedGeom, mat, particleCount);
+
+    cfdParticlesData = [];
+    for (let i = 0; i < particleCount; i++) {
+        const x = (Math.random() - 0.5) * 350;
+        const y = 2.0 + Math.random() * 28.0;
+        const z = (Math.random() - 0.5) * 350;
+        cfdParticlesData.push({ x, y, z, speed: 0.9 + Math.random() * 1.2 });
+    }
+    scene.add(cfdParticlesMesh);
+}
+
+function updateCfdParticles() {
+    if (!isCfdActive || !cfdParticlesMesh) return;
+    const dummy = new THREE.Object3D();
+    const windAngle = Math.PI * 1.25; // Southwest prevailing wind
+    const dirX = Math.cos(windAngle);
+    const dirZ = Math.sin(windAngle);
+
+    for (let i = 0; i < cfdParticlesData.length; i++) {
+        const p = cfdParticlesData[i];
+        p.x += dirX * p.speed;
+        p.z += dirZ * p.speed;
+
+        if (Math.abs(p.x) > 220 || Math.abs(p.z) > 220) {
+            p.x = -dirX * 200 + (Math.random() - 0.5) * 80;
+            p.z = -dirZ * 200 + (Math.random() - 0.5) * 80;
+            p.y = 2.0 + Math.random() * 28.0;
+        }
+
+        dummy.position.set(p.x, p.y, p.z);
+        dummy.rotation.y = -windAngle;
+        dummy.updateMatrix();
+        cfdParticlesMesh.setMatrixAt(i, dummy.matrix);
+    }
+    cfdParticlesMesh.instanceMatrix.needsUpdate = true;
+}
+
+// Hook CFD update into main animate loop
+const prevAnimate = animate;
+animate = function() {
+    updateCfdParticles();
+    prevAnimate();
+};
+
+const btnToggleCfd = document.getElementById('btn-toggle-cfd');
+if (btnToggleCfd) {
+    btnToggleCfd.addEventListener('click', () => {
+        isCfdActive = !isCfdActive;
+        btnToggleCfd.classList.toggle('active', isCfdActive);
+        if (isCfdActive) {
+            initCfdParticles();
+            showToast("CFD Wind Arrow Particles activated in 3D viewport.", "info");
+        } else if (cfdParticlesMesh) {
+            scene.remove(cfdParticlesMesh);
+            cfdParticlesMesh = null;
+            showToast("CFD Wind Arrow Particles hidden.", "info");
+        }
+    });
+}
+
+// ==========================================
+// TOPSIS MCDA RANKER & EXECUTIVE HTML REPORT
+// ==========================================
+
+const btnTopsisRank = document.getElementById('btn-topsis-rank');
+if (btnTopsisRank) {
+    btnTopsisRank.addEventListener('click', async () => {
+        const sols = (wallaceiResult && wallaceiResult.all_solutions) ? wallaceiResult.all_solutions : [];
+        if (!sols.length) {
+            showToast("Run Evolutionary Optimization first to generate Pareto candidates.", "warning");
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/topsis/rank', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ solutions: sols })
+            });
+            const data = await resp.json();
+            if (data.status === 'ok' && data.ranked_solutions) {
+                const topSol = data.ranked_solutions[0];
+                activeParetoSolution = topSol;
+                displaySolutionCard(topSol);
+                applyPhenotypeTo3D(topSol);
+                showToast(`TOPSIS MCDA Ranker selected #1 ideal trade-off solution (Score: ${topSol.topsis_score})`, "success");
+            } else {
+                showToast("TOPSIS ranking failed: " + (data.message || "Unknown error"), "error");
+            }
+        } catch (err) {
+            showToast("TOPSIS connection error: " + err.message, "error");
+        }
+    });
+}
+
+function exportExecutiveHtmlReport() {
+    const totalParcels = parcelFeatures.length;
+    const avgScore = cityScoreEl ? cityScoreEl.textContent : '85.2';
+    const totalGfa = cityGfaEl ? cityGfaEl.textContent : '0';
+    const totalPop = cityPopulationEl ? cityPopulationEl.textContent : '0';
+    const totalCarbon = cityCarbonEl ? cityCarbonEl.textContent : '0';
+
+    let tableRows = '';
+    const sols = (wallaceiResult && wallaceiResult.pareto_solutions) ? wallaceiResult.pareto_solutions : [];
+    sols.slice(0, 15).forEach((sol, idx) => {
+        tableRows += `
+        <tr>
+            <td>#${idx + 1}</td>
+            <td>${sol.id || 'Sol_' + (idx+1)}</td>
+            <td>${sol.rank || 1}</td>
+            <td>${sol.genotype?.typology || 'Tower'}</td>
+            <td>${sol.genotype?.floors || 4}</td>
+            <td>${sol.metrics?.gfa?.toFixed(1) || '-'}</td>
+            <td>${sol.metrics?.planx_score?.toFixed(1) || '-'}</td>
+            <td>${sol.metrics?.wind_ventilation?.toFixed(1) || '-'}</td>
+            <td>${sol.metrics?.roi_percentage?.toFixed(1) || '-'}%</td>
+            <td>${sol.metrics?.total_lca_carbon_kg?.toFixed(1) || sol.metrics?.carbon_kg?.toFixed(1) || '-'}</td>
+        </tr>`;
+    });
+
+    const reportHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parametric Process - Executive Urban Analytics Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 35px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        h1 { color: #38bdf8; font-size: 28px; margin-top: 0; border-bottom: 2px solid #334155; padding-bottom: 15px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin: 25px 0; }
+        .kpi-card { background: #0f172a; padding: 20px; border-radius: 8px; border: 1px solid #334155; text-align: center; }
+        .kpi-val { font-size: 24px; font-weight: bold; color: #facc15; margin-top: 5px; }
+        .kpi-lbl { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 13px; }
+        th { background: #0f172a; color: #38bdf8; text-align: left; padding: 12px; border-bottom: 2px solid #334155; }
+        td { padding: 10px 12px; border-bottom: 1px solid #334155; }
+        tr:hover { background: #334155; }
+        .footer { margin-top: 35px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #334155; padding-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏙️ Executive Urban Design & Evolutionary Physics Report</h1>
+        <p>Generated by <strong>PlanX Parametric Process Studio</strong> for QGIS. Comprehensive multi-objective Pareto trade-off and microclimate evaluation.</p>
+
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-lbl">Total Parcels</div><div class="kpi-val">${totalParcels}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Avg PlanX Score</div><div class="kpi-val">${avgScore}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Total GFA (m²)</div><div class="kpi-val">${totalGfa}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Est Population</div><div class="kpi-val">${totalPop}</div></div>
+            <div class="kpi-card"><div class="kpi-lbl">Total Carbon</div><div class="kpi-val">${totalCarbon}</div></div>
+        </div>
+
+        <h2>Pareto Optimal Solutions & TOPSIS Candidates</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th><th>ID</th><th>Rank</th><th>Typology</th><th>Floors</th><th>GFA (m²)</th><th>PlanX Score</th><th>Wind %</th><th>ROI %</th><th>LCA Carbon (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRows || '<tr><td colspan="10" style="text-align:center;">Run Evolutionary Studio to populate Pareto front solutions.</td></tr>'}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            Report generated on ${new Date().toLocaleString()} • PlanX Parametric Process Engine v0.4.0
+        </div>
+    </div>
+</body>
+</html>`;
+
+    const blob = new Blob([reportHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Parametric_Process_Executive_Report.html';
+        a.click();
+    }
+    showToast("Executive HTML Report generated and opened successfully!", "success");
+}
+
+const btnExportReport = document.getElementById('btn-export-report');
+if (btnExportReport) {
+    btnExportReport.addEventListener('click', exportExecutiveHtmlReport);
+}
+

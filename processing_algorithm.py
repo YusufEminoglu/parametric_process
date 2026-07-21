@@ -23,6 +23,8 @@ from .nsga2_engine import (
     evaluate_phenotype,
     run_nsga2_optimization,
     run_spea2_optimization,
+    run_nsga3_optimization,
+    run_moead_optimization,
 )
 
 
@@ -60,7 +62,7 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterEnum(
-                'ALGORITHM', 'Algorithm', options=['NSGA-II', 'SPEA-2'], defaultValue=0
+                'ALGORITHM', 'Algorithm', options=['NSGA-II', 'SPEA-2', 'NSGA-III', 'MOEA/D'], defaultValue=0
             )
         )
         self.addParameter(
@@ -137,7 +139,13 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
             parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
         )
 
-        solver_fn = run_spea2_optimization if algorithm_idx == 1 else run_nsga2_optimization
+        solver_map = {
+            0: run_nsga2_optimization,
+            1: run_spea2_optimization,
+            2: run_nsga3_optimization,
+            3: run_moead_optimization,
+        }
+        solver_fn = solver_map.get(algorithm_idx, run_nsga2_optimization)
         res = solver_fn(
             parcel_area=avg_area,
             pop_size=pop_size,

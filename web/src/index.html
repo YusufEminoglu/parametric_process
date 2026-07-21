@@ -144,6 +144,8 @@
                         <select id="input-algorithm">
                             <option value="nsga2">NSGA-II (Non-dominated Sorting)</option>
                             <option value="spea2">SPEA-2 (Strength Pareto EA)</option>
+                            <option value="nsga3">NSGA-III (Reference-Point Based)</option>
+                            <option value="moead">MOEA/D (Decomposition Based)</option>
                             <option value="multiparcel">Multi-Parcel Master Plan Engine</option>
                         </select>
                     </label>
@@ -698,12 +700,17 @@
         <div class="hud-chip">Max Z: <span id="hud-max-z">0 m</span></div>
         <label class="hud-chip heatmap-chip">Heatmap
             <select id="input-heatmap-mode" aria-label="Heatmap mode">
-                <option value="score">Score</option>
+                <option value="score">PlanX Score</option>
+                <option value="solair">Sol-Air Surface Temp</option>
+                <option value="solar">Solar Irradiance</option>
                 <option value="compliance">Compliance</option>
                 <option value="density">Density</option>
                 <option value="carbon">Carbon</option>
             </select>
         </label>
+        <div id="btn-toggle-cfd" class="hud-chip hud-btn" title="Toggle real-time CFD wind vector arrow particles">CFD Wind</div>
+        <div id="btn-topsis-rank" class="hud-chip hud-btn" title="Multi-Criteria TOPSIS Pareto Ranker">TOPSIS Rank</div>
+        <div id="btn-export-report" class="hud-chip hud-btn" title="Export Executive HTML Report">HTML Report</div>
         <div id="btn-solve-city" class="hud-chip hud-btn solve-city-chip" title="Optimize all parcels against BCR/FAR constraints">Auto-Solve City</div>
         <div id="btn-tour" class="hud-chip hud-btn" title="Toggle cinematic orbit camera">Cinematic Tour</div>
         <div id="btn-measure" class="hud-chip hud-btn" title="Toggle 3D ruler and measurement tool">Measure</div>
