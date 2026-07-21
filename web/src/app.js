@@ -7182,7 +7182,7 @@ if (btnRunWallacei) {
 
         if (wallaceiProgress) wallaceiProgress.classList.remove('hidden');
         if (wallaceiProgressFill) wallaceiProgressFill.style.width = '5%';
-        if (wallaceiProgressText) wallaceiProgressText.textContent = \`Starting optimization...\`;
+        if (wallaceiProgressText) wallaceiProgressText.textContent = `Starting optimization...`;
         btnRunWallacei.disabled = true;
         if (btnStopWallacei) btnStopWallacei.disabled = false;
 
@@ -7211,7 +7211,7 @@ if (btnRunWallacei) {
                 })
             });
 
-            if (!resp.ok) throw new Error(\`Server returned HTTP \${resp.status}\`);
+            if (!resp.ok) throw new Error(`Server returned HTTP ${resp.status}`);
             const data = await resp.json();
             if (data.status === 'error') throw new Error(data.message || 'Error starting optimization');
 
@@ -7219,7 +7219,7 @@ if (btnRunWallacei) {
             startPollingStatus(streamingRunId);
         } catch (err) {
             if (wallaceiProgress) wallaceiProgress.classList.add('hidden');
-            showToast(\`Failed to start optimization: \${err.message}\`, 'error');
+            showToast(`Failed to start optimization: ${err.message}`, 'error');
             btnRunWallacei.disabled = false;
             if (btnStopWallacei) btnStopWallacei.disabled = true;
         }
@@ -7230,7 +7230,7 @@ if (btnStopWallacei) {
     btnStopWallacei.addEventListener('click', async () => {
         if (!streamingRunId) return;
         try {
-            await fetch(\`/api/optimize/stop/\${streamingRunId}\`, { method: 'POST' });
+            await fetch(`/api/optimize/stop/${streamingRunId}`, { method: 'POST' });
             showToast('Stop requested...', 'info');
         } catch (err) {
             console.error('Stop error', err);
@@ -7242,13 +7242,13 @@ function startPollingStatus(runId) {
     if (streamingPollTimer) clearInterval(streamingPollTimer);
     streamingPollTimer = setInterval(async () => {
         try {
-            const resp = await fetch(\`/api/optimize/status/\${runId}\`);
+            const resp = await fetch(`/api/optimize/status/${runId}`);
             if (!resp.ok) return;
             const data = await resp.json();
 
             if (data.status === 'error') {
                 clearInterval(streamingPollTimer);
-                showToast(\`Optimization Error: \${data.message || 'Unknown error'}\`, 'error');
+                showToast(`Optimization Error: ${data.message || 'Unknown error'}`, 'error');
                 btnRunWallacei.disabled = false;
                 if (btnStopWallacei) btnStopWallacei.disabled = true;
                 if (wallaceiProgress) wallaceiProgress.classList.add('hidden');
@@ -7259,16 +7259,16 @@ function startPollingStatus(runId) {
             const totalGen = data.total_generations || 1;
             const pct = (currentGen / totalGen) * 100;
 
-            if (wallaceiProgressFill) wallaceiProgressFill.style.width = \`\${pct}%\`;
-            if (wallaceiProgressText) wallaceiProgressText.textContent = \`Generation \${currentGen} / \${totalGen}\`;
-            if (progGenCounter) progGenCounter.textContent = \`\${currentGen}/\${totalGen}\`;
+            if (wallaceiProgressFill) wallaceiProgressFill.style.width = `${pct}%`;
+            if (wallaceiProgressText) wallaceiProgressText.textContent = `Generation ${currentGen} / ${totalGen}`;
+            if (progGenCounter) progGenCounter.textContent = `${currentGen}/${totalGen}`;
 
             if (data.elapsed_seconds !== undefined) {
-                if (progElapsed) progElapsed.textContent = \`\${data.elapsed_seconds.toFixed(1)}s\`;
+                if (progElapsed) progElapsed.textContent = `${data.elapsed_seconds.toFixed(1)}s`;
                 if (currentGen > 0 && progEta) {
                     const secPerGen = data.elapsed_seconds / currentGen;
                     const eta = secPerGen * (totalGen - currentGen);
-                    progEta.textContent = \`\${eta.toFixed(1)}s\`;
+                    progEta.textContent = `${eta.toFixed(1)}s`;
                 }
             }
 
@@ -7311,7 +7311,7 @@ function startPollingStatus(runId) {
                 }
 
                 renderWallaceiCharts();
-                showToast(\`Optimization \${data.status}!\`, data.status === 'completed' ? 'success' : 'warning');
+                showToast(`Optimization ${data.status}!`, data.status === 'completed' ? 'success' : 'warning');
             }
         } catch (err) {
             console.error('Poll error', err);
@@ -7335,7 +7335,7 @@ if (genSlider) {
             }
         } else {
             viewGeneration = val;
-            if (genSliderVal) genSliderVal.textContent = \`Gen \${val}\`;
+            if (genSliderVal) genSliderVal.textContent = `Gen ${val}`;
             const gdata = generationHistory[val];
             if (gdata) {
                 if (genPopCount) genPopCount.textContent = (gdata.individuals || []).length;
@@ -7443,7 +7443,7 @@ function renderParetoScatter() {
                 const genNorm = sol.generation ? sol.generation / (wallaceiResult?.total_generations || 1) : 0;
                 const r = Math.floor(255 * genNorm);
                 const b = Math.floor(255 * (1 - genNorm));
-                ctx.fillStyle = \`rgb(\${r}, 0, \${b})\`;
+                ctx.fillStyle = `rgb(${r}, 0, ${b})`;
             }
             ctx.shadowBlur = isRank1 ? 4 : 0;
             ctx.shadowColor = ctx.fillStyle;
@@ -7931,10 +7931,10 @@ function renderClusterChart() {
         let html = '';
         for (let i = 0; i < k; i++) {
             const count = currentClusterResult.assignments.filter(a => a === i).length;
-            html += \`<div style="padding: 8px; border-left: 4px solid \${CLUSTER_COLORS[i % CLUSTER_COLORS.length]}; background: #f8fafc; border-radius: 4px; font-size: 11px;">
-                <strong>Cluster \${i}</strong><br>
-                Count: \${count}
-            </div>\`;
+            html += `<div style="padding: 8px; border-left: 4px solid ${CLUSTER_COLORS[i % CLUSTER_COLORS.length]}; background: #f8fafc; border-radius: 4px; font-size: 11px;">
+                <strong>Cluster ${i}</strong><br>
+                Count: ${count}
+            </div>`;
         }
         clusterSummary.innerHTML = html;
     }
@@ -7969,7 +7969,7 @@ function renderPopulationTable() {
     else if (sort === 'score') list.sort((a, b) => (b.metrics?.planx_score || 0) - (a.metrics?.planx_score || 0));
     else if (sort === 'id') list.sort((a, b) => a.id.localeCompare(b.id));
 
-    if (popCountLabel) popCountLabel.textContent = \`Showing \${list.length} solutions\`;
+    if (popCountLabel) popCountLabel.textContent = `Showing ${list.length} solutions`;
 
     popTableBody.innerHTML = '';
     list.forEach(sol => {
@@ -7979,16 +7979,16 @@ function renderPopulationTable() {
         const g = sol.genotype || {};
         const m = sol.metrics || {};
         
-        tr.innerHTML = \`
-            <td>\${sol.id}</td>
-            <td>\${sol.rank}</td>
-            <td>\${g.typology || '-'}</td>
-            <td>\${g.floors || '-'}</td>
-            <td>\${(m.planx_score || 0).toFixed(1)}</td>
-            <td>\${(m.gfa || 0).toFixed(0)}</td>
-            <td>\${(m.wind_ventilation || 0).toFixed(1)}</td>
-            <td>\${(m.carbon_kg || 0).toFixed(0)}</td>
-        \`;
+        tr.innerHTML = `
+            <td>${sol.id}</td>
+            <td>${sol.rank}</td>
+            <td>${g.typology || '-'}</td>
+            <td>${g.floors || '-'}</td>
+            <td>${(m.planx_score || 0).toFixed(1)}</td>
+            <td>${(m.gfa || 0).toFixed(0)}</td>
+            <td>${(m.wind_ventilation || 0).toFixed(1)}</td>
+            <td>${(m.carbon_kg || 0).toFixed(0)}</td>
+        `;
         
         tr.addEventListener('click', () => {
             activeParetoSolution = sol;
@@ -8041,33 +8041,33 @@ if (btnExportJson) {
 // --- Solution Card ---
 function displaySolutionCard(sol) {
     if (!sol) return;
-    if (solIdBadge) solIdBadge.textContent = \`\${sol.id} (Rank \${sol.rank})\`;
+    if (solIdBadge) solIdBadge.textContent = `${sol.id} (Rank ${sol.rank})`;
     if (solScoreBadge) {
         const score = sol.metrics?.planx_score ?? 0;
-        solScoreBadge.textContent = \`PlanX Score: \${score.toFixed(1)}\`;
+        solScoreBadge.textContent = `PlanX Score: ${score.toFixed(1)}`;
     }
 
     if (solMetricsGrid) {
         const g = sol.genotype || {};
         const m = sol.metrics || {};
 
-        solMetricsGrid.innerHTML = \`
-            <div class="sol-metric"><span class="sol-metric-lbl">Typology</span><span class="sol-metric-val">\${g.typology || '-'}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Floors</span><span class="sol-metric-val">\${g.floors || '-'} fl</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Usage</span><span class="sol-metric-val">\${g.usage || '-'}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Roof</span><span class="sol-metric-val">\${g.roof_style || '-'}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">GFA</span><span class="sol-metric-val">\${(m.gfa || 0).toFixed(0)} sqm</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">FAR</span><span class="sol-metric-val">\${(m.far || 0).toFixed(2)}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">BCR</span><span class="sol-metric-val">\${(m.bcr || 0).toFixed(2)}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Wind Vent</span><span class="sol-metric-val">\${(m.wind_ventilation || 0).toFixed(1)}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Solar Rad</span><span class="sol-metric-val">\${(m.solar_radiation_kwh || 0).toFixed(0)} kWh</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Air Disp</span><span class="sol-metric-val">\${(m.pollution_dispersion || 0).toFixed(1)}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">SVF Ratio</span><span class="sol-metric-val">\${(m.sky_view_factor || 0).toFixed(2)}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">UTCI</span><span class="sol-metric-val">\${(m.utci_score || 0).toFixed(1)}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">ROI%</span><span class="sol-metric-val">\${(m.roi_percentage || 0).toFixed(1)}%</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Carbon</span><span class="sol-metric-val">\${(m.carbon_kg || 0).toFixed(0)} kg</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">PV Yield</span><span class="sol-metric-val">\${(m.pv_yield_mwh || 0).toFixed(1)} MWh</span></div>
-        \`;
+        solMetricsGrid.innerHTML = `
+            <div class="sol-metric"><span class="sol-metric-lbl">Typology</span><span class="sol-metric-val">${g.typology || '-'}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Floors</span><span class="sol-metric-val">${g.floors || '-'} fl</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Usage</span><span class="sol-metric-val">${g.usage || '-'}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Roof</span><span class="sol-metric-val">${g.roof_style || '-'}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">GFA</span><span class="sol-metric-val">${(m.gfa || 0).toFixed(0)} sqm</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">FAR</span><span class="sol-metric-val">${(m.far || 0).toFixed(2)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">BCR</span><span class="sol-metric-val">${(m.bcr || 0).toFixed(2)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Wind Vent</span><span class="sol-metric-val">${(m.wind_ventilation || 0).toFixed(1)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Solar Rad</span><span class="sol-metric-val">${(m.solar_radiation_kwh || 0).toFixed(0)} kWh</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Air Disp</span><span class="sol-metric-val">${(m.pollution_dispersion || 0).toFixed(1)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">SVF Ratio</span><span class="sol-metric-val">${(m.sky_view_factor || 0).toFixed(2)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">UTCI</span><span class="sol-metric-val">${(m.utci_score || 0).toFixed(1)}</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">ROI%</span><span class="sol-metric-val">${(m.roi_percentage || 0).toFixed(1)}%</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Carbon</span><span class="sol-metric-val">${(m.carbon_kg || 0).toFixed(0)} kg</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">PV Yield</span><span class="sol-metric-val">${(m.pv_yield_mwh || 0).toFixed(1)} MWh</span></div>
+        `;
     }
 }
 
@@ -8098,7 +8098,7 @@ if (btnPreviewPhenotype) {
     btnPreviewPhenotype.addEventListener('click', () => {
         if (activeParetoSolution) {
             applyPhenotypeTo3D(activeParetoSolution);
-            showToast(\`Loaded phenotype \${activeParetoSolution.id} in 3D.\`, 'info');
+            showToast(`Loaded phenotype ${activeParetoSolution.id} in 3D.`, 'info');
         }
     });
 }
@@ -8160,12 +8160,12 @@ if (btnSyncWallaceiQgis) {
 
             const resData = await resp.json();
             if (resData.status === 'ok') {
-                showToast(\`Synced Pareto Solution \${sol.id} to QGIS feature ID \${targetParcel.fid}!\`, 'success');
+                showToast(`Synced Pareto Solution ${sol.id} to QGIS feature ID ${targetParcel.fid}!`, 'success');
             } else {
-                showToast(\`Sync error: \${resData.message}\`, 'error');
+                showToast(`Sync error: ${resData.message}`, 'error');
             }
         } catch (err) {
-            showToast(\`Sync network error: \${err.message}\`, 'error');
+            showToast(`Sync network error: ${err.message}`, 'error');
         }
     });
 }
@@ -8191,14 +8191,14 @@ if (selectionMethod) {
         } else if (val === 'repeated') {
             const counts = {};
             sols.forEach(s => {
-                const key = \`\${s.genotype?.typology}-\${s.genotype?.floors}\`;
+                const key = `${s.genotype?.typology}-${s.genotype?.floors}`;
                 counts[key] = (counts[key] || 0) + 1;
             });
             let bestKey = null, maxCount = 0;
             for (const [k, count] of Object.entries(counts)) {
                 if (count > maxCount) { maxCount = count; bestKey = k; }
             }
-            selected = sols.find(s => \`\${s.genotype?.typology}-\${s.genotype?.floors}\` === bestKey);
+            selected = sols.find(s => `${s.genotype?.typology}-${s.genotype?.floors}` === bestKey);
         }
         
         if (selected) {
@@ -8206,7 +8206,7 @@ if (selectionMethod) {
             displaySolutionCard(selected);
             applyPhenotypeTo3D(selected);
             renderWallaceiCharts();
-            showToast(\`Auto-selected solution via \${val}\`, 'info');
+            showToast(`Auto-selected solution via ${val}`, 'info');
         }
     });
 }

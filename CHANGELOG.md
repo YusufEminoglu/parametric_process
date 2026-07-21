@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.1] - 2026-07-21
+
+- Hotfix: repair 52 escaped backtick + 56 escaped dollar-sign corruptions in app.js template literals
+
 ## [1.4.0] - 2026-07-21
 
 - PlanX-style docked Studio panel: QDockWidget with algorithm browser + cockpit launcher (replaces floating QDialog)
