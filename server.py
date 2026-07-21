@@ -127,7 +127,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                     max_bcr=float(data.get("max_bcr", 0.45)),
                     max_far=float(data.get("max_far", 2.5)),
                     max_height=float(data.get("max_height", 18.0)),
-                    bounds=data.get("bounds")
+                    bounds=data.get("bounds"),
+                    sim_params=data.get("sim_params")
                 )
             except Exception as e:
                 response_data = {"status": "error", "message": str(e)}

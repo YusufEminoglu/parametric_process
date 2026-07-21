@@ -244,6 +244,10 @@ class ParametricProcessPlugin:
                 "poll_disp": "double",
                 "svf_ratio": "double",
                 "canyon_hw": "double",
+                "roi_yield": "double",
+                "mrt_temp": "double",
+                "utci_score": "double",
+                "pv_kwh": "double",
                 "pareto_rank": "integer",
                 "wallacei_id": "string",
             }
@@ -313,6 +317,10 @@ class ParametricProcessPlugin:
                     "poll_disp": float(item.get("poll_disp", 0)),
                     "svf_ratio": float(item.get("svf_ratio", 0)),
                     "canyon_hw": float(item.get("canyon_hw", 0)),
+                    "roi_yield": float(item.get("roi_yield", 0)),
+                    "mrt_temp": float(item.get("mrt_temp", 0)),
+                    "utci_score": float(item.get("utci_score", 0)),
+                    "pv_kwh": float(item.get("pv_kwh", 0)),
                     "pareto_rank": int(item.get("pareto_rank", 1)),
                     "wallacei_id": str(item.get("wallacei_id", "sol_1")),
                 }

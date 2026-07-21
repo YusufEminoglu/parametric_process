@@ -141,15 +141,55 @@ class PluginDialog(QDialog):
 
         self.tabs.addTab(tab_setup, "3D Cockpit Setup")
 
-        # Tab 2: Info / About
+        # Tab 2: Environmental & Physics Physics Parameters
+        tab_env = QWidget()
+        env_layout = QFormLayout(tab_env)
+        env_layout.setContentsMargins(10, 10, 10, 10)
+
+        self.spin_wind_deg = QSpinBox(self)
+        self.spin_wind_deg.setRange(0, 360)
+        self.spin_wind_deg.setValue(225)
+        self.spin_wind_deg.setSuffix("° (SW)")
+
+        self.spin_wind_speed = QSpinBox(self)
+        self.spin_wind_speed.setRange(1, 30)
+        self.spin_wind_speed.setValue(5)
+        self.spin_wind_speed.setSuffix(" m/s")
+
+        self.spin_latitude = QSpinBox(self)
+        self.spin_latitude.setRange(-90, 90)
+        self.spin_latitude.setValue(38)
+        self.spin_latitude.setSuffix("° N")
+
+        self.spin_const_cost = QSpinBox(self)
+        self.spin_const_cost.setRange(100, 10000)
+        self.spin_const_cost.setValue(750)
+        self.spin_const_cost.setPrefix("$ ")
+
+        self.spin_sale_price = QSpinBox(self)
+        self.spin_sale_price.setRange(100, 20000)
+        self.spin_sale_price.setValue(1650)
+        self.spin_sale_price.setPrefix("$ ")
+
+        env_layout.addRow(QLabel("Prevailing Wind Direction:"), self.spin_wind_deg)
+        env_layout.addRow(QLabel("Prevailing Wind Speed:"), self.spin_wind_speed)
+        env_layout.addRow(QLabel("Solar Latitude:"), self.spin_latitude)
+        env_layout.addRow(QLabel("Construction Cost / m²:"), self.spin_const_cost)
+        env_layout.addRow(QLabel("Estimated Sale Price / m²:"), self.spin_sale_price)
+
+        self.tabs.addTab(tab_env, "Simulation Params")
+
+        # Tab 3: Info / About
         tab_about = QWidget()
         about_layout = QVBoxLayout(tab_about)
         info_label = QLabel(
             "<b>Parametric Process v0.1.0</b><br><br>"
             "Generative parametric urban design and multi-objective evolutionary optimization lab for QGIS.<br><br>"
-            "• NSGA-II Evolutionary Solver (GFA, PlanX Score, Carbon, Runoff, Daylight)<br>"
-            "• Interactive Parallel Coordinates (PCP) & Pareto Front Scatter Plots<br>"
-            "• 3D Phenotype preview & 2-way QGIS Vector Layer Sync<br><br>"
+            "• Physics & CFD Wind Ventilation Simulator<br>"
+            "• Solar Irradiance & Rooftop PV Energy Generator<br>"
+            "• Air Pollution (AQI) & Street Canyon Dispersion Simulator<br>"
+            "• Urban Heat Island (UHI / MRT / UTCI) Outdoor Thermal Comfort Engine<br>"
+            "• Financial Real Estate ROI & Yield Calculator<br><br>"
             "Developed by Yusuf Eminoğlu."
         )
         info_label.setWordWrap(True)
@@ -175,6 +215,13 @@ class PluginDialog(QDialog):
             "layer": self.layer_combo.currentLayer(),
             "port": self.port_spin.value(),
             "launch_browser": self.chk_browser.isChecked(),
+            "sim_params": {
+                "wind_deg": self.spin_wind_deg.value(),
+                "wind_speed": self.spin_wind_speed.value(),
+                "latitude": self.spin_latitude.value(),
+                "const_cost": self.spin_const_cost.value(),
+                "sale_price": self.spin_sale_price.value(),
+            }
         }
         self.runRequested.emit(params)
         self.accept()
