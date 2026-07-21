@@ -100,11 +100,7 @@ class ParametricProcessStudioDock(QDockWidget):
         cform.setContentsMargins(4, 8, 4, 4)
 
         self.layer_combo = QgsMapLayerComboBox()
-        try:
-            from qgis.core import QgsWgcGeometryType
-            self.layer_combo.setFilters(QgsMapLayerProxyModel.Filter.PolygonLayer)
-        except (ImportError, AttributeError):
-            self.layer_combo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+        self.layer_combo.setFilters(QgsMapLayerProxyModel.Filter.PolygonLayer)
 
         self.port_spin = QSpinBox()
         self.port_spin.setRange(1024, 65535)

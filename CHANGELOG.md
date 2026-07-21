@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.7.1] - 2026-07-21
+
+- Qt6 enum compatibility: fully scoped QgsProcessing.SourceType, QgsFeatureSink.Flag, QgsProcessingParameterNumber.Type, QgsMapLayerProxyModel.Filter
+
 ## [1.7.0] - 2026-07-21
 
 - Comprehensive academic shortHelpString for all 6 algorithms: literature context, formulae, parameter guidance, interpretation, visualisation recommendations

@@ -141,17 +141,17 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                'INPUT', 'Input Polygon Layer', types=[QgsProcessing.TypeVectorPolygon]
+                'INPUT', 'Input Polygon Layer', types=[QgsProcessing.SourceType.TypeVectorPolygon]
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'POP_SIZE', 'Population Size', QgsProcessingParameterNumber.Integer, 30
+                'POP_SIZE', 'Population Size', QgsProcessingParameterNumber.Type.Integer, 30
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'GENERATIONS', 'Generations', QgsProcessingParameterNumber.Integer, 15
+                'GENERATIONS', 'Generations', QgsProcessingParameterNumber.Type.Integer, 15
             )
         )
         self.addParameter(
@@ -161,17 +161,17 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Double, 0.45
+                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Type.Double, 0.45
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Double, 2.5
+                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Type.Double, 2.5
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_HEIGHT', 'Max Height', QgsProcessingParameterNumber.Double, 18.0
+                'MAX_HEIGHT', 'Max Height', QgsProcessingParameterNumber.Type.Double, 18.0
             )
         )
         self.addParameter(
@@ -313,7 +313,7 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
                 new_f.setAttribute('pareto_rank', int(sol.get('rank', 1)))
                 new_f.setAttribute('wallacei_id', str(sol.get('id', f'sol_{idx+1}')))
 
-                sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+                sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
 
                 # Per-feature progress
                 progress = int(((f_idx * len(pareto_sols)) + idx + 1) / max(1, total_features * len(pareto_sols)) * 100)
@@ -411,7 +411,7 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                'INPUT', 'Input Building Footprints', types=[QgsProcessing.TypeVectorPolygon]
+                'INPUT', 'Input Building Footprints', types=[QgsProcessing.SourceType.TypeVectorPolygon]
             )
         )
         self.addParameter(
@@ -502,7 +502,7 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
             new_f.setAttribute('pop_est', int(round(metrics.get('gfa', 0) / 35)))
             new_f.setAttribute('open_space', float(metrics.get('open_space_m2', 0)))
 
-            sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+            sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
             feedback.setProgress(int(current * total))
 
         return {'OUTPUT': dest_id}
@@ -592,7 +592,7 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                'INPUT', 'Input Polygon Layer', types=[QgsProcessing.TypeVectorPolygon]
+                'INPUT', 'Input Polygon Layer', types=[QgsProcessing.SourceType.TypeVectorPolygon]
             )
         )
         self.addParameter(
@@ -638,7 +638,7 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
             new_f.setAttribute('sav_ratio', float(m.get('compactness_sav', 0)))
             new_f.setAttribute('svf_ratio', float(m.get('sky_view_factor', 0)))
 
-            sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+            sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
             feedback.setProgress(int(((i + 1) / total) * 100))
 
         return {'OUTPUT': dest_id}
@@ -728,12 +728,12 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                'INPUT', 'Input Block Layer', types=[QgsProcessing.TypeVectorPolygon]
+                'INPUT', 'Input Block Layer', types=[QgsProcessing.SourceType.TypeVectorPolygon]
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'FRONTAGE', 'Target Frontage Width (m)', type=QgsProcessingParameterNumber.Double, defaultValue=18.0
+                'FRONTAGE', 'Target Frontage Width (m)', type=QgsProcessingParameterNumber.Type.Double, defaultValue=18.0
             )
         )
         self.addParameter(
@@ -780,7 +780,7 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
 
                 new_f.setAttribute('sublot_id', s_idx)
                 new_f.setAttribute('lot_area', round(lot_area, 1))
-                sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+                sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
 
             feedback.setProgress(int(((i + 1) / total) * 100))
 
@@ -863,7 +863,7 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                'INPUT', 'Input District Layer', types=[QgsProcessing.TypeVectorPolygon]
+                'INPUT', 'Input District Layer', types=[QgsProcessing.SourceType.TypeVectorPolygon]
             )
         )
         self.addParameter(
@@ -907,7 +907,7 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
             new_f.setAttribute('canyon_wind', float(district_metrics.get('district_canyon_wind_speed_ms', 3.5)))
             new_f.setAttribute('comfort_score', float(district_metrics.get('district_pedestrian_comfort', 80.0)))
 
-            sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+            sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
             feedback.setProgress(int(((i + 1) / total) * 100))
 
         return {'OUTPUT': dest_id}
@@ -1018,7 +1018,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                'INPUT', 'Input Block Polygon Layer', types=[QgsProcessing.TypeVectorPolygon]
+                'INPUT', 'Input Block Polygon Layer', types=[QgsProcessing.SourceType.TypeVectorPolygon]
             )
         )
         self.addParameter(
@@ -1037,23 +1037,23 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Double, 0.45
+                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Type.Double, 0.45
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Double, 2.0
+                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Type.Double, 2.0
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_HEIGHT', 'Max Height (m)', QgsProcessingParameterNumber.Double, 18.0
+                'MAX_HEIGHT', 'Max Height (m)', QgsProcessingParameterNumber.Type.Double, 18.0
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
                 'INCREMENTAL_STEPS', 'Incremental Development Steps',
-                QgsProcessingParameterNumber.Integer, 5
+                QgsProcessingParameterNumber.Type.Integer, 5
             )
         )
         self.addParameter(
@@ -1193,7 +1193,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
                 new_f.setAttribute('carbon_kg', float(m.get('carbon_kg', 0)))
                 new_f.setAttribute('fabric_step', int(plot_dev_step.get(cp.get('plot_id', 0), 1)))
 
-                sink_plots.addFeature(new_f, QgsFeatureSink.FastInsert)
+                sink_plots.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
 
                 fbc_f = QgsFeature(fbc_fields)
                 fbc_f.setGeometry(plot_geom)
@@ -1203,7 +1203,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
                 fbc_f.setAttribute('max_height_m', float(m.get('height_m', 0)))
                 fbc_f.setAttribute('setback_m', float(g.get('setback', 3.0)))
                 fbc_f.setAttribute('block_type', block_typology_name)
-                sink_fbc.addFeature(fbc_f, QgsFeatureSink.FastInsert)
+                sink_fbc.addFeature(fbc_f, QgsFeatureSink.Flag.FastInsert)
 
             feedback.setProgress(int(((b_idx + 1) / total_blocks) * 100))
 
