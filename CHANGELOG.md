@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.0] - 2026-07-21
+
+- PlanX-style docked Studio panel: QDockWidget with algorithm browser + cockpit launcher (replaces floating QDialog)
+
 ## [1.3.1] - 2026-07-21
 
 - Fix: single toolbar icon + Processing Toolbox pattern (removed 6 redundant sub-tool icons)

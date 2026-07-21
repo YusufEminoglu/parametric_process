@@ -81,33 +81,27 @@ $$H' = -\sum_{i=1}^{S} p_i \ln p_i$$
 
 ---
 
-## 🖥️ User Interface Preview & Workflow
+## 🖥️ User Interface — Docked Studio Panel
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                          QGIS MAIN WINDOW                              │
-│ ┌──────────────────────────┐  ┌──────────────────────────────────────┐ │
-│ │ Vector Layer Selector    │  │ Local WebGL 3D Cockpit (Port 8090)  │ │
-│ │ • Parcel Boundaries      │──│ • Three.js Procedural Massing        │ │
-│ │ • Urban Block Geometries │  │ • Real-time Shadows & Pedestrians    │ │
-│ └──────────────────────────┘  └──────────────────────────────────────┘ │
-│                                                  │                     │
-│                                                  ▼                     │
-│                               ┌──────────────────────────────────────┐ │
-│                               │ Pareto Analytics Studio              │ │
-│                               │ ├── 📊 Pareto Front 2D Scatter       │ │
-│                               │ ├── 🔀 PCP with Brush Filtering      │ │
-│                               │ ├── 📈 Fitness & SD Band Trajectory  │ │
-│                               │ ├── 💎 Diamond Fitness Radar         │ │
-│                               │ ├── 🧮 K-Means Clustering Studio     │ │
-│                               │ └── 🔬 Population Browser Table      │ │
-│                               └──────────────────────────────────────┘ │
-│                                                  │                     │
-│                                                  ▼                     │
-│                               ┌──────────────────────────────────────┐ │
-│                               │ ⚡ Bidirectional QGIS Vector Sync    │ │
-│                               └──────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            QGIS MAIN WINDOW                                   │
+│ ┌─────────────────────────┐  ┌─────────────────────────────────────────────┐ │
+│ │ Map Canvas              │  │ Parametric Process Studio  🔲               │ │
+│ │                         │  │ ┌───────────────────────────────────────────┐ │ │
+│ │                         │  │ │ 🚀 Launch 3D Cockpit                     │ │ │
+│ │                         │  │ │ [Layer Picker] [Port] [Open Browser ✓]   │ │ │
+│ │                         │  │ └───────────────────────────────────────────┘ │ │
+│ │                         │  │ Processing Tools — double-click to run       │ │
+│ │                         │  │ ▼ Urban Analytics                            │ │
+│ │                         │  │   1. Parametric Multi-Objective Opt.         │ │
+│ │                         │  │   2. Urban Physics & Microclimate Evaluator │ │
+│ │                         │  │   3. Urban Morphology & Canyon Analytics    │ │
+│ │                         │  │   4. Procedural Shape Grammar Subdivider    │ │
+│ │                         │  │   5. Multi-Parcel District Coupling          │ │
+│ │                         │  │   6. PPUD Sequential Pipeline                │ │
+│ └─────────────────────────┘  └─────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
