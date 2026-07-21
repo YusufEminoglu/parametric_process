@@ -1,5 +1,11 @@
 # Changelog - Parametric Process
 
+## [0.8.1] - 2026-07-21
+
+### Added
+- **Master Academic & Methodological User Guide (`GUIDE.md`)**: Comprehensive formulation of pre-processing, shape grammar, morphology metrics, microclimate thermodynamics, MOO solvers, and post-processing decision support.
+- **Showcase Documentation (`SHOWCASE.md`)**: Complete architectural summary of generative urban design capabilities.
+
 ## [0.8.0] - 2026-07-21
 
 ### Added
