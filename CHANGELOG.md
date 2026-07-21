@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.4] - 2026-07-21
+
+- Fix: remove self.tr() from shortHelpString (not available on bare QgsProcessingAlgorithm)
+
 ## [1.4.3] - 2026-07-21
 
 - PPUD per-plot geometry fix + detailed shortHelpString on all 6 algorithms (literature context, usage, reading results, visualization)

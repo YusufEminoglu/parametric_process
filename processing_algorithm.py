@@ -70,7 +70,7 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         return _icon(self.ICON)
 
     def shortHelpString(self):
-        return self.tr(
+        return (
             "<h3>Parametric Multi-Objective Evolutionary Optimization</h3>"
             "<p><b>Literature context.</b> This tool implements the NSGA-II algorithm "
             "(Deb et al., 2002), NSGA-III with Das & Dennis reference points (Deb & "
@@ -285,7 +285,7 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
         return _icon(self.ICON)
 
     def shortHelpString(self):
-        return self.tr(
+        return (
             "<h3>Urban Physics & Microclimate Multi-Domain Evaluator</h3>"
             "<p><b>Literature context.</b> This evaluator synthesises 15 linked "
             "microclimate and environmental physics models into a single pass. "
@@ -436,7 +436,7 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
         return _icon(self.ICON)
 
     def shortHelpString(self):
-        return self.tr(
+        return (
             "<h3>Urban Morphology & Canyon Analytics</h3>"
             "<p><b>Literature context.</b> This tool computes the core urban morphology "
             "indicators used in the space syntax and urban climatology traditions. "
@@ -537,7 +537,7 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
         return _icon(self.ICON)
 
     def shortHelpString(self):
-        return self.tr(
+        return (
             "<h3>Procedural Shape Grammar Block Subdivider</h3>"
             "<p><b>Literature context.</b> Shape grammars for urban design originate "
             "with Stiny & Gips (1972) and were adapted to urban-scale procedural "
@@ -645,7 +645,7 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
         return _icon(self.ICON)
 
     def shortHelpString(self):
-        return self.tr(
+        return (
             "<h3>Multi-Parcel District Environmental Coupling</h3>"
             "<p><b>Literature context.</b> Urban buildings do not perform in isolation "
             "— mutual solar obstruction (Knowles, 2003 'Solar Envelope'), inter-building "
@@ -744,7 +744,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
         return _icon(self.ICON)
 
     def shortHelpString(self):
-        return self.tr(
+        return (
             "<h3>PPUD Sequential Pipeline — Plot Layout → Building Config → Incremental Fabric</h3>"
             "<p><b>Literature context.</b> PPUD (Parametric Plot-based Urban Design) is "
             "a three-stage sequential framework introduced by Mert Akay in his METU MSc "
