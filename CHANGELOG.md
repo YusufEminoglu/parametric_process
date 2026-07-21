@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.7.0] - 2026-07-21
+
+- Comprehensive academic shortHelpString for all 6 algorithms: literature context, formulae, parameter guidance, interpretation, visualisation recommendations
+
 ## [1.6.6] - 2026-07-21
 
 - Use createAlgorithmDialog+exec_() for parameter dialog; fallback to Processing Toolbox menu trigger
