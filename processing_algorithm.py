@@ -774,7 +774,8 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
             for s_idx, lot_ring in enumerate(sublots, start=1):
                 lot_area = calculate_polygon_area(lot_ring)
                 new_f = QgsFeature(fields)
-                new_f.setGeometry(geom)
+                plot_geom = _ring_to_geometry(lot_ring) if lot_ring else geom
+                new_f.setGeometry(plot_geom)
                 for field in source.fields():
                     new_f.setAttribute(field.name(), f.attribute(field.name()))
 

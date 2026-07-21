@@ -11,16 +11,16 @@
 <p align="center">
   <a href="https://qgis.org"><img src="https://img.shields.io/badge/QGIS-3.28%2B%20%7C%204.x-589632.svg?logo=qgis&logoColor=white" alt="QGIS"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg" alt="License"></a>
-  <a href="metadata.txt"><img src="https://img.shields.io/badge/Version-1.3.0-0f766e.svg?style=flat" alt="Version"></a>
+  <a href="metadata.txt"><img src="https://img.shields.io/badge/Version-1.9.0-0f766e.svg?style=flat" alt="Version"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-Pure%20Stdlib-3776AB.svg?logo=python&logoColor=white" alt="Python"></a>
-  <a href="https://github.com/YusufEminoglu/parametric_process"><img src="https://img.shields.io/badge/Engine-NSGA--II%20%2F%20SPEA--2-10b981.svg" alt="Engine"></a>
+  <a href="https://github.com/YusufEminoglu/parametric_process"><img src="https://img.shields.io/badge/Engine-NSGA--II%20%2F%20SPEA--2%20%2F%20NSGA--III%20%2F%20MOEA--D-10b981.svg" alt="Engine"></a>
 </p>
 
 ---
 
 ## 🌟 Overview
 
-**Parametric Process** is an elite, standalone generative urban design and multi-objective evolutionary optimization lab natively built for **QGIS**. It brings **Grasshopper WallaceiX-grade (and beyond)** evolutionary analytics, interactive 3D WebGL cockpit simulation, multi-domain microclimate physics, and bidirectional GIS vector layer synchronization directly into your spatial planning workspace.
+**Parametric Process** is an elite, standalone generative urban design and multi-objective evolutionary optimization lab natively built for **QGIS**. It brings **Grasshopper WallaceiX-grade evolutionary analytics**, 3-Stage Sequential PPUD Pipeline (Plot Layout → Building Configuration → Incremental Fabric), interactive 3D WebGL cockpit simulation, multi-domain microclimate physics, and bidirectional GIS vector layer synchronization directly into your spatial planning workspace.
 
 Unlike traditional CAD-bound tools, **Parametric Process** is **GIS-native**—it operates on real spatial coordinate reference systems (CRS), real parcel boundaries, and real-world urban context while enforcing strict zoning laws (BCR, FAR, height caps) with zero third-party C/C++ dependencies.
 
@@ -28,7 +28,7 @@ Unlike traditional CAD-bound tools, **Parametric Process** is **GIS-native**—i
 
 ## 🔥 Key Feature Highlights
 
-### 🧬 Evolutionary Solver Suite (NSGA-II & SPEA-2)
+### 🧬 Evolutionary Solver Suite (NSGA-II, SPEA-2, NSGA-III & MOEA/D)
 - **NSGA-II (Elitist Non-dominated Sorting):** Fast non-dominated sorting with crowding distance archive truncation.
 - **SPEA-2 (Strength Pareto Evolutionary Algorithm 2):** Fine-grained raw fitness based on dominance strength combined with $k$-th nearest neighbor density estimation.
 - **Deb's Constrained Dominance Principle:** Native feasibility-first sorting rule. Infeasible design candidates are penalized according to exact constraint violation magnitudes ($BCR$, $FAR$, Height), ensuring zoning compliance.

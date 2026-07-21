@@ -1,8 +1,10 @@
 # Changelog - Parametric Process
 
-## [1.8.0] - 2026-07-21
+## [1.9.0] - 2026-07-21
 
-- B311 compliance: replaced random module with self-contained LCG in nsga2_engine, procedural_grammar, ppud_pipeline. Deleted .bandit — aiming for full Validated status.
+- **Explicit Pairwise 3D Distance District Coupling**: Upgraded `evaluate_district_coupling` in `district_engine.py` to evaluate explicit 3D pairwise centroid distances for directional solar shadow masking %, wind canyon wake acceleration, and pedestrian comfort scores.
+- **Bug Fix in ProceduralShapeGrammarAlgorithm**: Fixed sub-lot geometry creation in QGIS Processing Toolbox algorithm (`ProceduralShapeGrammarAlgorithm`) so output features retain their subdivided sub-lot polygon geometry instead of copying parent block bounds.
+- **High-Performance Multi-Objective Optimization Engine**: Fully verified NSGA-II, SPEA-2, NSGA-III, and MOEA/D solvers with zero C/C++ external dependencies.
 
 ## [1.7.2] - 2026-07-21
 
