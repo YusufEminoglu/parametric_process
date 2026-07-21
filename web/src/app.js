@@ -474,9 +474,7 @@ function init() {
     const sunSphereMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
     const sunSphere = new THREE.Mesh(sunSphereGeom, sunSphereMat);
     scene.add(sunSphere);
-    window.sunSphere = sunSphere;
-
-    updateSolarPhysics(parseFloat(inTime.value || "12"));
+    updateSolarPhysics((inTime && inTime.value) ? parseFloat(inTime.value) : 12.0);
 
     // 10. Interaction
     raycaster = new THREE.Raycaster();
@@ -607,33 +605,31 @@ function setupInputListeners() {
         if (isTimeAnimating) {
             toggleTimeAnimation(); // Stop playing if user manually drags slider
         }
-        const tVal = parseFloat(inTime.value);
+        const tVal = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
         const hours = Math.floor(tVal);
         const mins = Math.floor((tVal % 1) * 60).toString().padStart(2, '0');
-        lblTime.textContent = `${hours}:${mins}`;
+        if (lblTime) lblTime.textContent = `${hours}:${mins}`;
 
         updateSolarPhysics(tVal);
     };
 
-    inSetback.addEventListener('input', triggerUpdate);
-    inFloors.addEventListener('input', triggerUpdate);
-    inFloorHeight.addEventListener('input', triggerUpdate);
+    if (inSetback) inSetback.addEventListener('input', triggerUpdate);
+    if (inFloors) inFloors.addEventListener('input', triggerUpdate);
+    if (inFloorHeight) inFloorHeight.addEventListener('input', triggerUpdate);
     if (inScaleX) inScaleX.addEventListener('input', triggerUpdate);
     if (inScaleY) inScaleY.addEventListener('input', triggerUpdate);
-    inTypology.addEventListener('change', triggerUpdate);
-    inUsage.addEventListener('change', triggerUpdate);
-    inRoofStyle.addEventListener('change', triggerUpdate);
+    if (inTypology) inTypology.addEventListener('change', triggerUpdate);
+    if (inUsage) inUsage.addEventListener('change', triggerUpdate);
+    if (inRoofStyle) inRoofStyle.addEventListener('change', triggerUpdate);
     
-    inStepbackInterval.addEventListener('input', triggerUpdate);
-    inStepbackDepth.addEventListener('input', triggerUpdate);
+    if (inStepbackInterval) inStepbackInterval.addEventListener('input', triggerUpdate);
+    if (inStepbackDepth) inStepbackDepth.addEventListener('input', triggerUpdate);
     
-    // Zoning inputs
-    inMaxBcr.addEventListener('input', triggerUpdate);
-    inMaxFar.addEventListener('input', triggerUpdate);
-    inMaxHeight.addEventListener('input', triggerUpdate);
+    if (inMaxBcr) inMaxBcr.addEventListener('input', triggerUpdate);
+    if (inMaxFar) inMaxFar.addEventListener('input', triggerUpdate);
+    if (inMaxHeight) inMaxHeight.addEventListener('input', triggerUpdate);
 
-    // Time-of-day slider
-    inTime.addEventListener('input', triggerTimeUpdate);
+    if (inTime) inTime.addEventListener('input', triggerTimeUpdate);
 
     // Play Solar animation button
     if (btnPlayTime) {
@@ -3171,7 +3167,7 @@ function getBuildingMaterials(usage, floors) {
     textures.map.repeat.set(6, 1);
     textures.emissiveMap.repeat.set(6, 1);
 
-    const tVal = parseFloat(inTime.value);
+    const tVal = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
     const isNight = tVal < 7.5 || tVal > 19.5;
 
     const wallMat = new THREE.MeshStandardMaterial({
@@ -4220,7 +4216,7 @@ function generateTrafficCars() {
     };
 
     // Make sure headlights match current slider value immediately
-    updateSolarPhysics(parseFloat(inTime.value));
+    updateSolarPhysics((inTime && inTime.value) ? parseFloat(inTime.value) : 12.0);
 }
 
 // Drive cars along inferred road centerlines
@@ -4460,7 +4456,7 @@ function deselectParcel() {
 // Helper to update opacity/emission highlights on building selection
 function setBuildingHighlight(meshOrGroup, isSelected) {
     if (!meshOrGroup) return;
-    const tVal = parseFloat(inTime.value);
+    const tVal = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
     const isNight = tVal < 7.5 || tVal > 19.5;
     
     meshOrGroup.traverse(child => {
@@ -5141,10 +5137,10 @@ function handleKeyboardShortcuts(event) {
 
         case 'n': // Toggle night mode
             {
-                const currentTime = parseFloat(inTime.value);
+                const currentTime = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
                 const isCurrentlyNight = currentTime < 7.5 || currentTime > 19.5;
                 const newTime = isCurrentlyNight ? 12.0 : 21.0;
-                inTime.value = newTime;
+                if (inTime) inTime.value = newTime;
                 const hours = Math.floor(newTime);
                 const mins = (newTime % 1) === 0 ? "00" : "30";
                 lblTime.textContent = `${hours}:${mins}`;
@@ -5655,7 +5651,7 @@ function setBuildingHoverHighlight(meshOrGroup, isHovered) {
                     wallMat.emissive.setHex(0x555555); // subtle glow highlight on hover
                     wallMat.emissiveIntensity = 0.8;
                 } else {
-                    const tVal = parseFloat(inTime.value);
+                    const tVal = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
                     const isNight = tVal < 7.5 || tVal > 19.5;
                     wallMat.emissive.setHex(0xffffff); // default emissive color
                     wallMat.emissiveIntensity = isNight ? 1.0 : 0.0;
@@ -5686,13 +5682,13 @@ function toggleTimeAnimation() {
 function animateTime() {
     if (!isTimeAnimating) return;
 
-    let tVal = parseFloat(inTime.value);
+    let tVal = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
     tVal += 0.05; // speed of shadow animation
     if (tVal > 22.0) {
         tVal = 6.0; // loop back to morning
     }
     
-    inTime.value = tVal.toFixed(2);
+    if (inTime) inTime.value = tVal.toFixed(2);
     
     const hours = Math.floor(tVal);
     const mins = Math.floor((tVal % 1) * 60).toString().padStart(2, '0');
@@ -6704,7 +6700,7 @@ function buildStreetlight(x, y, z) {
 
     // Lamp bulb
     const bulbGeom = new THREE.SphereGeometry(0.2, 8, 8);
-    const tVal = parseFloat(inTime.value);
+    const tVal = (inTime && inTime.value) ? parseFloat(inTime.value) : 12.0;
     const isNight = tVal < 7.5 || tVal > 19.5;
     const bulbMat = new THREE.MeshBasicMaterial({ 
         color: 0xfef08a,
