@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.4] - 2026-07-21
+
+- Fix: pass parent=iface.mainWindow() to execAlgorithmDialog to prevent Windows access violation from dock context
+
 ## [1.5.3] - 2026-07-21
 
 - Fix: revert to execAlgorithmDialog with 150ms QTimer delay to prevent crash while keeping Run button functional
