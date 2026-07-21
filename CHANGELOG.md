@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.6.5] - 2026-07-21
+
+- Fix: broader Processing Toolbox search + trigger via Processing menu action if dock not found
+
 ## [1.6.4] - 2026-07-21
 
 - Double-click now opens Processing Toolbox and highlights the algorithm for native dialog launch

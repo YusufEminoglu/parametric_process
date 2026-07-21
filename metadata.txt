@@ -3,7 +3,7 @@ name=Parametric Process
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Parametric Generative Design and Multi-Objective Evolutionary Optimization Studio for QGIS.
-version=1.6.4
+version=1.6.5
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
