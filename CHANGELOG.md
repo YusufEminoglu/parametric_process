@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.3] - 2026-07-21
+
+- Fix: revert to execAlgorithmDialog with 150ms QTimer delay to prevent crash while keeping Run button functional
+
 ## [1.5.2] - 2026-07-21
 
 - Fix: use createAlgorithmDialog+show() instead of execAlgorithmDialog to prevent modal dialog crash from dock tree double-click
