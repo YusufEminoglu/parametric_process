@@ -8565,5 +8565,71 @@ if (subtabGallery && viewGallery) {
     });
 }
 
+// ==========================================
+// 3D SECTION CUT & DISTRICT COUPLING ENGINE
+// ==========================================
+
+let isSectionCutActive = false;
+let sectionCutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 15);
+
+function toggleSectionCut() {
+    isSectionCutActive = !isSectionCutActive;
+    if (isSectionCutActive) {
+        renderer.clippingPlanes = [sectionCutPlane];
+        renderer.localClippingEnabled = true;
+        showToast("3D Section Cut Plane Activated! (Cutting top plates at Y=15m)", "success");
+    } else {
+        renderer.clippingPlanes = [];
+        renderer.localClippingEnabled = false;
+        showToast("3D Section Cut Plane Deactivated.", "info");
+    }
+}
+
+async function evaluateDistrictCoupling() {
+    const payloadBldgs = parcelFeatures.map(item => ({
+        id: `Building_${item.fid}`,
+        metrics: {
+            height_m: item.params.floors * item.params.floorHeight,
+            footprint_area: item.area * 0.45,
+            gfa: item.area * 0.45 * item.params.floors,
+            planx_score: 82.0
+        }
+    }));
+
+    try {
+        const resp = await fetch('/api/district/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ buildings: payloadBldgs, site_area: 8000.0 })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'ok' && data.district_metrics) {
+            const m = data.district_metrics;
+            const msg = `🏢 District Coupling Evaluation:\n` +
+                        `• Mutual Solar Shadow Loss: ${m.district_avg_solar_shadow_loss_pct}%\n` +
+                        `• Canyon Wind Speed: ${m.district_canyon_wind_speed_ms} m/s\n` +
+                        `• Pedestrian Comfort Score: ${m.district_pedestrian_comfort}/100\n` +
+                        `• Stormwater Retention: ${m.district_runoff_retention_pct}%\n` +
+                        `• District PlanX Score: ${m.district_planx_score}/100`;
+            showToast(msg, 'success');
+        } else {
+            showToast("District evaluation error: " + (data.message || "Unknown error"), "error");
+        }
+    } catch (err) {
+        showToast("District evaluation network error: " + err.message, "error");
+    }
+}
+
+const btnSectionCut = document.getElementById('btn-section-cut');
+if (btnSectionCut) {
+    btnSectionCut.addEventListener('click', toggleSectionCut);
+}
+
+const btnDistrictEval = document.getElementById('btn-district-eval');
+if (btnDistrictEval) {
+    btnDistrictEval.addEventListener('click', evaluateDistrictCoupling);
+}
+
 
 

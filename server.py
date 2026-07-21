@@ -334,6 +334,25 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response_data).encode('utf-8'))
             return
 
+        if url == "/api/district/evaluate":
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                from .district_engine import evaluate_district_coupling
+                buildings = data.get("buildings", [])
+                site_area = float(data.get("site_area", 5000.0))
+                metrics = evaluate_district_coupling(buildings, site_area)
+                response_data = {"status": "ok", "district_metrics": metrics}
+            except Exception as e:
+                response_data = {"status": "error", "message": str(e)}
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            return
+
         if url == "/api/optimize":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')

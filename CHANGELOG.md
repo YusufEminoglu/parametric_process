@@ -1,5 +1,13 @@
 # Changelog - Parametric Process
 
+## [0.8.0] - 2026-07-21
+
+### Added
+- **Multi-Parcel District Coupling Engine (`district_engine.py`)**: Inter-building mutual solar shadow masking, wind canyon wake acceleration, and district-wide stormwater retention balancing.
+- **3D WebGL Interactive Section Cutting Planes**: Dynamic clipping planes in Three.js WebGL viewport allowing real-time floor plate, courtyard, and podium inspection.
+- **District Evaluation API Endpoint (`/api/district/evaluate`)**: HTTP handler returning unified multi-parcel microclimate, shadow loss, and pedestrian comfort metrics.
+- **District HUD Toolbar Controls**: Section Cut and District Coupling buttons integrated into 3D Web Cockpit HUD.
+
 ## [0.7.0] - 2026-07-21
 
 ### Added
