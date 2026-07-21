@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.5] - 2026-07-21
+
+- Fix: removed crash-prone execAlgorithmDialog; double-click now reveals Processing Toolbox with algorithm hint
+
 ## [1.5.4] - 2026-07-21
 
 - Fix: pass parent=iface.mainWindow() to execAlgorithmDialog to prevent Windows access violation from dock context

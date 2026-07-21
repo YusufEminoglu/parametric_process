@@ -178,19 +178,26 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
+        """Show algorithm details and reveal Processing Toolbox."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
-        from qgis.PyQt.QtCore import QTimer
-        QTimer.singleShot(100, lambda: self._open_algorithm(alg_id))
-
-    def _open_algorithm(self, alg_id: str):
-        try:
-            import processing
-            # Parent to main window to prevent Windows access-violation crash
-            processing.execAlgorithmDialog(alg_id, {}, parent=self.iface.mainWindow())
-        except Exception as exc:
-            self.iface.messageBar().pushWarning("Parametric Process", f"Could not open tool: {exc}")
+        alg = QgsApplication.processingRegistry().algorithmById(alg_id)
+        if alg is None:
+            return
+        # Reveal Processing Toolbox so the user can run the tool natively
+        import contextlib
+        with contextlib.suppress(Exception):
+            from qgis.PyQt.QtWidgets import QDockWidget
+            for w in self.iface.mainWindow().findChildren(QDockWidget):
+                if w.windowTitle() == "Processing Toolbox":
+                    w.setVisible(True)
+                    w.raise_()
+                    break
+        self.iface.messageBar().pushInfo(
+            "Parametric Process",
+            f"Processing Toolbox opened → Urban Analytics → '{alg.displayName()}'"
+        )
 
     # ------------------------------------------------------------------ #
     # Cockpit server
