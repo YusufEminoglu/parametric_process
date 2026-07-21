@@ -181,6 +181,11 @@ class ParametricProcessStudioDock(QDockWidget):
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
+        # Defer to avoid Qt crash when opening modal dialog from double-click handler
+        from qgis.PyQt.QtCore import QTimer
+        QTimer.singleShot(0, lambda: self._open_algorithm(alg_id))
+
+    def _open_algorithm(self, alg_id: str):
         try:
             import processing
             processing.execAlgorithmDialog(alg_id, {})

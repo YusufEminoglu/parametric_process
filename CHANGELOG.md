@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.1] - 2026-07-21
+
+- Fix: defer Processing dialog open via QTimer to prevent Qt access-violation crash on double-click
+
 ## [1.5.0] - 2026-07-21
 
 - Post-algorithm 'View in 3D Cockpit' button: each of 6 algorithms now offers one-click 3D visualization of results via QGIS message bar
