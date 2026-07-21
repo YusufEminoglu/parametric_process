@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.5] - 2026-07-22
+
+- Parametric Process Studio v1.9.5 Release: High-contrast typography fix for Heatmap mode dropdowns, Design Parameters dropdowns, and bottom city scorecard stats banner
+
 ## [1.9.4] - 2026-07-22
 
 - Parametric Process Studio v1.9.4 Release: Rounded circular architectural icon emblem and warm porcelain academic studio palette matching 00_SAVUNMA_MERKEZI design system
