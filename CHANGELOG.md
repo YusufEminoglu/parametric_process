@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.7] - 2026-07-22
+
+- Parametric Process Studio v1.9.7 Release: Sky View Factor (SVF) visualizer, 1.85m human eye-level POV camera, UHI & vegetation canopy cooling simulation, and streamlined aerodynamic wind flows
+
 ## [1.9.6] - 2026-07-22
 
 - Parametric Process Studio v1.9.6 Release: Clean plugin scope separation and title alignment (Parametric Process Studio)

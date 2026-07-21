@@ -100,17 +100,21 @@
         <label class="hud-chip heatmap-chip">
             <span>Heatmap Mode</span>
             <select id="input-heatmap-mode" aria-label="Heatmap mode">
-                <option value="score">PlanX Score</option>
-                <option value="solair">Sol-Air Surface Temp</option>
-                <option value="solar">Solar Irradiance</option>
-                <option value="compliance">Compliance</option>
-                <option value="density">Density</option>
-                <option value="carbon">Carbon</option>
+                <option value="score">PlanX Performance Score</option>
+                <option value="svf">🌌 Sky View Factor (SVF)</option>
+                <option value="uhi">🌿 UHI & Vegetation Cooling</option>
+                <option value="solair">🔥 Sol-Air Surface Temp (°C)</option>
+                <option value="solar">☀️ Annual Solar Irradiance (kWh/m²)</option>
+                <option value="utci">🌡️ UTCI Heat Stress (°C)</option>
+                <option value="compliance">Zoning Compliance</option>
+                <option value="density">Urban Density (PpHa)</option>
+                <option value="carbon">Embodied & Operational Carbon</option>
             </select>
         </label>
 
         <div class="palette-category">🌬️ Physics & Analysis</div>
-        <div id="btn-toggle-cfd" class="hud-chip hud-btn" title="Toggle real-time CFD wind vector arrow particles">CFD Wind Vectors</div>
+        <div id="btn-toggle-cfd" class="hud-chip hud-btn" title="Toggle aerodynamic CFD wind vector arrow flows">CFD Aerodynamic Flow</div>
+        <div id="btn-toggle-veg" class="hud-chip hud-btn" title="Toggle Vegetation Canopy & Green Roof Cooling Simulation">Veg Cooling Effect</div>
         <div id="btn-district-eval" class="hud-chip hud-btn" title="Evaluate Multi-Parcel Inter-Building Coupling">District Coupling</div>
         <div id="btn-topsis-rank" class="hud-chip hud-btn" title="Multi-Criteria TOPSIS Pareto Ranker">TOPSIS Ranker</div>
 
@@ -119,6 +123,7 @@
         <div id="btn-ppud" class="hud-chip hud-btn ppud-chip" title="Run PPUD Pipeline">PPUD Pipeline</div>
 
         <div class="palette-category">📐 3D Tools & Camera</div>
+        <div id="btn-toggle-pov" class="hud-chip hud-btn" title="First-Person Perspective Camera at 1.85m Human Eye Level">1.85m Human POV</div>
         <div id="btn-section-cut" class="hud-chip hud-btn" title="Toggle 3D Section Cut Clipping Plane">Section Cut</div>
         <div id="btn-measure" class="hud-chip hud-btn" title="Toggle 3D ruler tool">Measure Tool</div>
         <div id="hud-btn-clear-measure" class="hud-chip hud-btn hidden" style="color: #ef4444;" title="Clear 3D measurements">Clear Measure</div>

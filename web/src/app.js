@@ -1034,8 +1034,32 @@ function colorForParcel(item) {
     if (selectedParcel === item && heatmapMode === 'compliance') {
         return metrics.violated ? 0xb91c1c : 0x0d9488;
     }
-    if (item.params.usage === 'Park' && heatmapMode !== 'density' && heatmapMode !== 'carbon' && heatmapMode !== 'solair' && heatmapMode !== 'solar' && heatmapMode !== 'utci') {
+    if (item.params.usage === 'Park' && heatmapMode !== 'density' && heatmapMode !== 'carbon' && heatmapMode !== 'solair' && heatmapMode !== 'solar' && heatmapMode !== 'utci' && heatmapMode !== 'svf' && heatmapMode !== 'uhi') {
         return 0x047857;
+    }
+
+    if (heatmapMode === 'svf') {
+        // Sky View Factor (SVF) Simulation (0.12 = deep canyon, 0.95 = open sky)
+        const height = metrics.height || 12.0;
+        const width = Math.sqrt(item.area || 500);
+        const canyonRatio = height / Math.max(5, width * 0.4);
+        const svf = Math.max(0.12, Math.min(0.96, 1.0 / Math.sqrt(1 + canyonRatio * canyonRatio)));
+        return getDivergentHeatmapColor(1.0 - svf); // Indigo/Violet for deep canyon (low SVF), Sky Teal for open canopy (high SVF)
+    }
+
+    if (heatmapMode === 'uhi') {
+        // Urban Heat Island & Vegetation Evapotranspirative Cooling Simulation
+        const floors = item.params.floors || 4;
+        const bcr = metrics.bcr || 0.35;
+        const isPark = item.params.usage === 'Park';
+        const isGreenRoof = item.params.roofStyle === 'Flat' || isPark;
+        
+        // Baseline UHI + Vegetation Cooling Delta (-3.5°C for Parks, -1.8°C for Green Roofs)
+        const baseUhi = 1.2 + (floors * 0.45) + (bcr * 3.2);
+        const vegCooling = isPark ? -3.5 : (isGreenRoof ? -1.8 : -0.4);
+        const netUhiTemp = 28.0 + baseUhi + vegCooling;
+        
+        return getDivergentHeatmapColor((netUhiTemp - 26.0) / 12.0); // Cooled Teal (26°C) to Severe UHI Crimson (38°C)
     }
 
     if (heatmapMode === 'solair') {
@@ -1107,6 +1131,8 @@ function updateHeatmapLegend() {
     if (!legendTitleEl || !legendNoteEl) return;
     const labels = {
         score: ['PlanX Performance Score', 'Red underperforms (<55), amber is watchlist, green is optimal (85+).'],
+        svf: ['🌌 Sky View Factor (SVF)', 'Indigo/Violet is enclosed street canyon (low SVF < 0.3), sky blue is open plaza (high SVF > 0.85).'],
+        uhi: ['🌿 Urban Heat Island & Vegetation Cooling', 'Emerald/Sage is vegetation cooled (-3.5°C), yellow/amber is moderate, crimson is severe UHI heat island trap.'],
         solair: ['🔥 Sol-Air Heat Surface Temp (°C)', 'Deep cyan is cool (22°C), yellow is warm (34°C), crimson is peak radiant heat (48°C).'],
         solar: ['☀️ Annual Solar Irradiance (kWh/m²)', 'Dark blue is shaded courtyard, yellow/amber is high PV solar exposure.'],
         utci: ['🌡️ UTCI Microclimate Heat Stress (°C)', 'Green is neutral thermal comfort, orange/red is severe outdoor heat stress.'],
@@ -8445,11 +8471,70 @@ if (btnToggleCfd) {
         btnToggleCfd.classList.toggle('active', isCfdActive);
         if (isCfdActive) {
             initCfdParticles();
-            showToast("CFD Wind Arrow Particles activated in 3D viewport.", "info");
+            showToast("🌬️ Aerodynamic CFD Wind Vector Flows activated in 3D viewport.", "info");
         } else if (cfdParticlesMesh) {
             scene.remove(cfdParticlesMesh);
             cfdParticlesMesh = null;
-            showToast("CFD Wind Arrow Particles hidden.", "info");
+            showToast("Aerodynamic Wind Vector Flows hidden.", "info");
+        }
+    });
+}
+
+// 1.85m Human Eye-Level POV Camera Mode
+let isPovActive = false;
+let savedCameraPos = null;
+let savedTargetPos = null;
+
+const btnTogglePov = document.getElementById('btn-toggle-pov');
+if (btnTogglePov) {
+    btnTogglePov.addEventListener('click', () => {
+        isPovActive = !isPovActive;
+        btnTogglePov.classList.toggle('active', isPovActive);
+        
+        if (isPovActive) {
+            savedCameraPos = camera.position.clone();
+            savedTargetPos = controls.target.clone();
+            
+            const targetCenter = selectedParcel ? selectedParcel.center : { x: 0, y: 0 };
+            camera.position.set(targetCenter.x - 12.0, 1.85, targetCenter.y - 12.0); // 1.85m human height
+            controls.target.set(targetCenter.x, 1.85, targetCenter.y);
+            camera.fov = 65; // realistic human eye FOV
+            camera.updateProjectionMatrix();
+            controls.update();
+            
+            showToast("🚶 1.85m Human Eye-Level POV Camera Mode activated.", "info");
+        } else {
+            if (savedCameraPos) camera.position.copy(savedCameraPos);
+            if (savedTargetPos) controls.target.copy(savedTargetPos);
+            camera.fov = 45;
+            camera.updateProjectionMatrix();
+            controls.update();
+            
+            showToast("Aerial 3D Studio Camera restored.", "info");
+        }
+    });
+}
+
+// Vegetation Canopy & Green Roof Evapotranspirative Cooling
+let isVegCoolingActive = false;
+const btnToggleVeg = document.getElementById('btn-toggle-veg');
+if (btnToggleVeg) {
+    btnToggleVeg.addEventListener('click', () => {
+        isVegCoolingActive = !isVegCoolingActive;
+        btnToggleVeg.classList.toggle('active', isVegCoolingActive);
+        
+        if (isVegCoolingActive) {
+            heatmapMode = 'uhi';
+            if (inHeatmapMode) inHeatmapMode.value = 'uhi';
+            updateHeatmapLegend();
+            refreshParcelHeatmap();
+            showToast("🌿 Evapotranspirative Vegetation Canopy & Green Roof Cooling (-3.5°C) simulated.", "success");
+        } else {
+            heatmapMode = 'score';
+            if (inHeatmapMode) inHeatmapMode.value = 'score';
+            updateHeatmapLegend();
+            refreshParcelHeatmap();
+            showToast("Standard performance heatmap restored.", "info");
         }
     });
 }
