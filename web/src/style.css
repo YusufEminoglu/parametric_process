@@ -1587,3 +1587,46 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background-size: 30px 30px;
     animation: progress-stripes 1s linear infinite;
 }
+
+/* 8. Genome Matrix Gallery View */
+.genome-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 6px;
+    background: rgba(15, 23, 42, 0.03);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.genome-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.genome-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
+}
+.genome-card.selected {
+    border-color: var(--accent-hover);
+    background: rgba(15, 118, 110, 0.05);
+}
+.genome-card-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+.genome-card-metrics {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}

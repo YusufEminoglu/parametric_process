@@ -1,5 +1,13 @@
 # Changelog - Parametric Process
 
+## [0.7.0] - 2026-07-21
+
+### Added
+- **Procedural Urban Shape Grammar Engine (`procedural_grammar.py`)**: Block-to-parcel frontage subdivision grammar, courtyard allocation, and stepped terracing rules.
+- **Urban Morphology & Topological Connectivity Suite (`morphology_engine.py`)**: Street canyon height-to-width ratio ($H/W$), Sky View Factor ($SVF$), Street Enclosure Index, Building Surface-to-Volume Compactness ($SA/V$), and Shannon Entropy typological diversity.
+- **Wallacei-Grade Phenotype Genome Gallery View**: Grid view for side-by-side visual phenotype analysis, sorting, and direct 3D preview.
+- **Enhanced Feature Vector Sync**: Direct QGIS 2-way sync for enclosure index, compactness SA/V, and shape grammar attributes.
+
 ## [0.6.0] - 2026-07-21
 
 ### Added

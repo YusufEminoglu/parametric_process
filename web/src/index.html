@@ -249,13 +249,14 @@
                     </label>
                 </div>
 
-                <!-- 6 Sub-tabs -->
+                <!-- 7 Sub-tabs -->
                 <div class="analytics-subtabs">
                     <button id="subtab-scatter" class="subtab-btn active" type="button">Pareto Front</button>
                     <button id="subtab-pcp" class="subtab-btn" type="button">PCP</button>
                     <button id="subtab-fitness" class="subtab-btn" type="button">Fitness</button>
                     <button id="subtab-radar" class="subtab-btn" type="button">Diamond</button>
                     <button id="subtab-cluster" class="subtab-btn" type="button">Clusters</button>
+                    <button id="subtab-gallery" class="subtab-btn" type="button">Genome Gallery</button>
                     <button id="subtab-population" class="subtab-btn" type="button">Population</button>
                 </div>
 
@@ -355,6 +356,12 @@
                     <canvas id="canvas-cluster" width="310" height="220"></canvas>
                     <div id="cluster-summary" class="cluster-summary-grid"></div>
                     <p class="chart-caption">2D PCA projection of solution clusters. Click a cluster to select its centroid.</p>
+                </div>
+
+                <!-- Genome Matrix Gallery View -->
+                <div id="view-gallery" class="subtab-view hidden">
+                    <div id="genome-gallery-grid" class="genome-gallery-grid"></div>
+                    <p class="chart-caption">Wallacei-grade Phenotype Genome Matrix. Click any card to preview in 3D.</p>
                 </div>
 
                 <!-- Population Browser View -->

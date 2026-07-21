@@ -8501,4 +8501,69 @@ if (btnExportCityJson) {
     btnExportCityJson.addEventListener('click', exportCityJson);
 }
 
+// ==========================================
+// WALLACEI-GRADE GENOME GALLERY VIEW
+// ==========================================
+
+function renderGenomeGallery() {
+    const galleryGrid = document.getElementById('genome-gallery-grid');
+    if (!galleryGrid) return;
+    
+    const sols = (wallaceiResult && wallaceiResult.all_solutions) ? wallaceiResult.all_solutions : [];
+    if (!sols.length) {
+        galleryGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">Run Evolutionary Optimization to populate Phenotype Genome Gallery.</div>';
+        return;
+    }
+
+    let cardsHtml = '';
+    sols.forEach((sol, idx) => {
+        const isSelected = activeParetoSolution && activeParetoSolution.id === sol.id;
+        const g = sol.genotype || {};
+        const m = sol.metrics || {};
+
+        cardsHtml += `
+        <div class="genome-card ${isSelected ? 'selected' : ''}" data-sol-idx="${idx}">
+            <div class="genome-card-header">
+                <span>${sol.id || 'Sol_' + (idx+1)}</span>
+                <span style="color: var(--accent); font-weight:700;">Rank ${sol.rank || 1}</span>
+            </div>
+            <div class="genome-card-metrics">
+                <div>Typology: <b>${g.typology || 'Tower'}</b></div>
+                <div>Floors: <b>${g.floors || 4}</b> (${m.height_m || 12}m)</div>
+                <div>Score: <b>${m.planx_score || '-'}</b></div>
+                <div>GFA: <b>${m.gfa || '-'} m²</b></div>
+            </div>
+        </div>`;
+    });
+
+    galleryGrid.innerHTML = cardsHtml;
+
+    galleryGrid.querySelectorAll('.genome-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const idx = parseInt(card.getAttribute('data-sol-idx'));
+            const sol = sols[idx];
+            if (sol) {
+                activeParetoSolution = sol;
+                displaySolutionCard(sol);
+                applyPhenotypeTo3D(sol);
+                renderGenomeGallery();
+                showToast(`Loaded phenotype ${sol.id} into 3D view`, 'info');
+            }
+        });
+    });
+}
+
+const subtabGallery = document.getElementById('subtab-gallery');
+const viewGallery = document.getElementById('view-gallery');
+if (subtabGallery && viewGallery) {
+    subtabGallery.addEventListener('click', () => {
+        document.querySelectorAll('.subtab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.subtab-view').forEach(view => view.classList.add('hidden'));
+        subtabGallery.classList.add('active');
+        viewGallery.classList.remove('hidden');
+        renderGenomeGallery();
+    });
+}
+
+
 

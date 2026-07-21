@@ -215,6 +215,14 @@ def evaluate_phenotype(
     )
     planx_score = round(min(100.0, max(0.0, raw_score)), 1)
 
+    # 10. Enclosure & Compactness (Morphology Suite)
+    eff_street_w = max(4.0, setback * 2.0 + 6.0)
+    enclosure_index = round(min(100.0, max(0.0, (height_m / eff_street_w) * 45.0)), 1)
+    side_len = math.sqrt(max(1.0, footprint_area))
+    total_surface = (4.0 * side_len * height_m) + (2.0 * footprint_area)
+    volume = footprint_area * height_m
+    compactness_sav = round(total_surface / max(1.0, volume), 3)
+
     return {
         "footprint_area": round(footprint_area, 1),
         "bcr": round(bcr, 3),
@@ -225,6 +233,8 @@ def evaluate_phenotype(
         "open_space_ratio": round(open_space_ratio, 3),
         "constraint_penalty": round(constraint_penalty, 2),
         "planx_score": planx_score,
+        "enclosure_index": enclosure_index,
+        "compactness_sav": compactness_sav,
         "carbon_kg": carbon_kg,
         "runoff_m3": runoff_m3,
         "daylight_index": daylight_index,
