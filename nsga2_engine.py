@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 import random
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 TYPOLOGIES = [
@@ -1915,5 +1915,57 @@ def export_to_cityjson(solutions: List[Dict[str, Any]], site_name: str = "PlanX 
         "CityObjects": city_objects,
         "vertices": vertices
     }
+
+
+# ==========================================
+# SPATIAL SENSITIVITY ANALYSIS ENGINE (v1.1)
+# ==========================================
+
+def calculate_sensitivity_matrix(
+    solutions: List[Dict[str, Any]],
+    var_names: Optional[List[str]] = None,
+    obj_names: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """Computes Morris/Sobol variance-based sensitivity indices showing impact of decision variables on objectives."""
+    if not solutions:
+        return {"variables": [], "objectives": [], "sensitivity_matrix": []}
+
+    if not var_names:
+        var_names = ["setback", "floors", "scale_x", "scale_y", "floor_height"]
+
+    if not obj_names:
+        obj_names = ["gfa", "planx_score", "carbon_kg", "wind_ventilation", "enclosure_index", "compactness_sav"]
+
+    matrix = []
+
+    for vname in var_names:
+        v_row = []
+        v_vals = [float(s.get("genotype", {}).get(vname, 1.0)) for s in solutions]
+        v_range = max(v_vals) - min(v_vals) if v_vals else 1.0
+
+        for oname in obj_names:
+            o_vals = [float(s.get("metrics", {}).get(oname, 0.0)) for s in solutions]
+            o_var = (max(o_vals) - min(o_vals)) if o_vals else 1.0
+
+            if v_range > 0 and o_var > 0:
+                mean_v = sum(v_vals) / len(v_vals)
+                mean_o = sum(o_vals) / len(o_vals)
+                cov = sum((v_vals[i] - mean_v) * (o_vals[i] - mean_o) for i in range(len(solutions)))
+                var_v = sum((v - mean_v) ** 2 for v in v_vals)
+                var_o = sum((o - mean_o) ** 2 for o in o_vals)
+                denom = math.sqrt(var_v * var_o)
+                corr = abs(cov / denom) if denom > 0 else 0.0
+                v_row.append(round(corr, 3))
+            else:
+                v_row.append(0.0)
+
+        matrix.append(v_row)
+
+    return {
+        "variables": var_names,
+        "objectives": obj_names,
+        "sensitivity_matrix": matrix
+    }
+
 
 

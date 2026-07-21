@@ -326,3 +326,221 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
             feedback.setProgress(int(current * total))
 
         return {'OUTPUT': dest_id}
+
+
+class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
+    def name(self):
+        return 'urban_morphology_analytics'
+
+    def displayName(self):
+        return '3. Urban Morphology & Canyon Analytics'
+
+    def group(self):
+        return 'Urban Analytics'
+
+    def groupId(self):
+        return 'urban_analytics'
+
+    def createInstance(self):
+        return UrbanMorphologyAnalyticsAlgorithm()
+
+    def initAlgorithm(self, config=None):
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                'INPUT', 'Input Polygon Layer', types=[QgsProcessing.TypeVectorPolygon]
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink('OUTPUT', 'Output Morphology Layer')
+        )
+
+    def processAlgorithm(self, parameters, context, feedback):
+        from .morphology_engine import calculate_urban_morphology_suite
+        source = self.parameterAsSource(parameters, 'INPUT', context)
+
+        fields = QgsFields(source.fields())
+        fields.append(QgsField('canyon_hw', QVariant.Double))
+        fields.append(QgsField('enclosure', QVariant.Double))
+        fields.append(QgsField('sav_ratio', QVariant.Double))
+        fields.append(QgsField('svf_ratio', QVariant.Double))
+
+        (sink, dest_id) = self.parameterAsSink(
+            parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
+        )
+
+        features = list(source.getFeatures())
+        total = len(features) if features else 1
+
+        for i, f in enumerate(features):
+            if feedback.isCanceled():
+                break
+
+            geom = f.geometry()
+            area = geom.area() if geom and not geom.isEmpty() else 1000.0
+            floors = int(f.attribute('floors')) if f.attribute('floors') is not None and str(f.attribute('floors')).isdigit() else 4
+            setback = float(f.attribute('setback')) if f.attribute('setback') is not None else 3.0
+            typology = str(f.attribute('typology')) if f.attribute('typology') is not None else 'Tower'
+
+            m = calculate_urban_morphology_suite({'floors': floors, 'setback': setback, 'typology': typology}, parcel_area=area)
+
+            new_f = QgsFeature(fields)
+            new_f.setGeometry(geom)
+            for field in source.fields():
+                new_f.setAttribute(field.name(), f.attribute(field.name()))
+
+            new_f.setAttribute('canyon_hw', float(m.get('canyon_hw', 0)))
+            new_f.setAttribute('enclosure', float(m.get('enclosure_index', 0)))
+            new_f.setAttribute('sav_ratio', float(m.get('compactness_sav', 0)))
+            new_f.setAttribute('svf_ratio', float(m.get('sky_view_factor', 0)))
+
+            sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+            feedback.setProgress(int(((i + 1) / total) * 100))
+
+        return {'OUTPUT': dest_id}
+
+
+class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
+    def name(self):
+        return 'procedural_shape_grammar'
+
+    def displayName(self):
+        return '4. Procedural Shape Grammar Block Subdivider'
+
+    def group(self):
+        return 'Urban Analytics'
+
+    def groupId(self):
+        return 'urban_analytics'
+
+    def createInstance(self):
+        return ProceduralShapeGrammarAlgorithm()
+
+    def initAlgorithm(self, config=None):
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                'INPUT', 'Input Block Layer', types=[QgsProcessing.TypeVectorPolygon]
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'FRONTAGE', 'Target Frontage Width (m)', type=QgsProcessingParameterNumber.Double, defaultValue=18.0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink('OUTPUT', 'Subdivided Sub-Lots Layer')
+        )
+
+    def processAlgorithm(self, parameters, context, feedback):
+        from .procedural_grammar import subdivide_parcel_block, calculate_polygon_area
+        source = self.parameterAsSource(parameters, 'INPUT', context)
+        frontage = self.parameterAsDouble(parameters, 'FRONTAGE', context)
+
+        fields = QgsFields(source.fields())
+        fields.append(QgsField('sublot_id', QVariant.Int))
+        fields.append(QgsField('lot_area', QVariant.Double))
+
+        (sink, dest_id) = self.parameterAsSink(
+            parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
+        )
+
+        features = list(source.getFeatures())
+        total = len(features) if features else 1
+
+        for i, f in enumerate(features):
+            if feedback.isCanceled():
+                break
+
+            geom = f.geometry()
+            if not geom or geom.isEmpty():
+                continue
+
+            ring = []
+            polygon_pts = geom.asPolygon()
+            if polygon_pts and len(polygon_pts[0]) >= 3:
+                ring = [{'x': pt.x(), 'y': pt.y()} for pt in polygon_pts[0]]
+
+            sublots = subdivide_parcel_block(ring, target_frontage=frontage)
+
+            for s_idx, lot_ring in enumerate(sublots, start=1):
+                lot_area = calculate_polygon_area(lot_ring)
+                new_f = QgsFeature(fields)
+                new_f.setGeometry(geom)
+                for field in source.fields():
+                    new_f.setAttribute(field.name(), f.attribute(field.name()))
+
+                new_f.setAttribute('sublot_id', s_idx)
+                new_f.setAttribute('lot_area', round(lot_area, 1))
+                sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+
+            feedback.setProgress(int(((i + 1) / total) * 100))
+
+        return {'OUTPUT': dest_id}
+
+
+class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
+    def name(self):
+        return 'district_environmental_coupling'
+
+    def displayName(self):
+        return '5. Multi-Parcel District Environmental Coupling'
+
+    def group(self):
+        return 'Urban Analytics'
+
+    def groupId(self):
+        return 'urban_analytics'
+
+    def createInstance(self):
+        return MultiParcelDistrictCouplingAlgorithm()
+
+    def initAlgorithm(self, config=None):
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                'INPUT', 'Input District Layer', types=[QgsProcessing.TypeVectorPolygon]
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink('OUTPUT', 'Coupled District Layer')
+        )
+
+    def processAlgorithm(self, parameters, context, feedback):
+        from .district_engine import evaluate_district_coupling
+        source = self.parameterAsSource(parameters, 'INPUT', context)
+
+        fields = QgsFields(source.fields())
+        fields.append(QgsField('shadow_loss', QVariant.Double))
+        fields.append(QgsField('canyon_wind', QVariant.Double))
+        fields.append(QgsField('comfort_score', QVariant.Double))
+
+        (sink, dest_id) = self.parameterAsSink(
+            parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
+        )
+
+        features = list(source.getFeatures())
+        total = len(features) if features else 1
+
+        building_list = []
+        for f in features:
+            height = float(f.attribute('height_m')) if f.attribute('height_m') is not None else 18.0
+            gfa = float(f.attribute('gfa')) if f.attribute('gfa') is not None else 800.0
+            building_list.append({'metrics': {'height_m': height, 'gfa': gfa, 'footprint_area': gfa / 4.0, 'planx_score': 82.0}})
+
+        district_metrics = evaluate_district_coupling(building_list, site_area=5000.0)
+
+        for i, f in enumerate(features):
+            if feedback.isCanceled():
+                break
+
+            new_f = QgsFeature(fields)
+            new_f.setGeometry(f.geometry())
+            for field in source.fields():
+                new_f.setAttribute(field.name(), f.attribute(field.name()))
+
+            new_f.setAttribute('shadow_loss', float(district_metrics.get('district_avg_solar_shadow_loss_pct', 0)))
+            new_f.setAttribute('canyon_wind', float(district_metrics.get('district_canyon_wind_speed_ms', 3.5)))
+            new_f.setAttribute('comfort_score', float(district_metrics.get('district_pedestrian_comfort', 80.0)))
+
+            sink.addFeature(new_f, QgsFeatureSink.FastInsert)
+            feedback.setProgress(int(((i + 1) / total) * 100))
+
+        return {'OUTPUT': dest_id}

@@ -20,7 +20,13 @@ class ParametricProcessProvider(QgsProcessingProvider):
     def loadAlgorithms(self):
         from .processing_algorithm import (
             ParametricOptimizationAlgorithm,
-            UrbanPhysicsEvaluatorAlgorithm
+            UrbanPhysicsEvaluatorAlgorithm,
+            UrbanMorphologyAnalyticsAlgorithm,
+            ProceduralShapeGrammarAlgorithm,
+            MultiParcelDistrictCouplingAlgorithm,
         )
         self.addAlgorithm(ParametricOptimizationAlgorithm())
         self.addAlgorithm(UrbanPhysicsEvaluatorAlgorithm())
+        self.addAlgorithm(UrbanMorphologyAnalyticsAlgorithm())
+        self.addAlgorithm(ProceduralShapeGrammarAlgorithm())
+        self.addAlgorithm(MultiParcelDistrictCouplingAlgorithm())

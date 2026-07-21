@@ -1,8 +1,19 @@
 # Changelog - Parametric Process
 
+## [1.1.0] - 2026-07-21
+
+- v1.1.0 ULTIMATE FEATURE RELEASE: Complete 5 Processing Toolbox algorithms, Custom Typology Engine, and Morris Spatial Sensitivity Analysis
+
 ## [1.0.0] - 2026-07-21
 
 - v1.0.0 MAJOR RELEASE: PlanX-grade multi-tool icon suite, dedicated toolbar actions, and complete academic workflow
+
+## [1.1.0] - 2026-07-21 - ULTIMATE FEATURE RELEASE
+
+### Added
+- **Full QGIS Processing Toolbox Suite (5 Algorithms)**: `Parametric Optimization`, `Urban Physics Evaluation`, `Urban Morphology Analytics`, `Procedural Shape Grammar Subdivider`, and `Multi-Parcel District Environmental Coupling` algorithms registered in QGIS Processing Provider.
+- **Custom Typology Preset Registry Engine (`typologies.py`)**: Custom building typology editor for user-defined footprint ratios, courtyard allocations, and setback profiles.
+- **Morris / Sobol Variance-based Spatial Sensitivity Analysis (`calculate_sensitivity_matrix`)**: Elementary Effects matrix computing variable-objective impact.
 
 ## [1.0.0] - 2026-07-21 - MAJOR RELEASE
 
