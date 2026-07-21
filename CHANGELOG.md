@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.6.4] - 2026-07-21
+
+- Double-click now opens Processing Toolbox and highlights the algorithm for native dialog launch
+
 ## [1.6.3] - 2026-07-21
 
 - Clean: dock double-click runs algorithm with defaults. Processing Toolbox for full parameter control. Crash-free.

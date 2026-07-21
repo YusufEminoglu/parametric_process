@@ -178,41 +178,38 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Run algorithm with default params, load result into map.
-        For full parameter control, use Processing → Toolbox → Urban Analytics."""
+        """Open Processing Toolbox and highlight the algorithm for user to double-click."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
-        alg = QgsApplication.processingRegistry().algorithmById(alg_id)
-        if alg is None:
-            return
-        import processing
-        from qgis.core import QgsProject, QgsVectorLayer
-        try:
-            layer = self.layer_combo.currentLayer()
-            params = {}
-            if layer is not None:
-                params["INPUT"] = layer
-            for p in alg.parameterDefinitions():
-                if p.type() == "sink" and p.name() not in params:
-                    params[p.name()] = "memory:"
-            result = processing.run(alg_id, params)
-            if result:
-                for key, value in result.items():
-                    if isinstance(value, str) and value:
-                        rl = QgsVectorLayer(value, f"{alg.displayName()}", "ogr")
-                        if rl and rl.isValid():
-                            QgsProject.instance().addMapLayer(rl)
-                self.iface.messageBar().pushSuccess(
-                    "Parametric Process",
-                    f"'{alg.displayName()}' completed. "
-                    "For parameter control: Processing → Toolbox → Urban Analytics"
-                )
-        except Exception as e:
-            self.iface.messageBar().pushInfo(
-                "Parametric Process",
-                f"Use Processing → Toolbox → Urban Analytics ({e})"
-            )
+        import contextlib
+        # 1) Reveal Processing Toolbox dock
+        with contextlib.suppress(Exception):
+            from qgis.PyQt.QtWidgets import QDockWidget, QTreeWidget
+            for dock in self.iface.mainWindow().findChildren(QDockWidget):
+                if dock.objectName() == "ProcessingToolbox":
+                    dock.setVisible(True)
+                    dock.raise_()
+                    # 2) Find algorithm item in the tree and select it
+                    for tree in dock.findChildren(QTreeWidget):
+                        for gi in range(tree.topLevelItemCount()):
+                            grp = tree.topLevelItem(gi)
+                            grp.setExpanded(True)
+                            for ci in range(grp.childCount()):
+                                child = grp.child(ci)
+                                if child.data(0, Qt.ItemDataRole.UserRole) == alg_id:
+                                    tree.scrollToItem(child)
+                                    tree.setCurrentItem(child)
+                                    self.iface.messageBar().pushInfo(
+                                        "Parametric Process",
+                                        "Double-click the highlighted algorithm in the Processing Toolbox to configure and run."
+                                    )
+                                    return
+        # Fallback
+        self.iface.messageBar().pushInfo(
+            "Parametric Process",
+            "Open Processing → Toolbox → Urban Analytics to configure parameters."
+        )
 
     # ------------------------------------------------------------------ #
     # Cockpit server
