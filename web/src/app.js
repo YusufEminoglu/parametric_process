@@ -7111,13 +7111,6 @@ const solMetricsGrid = document.getElementById('sol-metrics-grid');
 const btnPreviewPhenotype = document.getElementById('btn-preview-phenotype');
 const btnSyncWallaceiQgis = document.getElementById('btn-sync-wallacei-qgis');
 
-// DOM Elements - Tabs and Views
-const tabBtnParametric = document.getElementById('tab-btn-parametric');
-const tabBtnWallacei = document.getElementById('tab-btn-wallacei');
-const parametricView = document.getElementById('parametric-cockpit-view');
-const wallaceiView = document.getElementById('wallacei-studio-view');
-const editorControls = document.getElementById('editor-controls');
-
 // --- Tab Switching ---
 if (tabBtnParametric && tabBtnWallacei) {
     tabBtnParametric.addEventListener('click', () => {
