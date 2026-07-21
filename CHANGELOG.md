@@ -1,5 +1,11 @@
 # Changelog - Parametric Process
 
+## [0.9.0] - 2026-07-21
+
+### Added
+- **PlanX-Grade Native QGIS Dialog Suite (`dialog.py`)**: Multi-tab dialog with Design Strategy Presets (Balanced, High Density, Microclimate Eco-District, Financial ROI, Procedural Courtyard), native QGIS layer selector, evolutionary solver controls (NSGA-III, MOEA/D, NSGA-II, SPEA-2), and AI Surrogate toggle.
+- **Wallacei & Discover Grade Phenotype Lineage Features**: Extended evolutionary tree parameters and preset strategy profiles.
+
 ## [0.8.1] - 2026-07-21
 
 ### Added

@@ -6,6 +6,7 @@ from __future__ import annotations
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -116,10 +117,10 @@ class PluginDialog(QDialog):
 
         self.tabs = QTabWidget()
 
-        # Tab 1: Layer & Cockpit Setup
+        # Tab 1: Layer & Preset Setup
         tab_setup = QWidget()
         setup_layout = QFormLayout(tab_setup)
-        setup_layout.setContentsMargins(10, 10, 10, 10)
+        setup_layout.setContentsMargins(12, 12, 12, 12)
 
         self.layer_combo = QgsMapLayerComboBox(self)
         try:
@@ -128,23 +129,64 @@ class PluginDialog(QDialog):
         except (ImportError, AttributeError):
             self.layer_combo.setFilters(QgsMapLayerProxyModel.PolygonLayer)
 
+        self.combo_preset = QComboBox(self)
+        self.combo_preset.addItems([
+            "🏆 Balanced Master Plan (Recommended)",
+            "🏙️ High Density Urban (Max FAR/GFA)",
+            "🌿 Microclimate Eco-District (Max Wind/Solar/Open)",
+            "💰 Financial Maximum ROI (Max Profit Yield)",
+            "📐 Procedural Courtyard & Shape Grammar",
+        ])
+
         self.port_spin = QSpinBox(self)
         self.port_spin.setRange(1024, 65535)
         self.port_spin.setValue(8090)
 
-        self.chk_browser = QCheckBox("Open browser automatically", self)
+        self.chk_browser = QCheckBox("Open browser 3D cockpit automatically", self)
         self.chk_browser.setChecked(True)
 
         setup_layout.addRow(QLabel("Target Parcel/Block Layer:"), self.layer_combo)
+        setup_layout.addRow(QLabel("Design Strategy Preset:"), self.combo_preset)
         setup_layout.addRow(QLabel("Local Cockpit Port:"), self.port_spin)
         setup_layout.addRow(self.chk_browser)
 
-        self.tabs.addTab(tab_setup, "3D Cockpit Setup")
+        self.tabs.addTab(tab_setup, "🎯 Setup & Presets")
 
-        # Tab 2: Environmental & Physics Physics Parameters
+        # Tab 2: Evolutionary Engine & AI Surrogate
+        tab_evo = QWidget()
+        evo_layout = QFormLayout(tab_evo)
+        evo_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.combo_algo = QComboBox(self)
+        self.combo_algo.addItems([
+            "NSGA-III (Das & Dennis Reference Points)",
+            "MOEA/D (Tchebycheff Decomposition)",
+            "NSGA-II (Elitist Non-dominated Sorting)",
+            "SPEA-2 (Strength Pareto Evolutionary)",
+        ])
+
+        self.spin_pop = QSpinBox(self)
+        self.spin_pop.setRange(10, 500)
+        self.spin_pop.setValue(40)
+
+        self.spin_gen = QSpinBox(self)
+        self.spin_gen.setRange(5, 200)
+        self.spin_gen.setValue(20)
+
+        self.chk_surrogate = QCheckBox("🤖 Enable Pure-Python AI Surrogate Model (<0.1ms Physics)", self)
+        self.chk_surrogate.setChecked(True)
+
+        evo_layout.addRow(QLabel("Optimization Algorithm:"), self.combo_algo)
+        evo_layout.addRow(QLabel("Population Size:"), self.spin_pop)
+        evo_layout.addRow(QLabel("Generations:"), self.spin_gen)
+        evo_layout.addRow(self.chk_surrogate)
+
+        self.tabs.addTab(tab_evo, "🧬 Evolutionary Solvers")
+
+        # Tab 3: Environmental & Physics Parameters
         tab_env = QWidget()
         env_layout = QFormLayout(tab_env)
-        env_layout.setContentsMargins(10, 10, 10, 10)
+        env_layout.setContentsMargins(12, 12, 12, 12)
 
         self.spin_wind_deg = QSpinBox(self)
         self.spin_wind_deg.setRange(0, 360)
@@ -177,30 +219,30 @@ class PluginDialog(QDialog):
         env_layout.addRow(QLabel("Construction Cost / m²:"), self.spin_const_cost)
         env_layout.addRow(QLabel("Estimated Sale Price / m²:"), self.spin_sale_price)
 
-        self.tabs.addTab(tab_env, "Simulation Params")
+        self.tabs.addTab(tab_env, "🌤️ Physics Params")
 
-        # Tab 3: Info / About
+        # Tab 4: Info / About
         tab_about = QWidget()
         about_layout = QVBoxLayout(tab_about)
         info_label = QLabel(
-            "<b>Parametric Process v0.1.0</b><br><br>"
-            "Generative parametric urban design and multi-objective evolutionary optimization lab for QGIS.<br><br>"
-            "• Physics & CFD Wind Ventilation Simulator<br>"
-            "• Solar Irradiance & Rooftop PV Energy Generator<br>"
-            "• Air Pollution (AQI) & Street Canyon Dispersion Simulator<br>"
-            "• Urban Heat Island (UHI / MRT / UTCI) Outdoor Thermal Comfort Engine<br>"
-            "• Financial Real Estate ROI & Yield Calculator<br><br>"
-            "Developed by Yusuf Eminoğlu."
+            "<b>Parametric Process Studio v0.8.1</b><br><br>"
+            "Standalone generative parametric urban design, procedural shape grammar, and multi-objective evolutionary optimization lab for QGIS.<br><br>"
+            "• <b>Solvers:</b> NSGA-II, NSGA-III (Ref Points), MOEA/D (Decomposition), SPEA-2<br>"
+            "• <b>AI Acceleration:</b> Pure-Python Surrogate Model (&lt;0.1ms/eval)<br>"
+            "• <b>Morphology Suite:</b> Canyon H/W, Enclosure Index, SA/V Compactness, Shannon Entropy<br>"
+            "• <b>Physics Engine:</b> Sol-Air Temp, Solar PV, CFD Wind Arrow Particles, UTCI Thermal Comfort<br>"
+            "• <b>Exporters:</b> 3D CityJSON 1.1, Wavefront OBJ Mesh, 3D GeoPackage, Executive HTML Reports<br><br>"
+            "Developed by <b>Yusuf Eminoğlu</b>."
         )
         info_label.setWordWrap(True)
         about_layout.addWidget(info_label)
 
-        self.tabs.addTab(tab_about, "About & Engine Info")
+        self.tabs.addTab(tab_about, "ℹ️ About Suite")
 
         layout.addWidget(self.tabs)
 
-        self.status_label = QLabel("Ready to launch Parametric Process cockpit.")
-        self.status_label.setStyleSheet("color: #475569; font-style: italic; margin-top: 4px;")
+        self.status_label = QLabel("Ready to launch Parametric Process studio.")
+        self.status_label.setStyleSheet("color: #0f766e; font-style: italic; margin-top: 4px;")
         layout.addWidget(self.status_label)
 
         buttons = QDialogButtonBox(self)
@@ -213,8 +255,13 @@ class PluginDialog(QDialog):
     def _on_launch(self) -> None:
         params = {
             "layer": self.layer_combo.currentLayer(),
+            "preset": self.combo_preset.currentText(),
             "port": self.port_spin.value(),
             "launch_browser": self.chk_browser.isChecked(),
+            "algorithm": self.combo_algo.currentText(),
+            "pop_size": self.spin_pop.value(),
+            "generations": self.spin_gen.value(),
+            "use_surrogate": self.chk_surrogate.isChecked(),
             "sim_params": {
                 "wind_deg": self.spin_wind_deg.value(),
                 "wind_speed": self.spin_wind_speed.value(),
@@ -230,3 +277,4 @@ class PluginDialog(QDialog):
         color = "#ef4444" if error else "#0f766e"
         self.status_label.setText(msg)
         self.status_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+
