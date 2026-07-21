@@ -12,6 +12,8 @@ from qgis.core import (
     QgsFeatureSink,
     QgsField,
     QgsFields,
+    QgsGeometry,
+    QgsPointXY,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
@@ -38,6 +40,17 @@ def _icon(filename: str) -> QIcon:
     return QIcon(path) if os.path.exists(path) else QIcon()
 
 
+def _ring_to_geometry(ring: list) -> QgsGeometry:
+    """Convert a plot ring (list of {"x":..., "y":...} dicts) to a QgsGeometry polygon."""
+    if not ring or len(ring) < 3:
+        return QgsGeometry()
+    pts = [QgsPointXY(pt["x"], pt["y"]) for pt in ring]
+    # Close the ring
+    if pts[0] != pts[-1]:
+        pts.append(pts[0])
+    return QgsGeometry.fromPolygonXY([pts])
+
+
 class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
     ICON = "icon_nsga3.png"
 
@@ -55,6 +68,32 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
 
     def icon(self):
         return _icon(self.ICON)
+
+    def shortHelpString(self):
+        return self.tr(
+            "<h3>Parametric Multi-Objective Evolutionary Optimization</h3>"
+            "<p><b>Literature context.</b> This tool implements the NSGA-II algorithm "
+            "(Deb et al., 2002), NSGA-III with Das & Dennis reference points (Deb & "
+            "Jain, 2014), SPEA-2 (Zitzler et al., 2001), and MOEA/D with Tchebycheff "
+            "decomposition (Zhang & Li, 2007). These are the four canonical multi-"
+            "objective evolutionary algorithms used in generative urban design and "
+            "parametric massing studies since the early 2000s. The constrained-"
+            "dominance principle follows Deb (2000), enforcing zoning compliance "
+            "(BCR, FAR, height caps) as hard feasibility constraints.</p>"
+            "<p><b>Usage.</b> Provide a polygon layer of parcels/blocks. Set population "
+            "size (recommended 30-100) and generations (15-50). Choose the algorithm: "
+            "NSGA-II is the default all-rounder; NSGA-III handles 4+ objectives better; "
+            "SPEA-2 gives a finer-grained archive; MOEA/D excels at well-distributed "
+            "Pareto fronts. Max BCR/FAR/Height define the zoning envelope — solutions "
+            "exceeding these are penalised via constraint violation.</p>"
+            "<p><b>Reading the results.</b> The output layer contains Pareto Rank 1 "
+            "solutions (non-dominated front). Each feature carries the full genotype "
+            "(setback, floors, typology, usage, roof style) and 30+ physics/metrics "
+            "columns (GFA, carbon, wind ventilation, UTCI score, ROI %, SVF, canyon H/W, "
+            "PV yield). Sort by <i>planx_score</i> for the best-balanced design; use "
+            "<i>pareto_rank</i> to filter the non-dominated set. Visualise in the 3D "
+            "cockpit by launching the Studio dock panel.</p>"
+        )
 
     def createInstance(self):
         return ParametricOptimizationAlgorithm()
@@ -245,6 +284,36 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
     def icon(self):
         return _icon(self.ICON)
 
+    def shortHelpString(self):
+        return self.tr(
+            "<h3>Urban Physics & Microclimate Multi-Domain Evaluator</h3>"
+            "<p><b>Literature context.</b> This evaluator synthesises 15 linked "
+            "microclimate and environmental physics models into a single pass. "
+            "Wind ventilation uses a porosity-alignment model based on the urban "
+            "canopy literature (Oke, 1988; Grimmond & Oke, 1999). Pedestrian wind "
+            "comfort follows Lawson criteria (Lawson & Penwarden, 1975). Solar "
+            "irradiance is latitude-adjusted (Duffie & Beckman, 2013). MRT and UTCI "
+            "thermal comfort indices follow the COST Action 730 standard (Jendritzky "
+            "et al., 2012; Brode et al., 2012). Life-cycle carbon assessment uses "
+            "embodied + operational carbon factors per building material tier "
+            "(timber/concrete/steel) adapted from the ICE database (Hammond & Jones, "
+            "2008). Stormwater runoff uses the Rational Method with roof-form "
+            "coefficients.</p>"
+            "<p><b>Usage.</b> Input a building footprint layer that already has "
+            "<i>floors</i>, <i>setback</i>, <i>typology</i>, <i>usage</i>, and "
+            "<i>roof_style</i> attributes (from the Evolutionary Optimization output "
+            "or manually assigned). The tool evaluates all 15 physics domains in one "
+            "run — no additional parameters needed.</p>"
+            "<p><b>Reading the results.</b> The enriched output layer adds columns: "
+            "<i>carbon</i> (kg CO2eq total LCA), <i>wind_score</i> (0-100 ventilation), "
+            "<i>solar_kwh</i> (kWh/m²/yr), <i>utci_score</i> (0-100 thermal comfort), "
+            "<i>runoff</i> (m³ stormwater), <i>poll_disp</i> (0-100 pollution dispersion), "
+            "<i>mrt_temp</i> (°C mean radiant temperature), <i>pv_kwh</i> (rooftop PV "
+            "yield), <i>roi_yield</i> (% return), <i>svf_ratio</i> (0-1 sky view), "
+            "<i>canyon_hw</i> (street canyon ratio). Use QGIS graduated symbology on "
+            "<i>utci_score</i> or <i>carbon</i> for thermal/carbon hotspot maps.</p>"
+        )
+
     def createInstance(self):
         return UrbanPhysicsEvaluatorAlgorithm()
 
@@ -366,6 +435,31 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
     def icon(self):
         return _icon(self.ICON)
 
+    def shortHelpString(self):
+        return self.tr(
+            "<h3>Urban Morphology & Canyon Analytics</h3>"
+            "<p><b>Literature context.</b> This tool computes the core urban morphology "
+            "indicators used in the space syntax and urban climatology traditions. "
+            "Street canyon height-to-width ratio (H/W) follows the urban canopy layer "
+            "parameterisation of Oke (1988) — H/W > 1.5 indicates a deep canyon with "
+            "reduced turbulent mixing. Sky View Factor (SVF) estimation uses the "
+            "geometric approximation from Johnson & Watson (1984), critical for urban "
+            "heat island studies (Unger, 2004). Surface-to-volume compactness (SA/V) "
+            "follows Ratti et al. (2005) — lower SA/V means lower heating/cooling "
+            "energy demand per m². Shannon Entropy of typological diversity adapts "
+            "ecological diversity indices to urban morphology (after Batty, 2008).</p>"
+            "<p><b>Usage.</b> Provide a polygon layer with <i>floors</i>, <i>setback</i>, "
+            "and <i>typology</i> attributes. The tool computes all four indices in one "
+            "pass.</p>"
+            "<p><b>Reading the results.</b> Output columns: <i>canyon_hw</i> (ratio, "
+            "higher = deeper street canyons), <i>enclosure</i> (0-100 street enclosure "
+            "index), <i>sav_ratio</i> (surface-to-volume, lower = more energy-compact), "
+            "<i>svf_ratio</i> (0-1 sky view factor, lower = less sky visible = warmer "
+            "night-time microclimate). In QGIS, use a red-blue diverging ramp on "
+            "<i>canyon_hw</i>: red for H/W > 1.5 (deep canyons, potential air-quality "
+            "traps), blue for H/W < 0.5 (open, well-ventilated).</p>"
+        )
+
     def createInstance(self):
         return UrbanMorphologyAnalyticsAlgorithm()
 
@@ -441,6 +535,31 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
 
     def icon(self):
         return _icon(self.ICON)
+
+    def shortHelpString(self):
+        return self.tr(
+            "<h3>Procedural Shape Grammar Block Subdivider</h3>"
+            "<p><b>Literature context.</b> Shape grammars for urban design originate "
+            "with Stiny & Gips (1972) and were adapted to urban-scale procedural "
+            "modelling by Parish & Muller (2001) in the CityEngine system. The CGA "
+            "(Computer Generated Architecture) shape grammar formalises block-to-lot "
+            "subdivision as recursive split rules. This tool also draws on plot-based "
+            "urbanism theory (Porta & Romice, 2014; Tarbatt, 2012), where the "
+            "individual plot is the fundamental unit of urban fabric formation, and "
+            "on Mert Akay's METU thesis (2019) 'Algorithmic Design Control for "
+            "Plot-Based Urbanism' which formalised parametric subdivision rules for "
+            "the Turkish planning context.</p>"
+            "<p><b>Usage.</b> Provide an urban block polygon layer. Set the target "
+            "frontage width (default 18 m — typical for row housing; use 12-15 m for "
+            "denser urban fabric, 22-30 m for suburban lots). Each block is subdivided "
+            "along its longest edge.</p>"
+            "<p><b>Reading the results.</b> Output columns: <i>sublot_id</i> (sequential "
+            "plot number within the block), <i>lot_area</i> (m²). The subdivided "
+            "output can be fed into the Evolutionary Optimization tool to assign "
+            "building massing to each plot. For visualisation, use categorised symbology "
+            "on <i>sublot_id</i> with a qualitative palette to distinguish plots within "
+            "each block.</p>"
+        )
 
     def createInstance(self):
         return ProceduralShapeGrammarAlgorithm()
@@ -525,6 +644,30 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
     def icon(self):
         return _icon(self.ICON)
 
+    def shortHelpString(self):
+        return self.tr(
+            "<h3>Multi-Parcel District Environmental Coupling</h3>"
+            "<p><b>Literature context.</b> Urban buildings do not perform in isolation "
+            "— mutual solar obstruction (Knowles, 2003 'Solar Envelope'), inter-building "
+            "wind canyon wake acceleration (Blocken et al., 2007; Ai & Mak, 2015), and "
+            "district-scale stormwater retention (Berland et al., 2017) are all coupling "
+            "effects that emerge only at the district scale. This tool operationalises "
+            "these three coupling mechanisms in a single evaluator. The solar obstruction "
+            "model uses directional azimuth projection (after Compagnon, 2004), the wind "
+            "canyon model uses H/W-ratio acceleration factors from the street canyon "
+            "literature (Oke, 1988; Vardoulakis et al., 2003).</p>"
+            "<p><b>Usage.</b> Input a district layer with <i>height_m</i> and <i>gfa</i> "
+            "attributes. The tool computes pairwise inter-building effects across all "
+            "buildings in the district in a single pass.</p>"
+            "<p><b>Reading the results.</b> Output columns: <i>shadow_loss</i> (% solar "
+            "access lost due to neighbouring massing), <i>canyon_wind</i> (m/s accelerated "
+            "wind speed in building gaps), <i>comfort_score</i> (0-100 pedestrian wind "
+            "comfort — higher is more comfortable). Map <i>shadow_loss</i> with a red "
+            "sequential ramp to identify over-shadowed parcels; map <i>canyon_wind</i> "
+            "with a divergent blue-red ramp (blue = calm < 3 m/s, red = uncomfortable "
+            "> 8 m/s per Lawson criteria).</p>"
+        )
+
     def createInstance(self):
         return MultiParcelDistrictCouplingAlgorithm()
 
@@ -599,6 +742,42 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
 
     def icon(self):
         return _icon(self.ICON)
+
+    def shortHelpString(self):
+        return self.tr(
+            "<h3>PPUD Sequential Pipeline — Plot Layout → Building Config → Incremental Fabric</h3>"
+            "<p><b>Literature context.</b> PPUD (Parametric Plot-based Urban Design) is "
+            "a three-stage sequential framework introduced by Mert Akay in his METU MSc "
+            "thesis 'Algorithmic Design Control for Plot-Based Urbanism' (2019) and "
+            "extended with climate-responsive multi-objective optimisation in Akay & "
+            "Caliskan (2025, <i>Urban Design International</i>). The framework bridges "
+            "plot-based urbanism theory (Porta, Romice, Tarbatt, 2010-2015) with "
+            "generative parametric modelling. The three stages are: (1) plot layout "
+            "generation via multi-strategy block subdivision, (2) per-plot building "
+            "configuration with zoning-compliant genotype optimisation, and (3) "
+            "incremental block fabric formation simulating piecemeal urban development "
+            "with climate feedback loops (mutual solar shadowing and wind canyon wake "
+            "recalculation at each time step).</p>"
+            "<p><b>Usage.</b> Provide an urban block polygon layer. Select a block "
+            "typology (PerimeterBlock, LinearBlock, PavilionBlock, OrganicBlock, "
+            "HybridBlock) — each prescribes a default subdivision strategy, compatible "
+            "building typologies, and zoning envelope. Choose a subdivision strategy "
+            "(or use the typology default). Set the zoning envelope (max BCR, FAR, "
+            "height). <i>Incremental Steps</i> controls how many development phases "
+            "are simulated (3-10 recommended). Enable <i>Climate Feedback</i> to let "
+            "later phases adapt to cumulative shadow/wind impacts from earlier "
+            "development.</p>"
+            "<p><b>Reading the results.</b> Two output layers: (1) <i>PPUD Subdivided "
+            "Plots</i> — each plot as an individual polygon with full genotype (typology, "
+            "floors, setback, usage), performance metrics (GFA, FAR, BCR, carbon, "
+            "planx_score), and <i>fabric_step</i> (which development phase the plot "
+            "first appears in). (2) <i>Form-Based Code Diagram</i> — regulating plan "
+            "parameters per plot (build-to-line, max floors, max height, setback). "
+            "For visualisation: colour plots by <i>fabric_step</i> (temporal sequence "
+            "ramp) or <i>typology</i> (qualitative palette to show typological diversity "
+            "across the block). The <i>fabric_step</i> attribute enables temporal "
+            "animation via QGIS Temporal Controller.</p>"
+        )
 
     def createInstance(self):
         return PpudPipelineAlgorithm()
@@ -759,8 +938,12 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
                 g = cp.get("genotype", {})
                 m = cp.get("metrics", {})
 
+                # Build plot geometry from its subdivided ring
+                plot_ring = cp.get("ring", [])
+                plot_geom = _ring_to_geometry(plot_ring) if plot_ring else geom
+
                 new_f = QgsFeature(plot_fields)
-                new_f.setGeometry(geom)
+                new_f.setGeometry(plot_geom)
 
                 new_f.setAttribute('plot_id', int(cp.get('plot_id', 0)))
                 new_f.setAttribute('block_id', cp.get('parent_block', ''))
@@ -780,7 +963,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
                 sink_plots.addFeature(new_f, QgsFeatureSink.FastInsert)
 
                 fbc_f = QgsFeature(fbc_fields)
-                fbc_f.setGeometry(geom)
+                fbc_f.setGeometry(plot_geom)
                 fbc_f.setAttribute('plot_id', int(cp.get('plot_id', 0)))
                 fbc_f.setAttribute('build_to_line', 1 if m.get('bcr', 0) > 0.3 else 0)
                 fbc_f.setAttribute('max_floors', int(g.get('floors', 4)))

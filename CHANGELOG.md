@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.3] - 2026-07-21
+
+- PPUD per-plot geometry fix + detailed shortHelpString on all 6 algorithms (literature context, usage, reading results, visualization)
+
 ## [1.4.2] - 2026-07-21
 
 - Per-algorithm icons in Processing Toolbox: each of 6 tools now has distinct icon in dock tree
