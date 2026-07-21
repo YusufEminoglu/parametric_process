@@ -7019,6 +7019,18 @@ if (btnRunWallacei) {
         if (document.getElementById('obj-score')?.checked) {
             objectiveSpecs.push({ name: 'planx_score', direction: document.getElementById('dir-score')?.value || 'max' });
         }
+        if (document.getElementById('obj-wind')?.checked) {
+            objectiveSpecs.push({ name: 'wind_ventilation', direction: document.getElementById('dir-wind')?.value || 'max' });
+        }
+        if (document.getElementById('obj-solar')?.checked) {
+            objectiveSpecs.push({ name: 'solar_radiation_kwh', direction: document.getElementById('dir-solar')?.value || 'max' });
+        }
+        if (document.getElementById('obj-pollution')?.checked) {
+            objectiveSpecs.push({ name: 'pollution_dispersion', direction: document.getElementById('dir-pollution')?.value || 'max' });
+        }
+        if (document.getElementById('obj-svf')?.checked) {
+            objectiveSpecs.push({ name: 'sky_view_factor', direction: document.getElementById('dir-svf')?.value || 'max' });
+        }
         if (document.getElementById('obj-constraint')?.checked) {
             objectiveSpecs.push({ name: 'constraint_penalty', direction: document.getElementById('dir-constraint')?.value || 'min' });
         }
@@ -7253,11 +7265,11 @@ function renderPCP() {
     const axes = [
         { name: 'setback', label: 'Setback' },
         { name: 'floors', label: 'Floors' },
-        { name: 'scale_x', label: 'ScaleX' },
         { name: 'gfa', label: 'GFA' },
-        { name: 'far', label: 'FAR' },
         { name: 'planx_score', label: 'Score' },
-        { name: 'carbon_kg', label: 'Carbon' }
+        { name: 'wind_ventilation', label: 'Wind' },
+        { name: 'solar_radiation_kwh', label: 'Solar' },
+        { name: 'pollution_dispersion', label: 'Air' }
     ];
 
     const solutions = wallaceiResult.all_solutions || [];
@@ -7332,9 +7344,10 @@ function renderRadar() {
     const objectives = [
         { name: 'gfa', label: 'GFA', max: 5000 },
         { name: 'planx_score', label: 'PlanX Score', max: 100 },
-        { name: 'open_space_ratio', label: 'Open Space', max: 0.8 },
-        { name: 'daylight_index', label: 'Daylight', max: 100 },
-        { name: 'carbon_kg', label: 'Low Carbon', max: 50000, invert: true }
+        { name: 'wind_ventilation', label: 'Wind Vent', max: 100 },
+        { name: 'solar_radiation_kwh', label: 'Solar Rad', max: 2000 },
+        { name: 'pollution_dispersion', label: 'Air Disp', max: 100 },
+        { name: 'sky_view_factor', label: 'Sky View (SVF)', max: 1.0 }
     ];
 
     const cx = w / 2;
@@ -7371,7 +7384,7 @@ function renderRadar() {
         const lx = cx + (radius + 14) * Math.cos(angle);
         const ly = cy + (radius + 14) * Math.sin(angle);
         ctx.fillStyle = '#334155';
-        ctx.font = '10px sans-serif';
+        ctx.font = '9px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(obj.label, lx, ly);
@@ -7463,10 +7476,10 @@ function displaySolutionCard(sol) {
         metricsGrid.innerHTML = `
             <div class="sol-metric"><span class="sol-metric-lbl">Typology</span><span class="sol-metric-val">${g.typology || '-'}</span></div>
             <div class="sol-metric"><span class="sol-metric-lbl">Floors</span><span class="sol-metric-val">${g.floors || '-'} fl</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Setback</span><span class="sol-metric-val">${g.setback || 0} m</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">GFA</span><span class="sol-metric-val">${m.gfa || 0} sq m</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">FAR</span><span class="sol-metric-val">${m.far || 0}</span></div>
-            <div class="sol-metric"><span class="sol-metric-lbl">Carbon</span><span class="sol-metric-val">${m.carbon_kg || 0} kg</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Wind Vent</span><span class="sol-metric-val">${m.wind_ventilation || 0}/100</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Solar Rad</span><span class="sol-metric-val">${m.solar_radiation_kwh || 0} kWh</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">Air Disp</span><span class="sol-metric-val">${m.pollution_dispersion || 0}/100</span></div>
+            <div class="sol-metric"><span class="sol-metric-lbl">SVF Ratio</span><span class="sol-metric-val">${m.sky_view_factor || 0}</span></div>
         `;
     }
 }
@@ -7540,6 +7553,11 @@ if (btnSyncWallaceiQgis) {
             carbon: m.carbon_kg ?? 0,
             runoff: m.runoff_m3 ?? 0,
             open_space: m.open_space_m2 ?? 0,
+            wind_score: m.wind_ventilation ?? 0,
+            solar_kwh: m.solar_radiation_kwh ?? 0,
+            poll_disp: m.pollution_dispersion ?? 0,
+            svf_ratio: m.sky_view_factor ?? 0,
+            canyon_hw: m.street_canyon_hw ?? 0,
             pareto_rank: sol.rank ?? 1,
             wallacei_id: sol.id ?? 'sol_1'
         };

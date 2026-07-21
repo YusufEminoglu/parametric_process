@@ -121,6 +121,10 @@
                 <div class="objective-checklist">
                     <label class="obj-item"><input type="checkbox" id="obj-gfa" checked> <span>GFA</span> <select id="dir-gfa"><option value="max">MAX</option><option value="min">MIN</option></select></label>
                     <label class="obj-item"><input type="checkbox" id="obj-score" checked> <span>PlanX Score</span> <select id="dir-score"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-wind" checked> <span>Wind Vent</span> <select id="dir-wind"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-solar" checked> <span>Solar Rad</span> <select id="dir-solar"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-pollution" checked> <span>Air Dispersion</span> <select id="dir-pollution"><option value="max">MAX</option><option value="min">MIN</option></select></label>
+                    <label class="obj-item"><input type="checkbox" id="obj-svf"> <span>Sky View (SVF)</span> <select id="dir-svf"><option value="max">MAX</option><option value="min">MIN</option></select></label>
                     <label class="obj-item"><input type="checkbox" id="obj-constraint" checked> <span>Penalty</span> <select id="dir-constraint"><option value="min">MIN</option><option value="max">MAX</option></select></label>
                     <label class="obj-item"><input type="checkbox" id="obj-carbon" checked> <span>Carbon</span> <select id="dir-carbon"><option value="min">MIN</option><option value="max">MAX</option></select></label>
                     <label class="obj-item"><input type="checkbox" id="obj-daylight"> <span>Daylight</span> <select id="dir-daylight"><option value="max">MAX</option><option value="min">MIN</option></select></label>
@@ -175,8 +179,8 @@
 
                 <div id="view-scatter" class="subtab-view">
                     <div class="chart-controls-row">
-                        <label>X: <select id="scatter-axis-x"><option value="gfa">GFA</option><option value="far">FAR</option><option value="planx_score">PlanX Score</option><option value="carbon_kg">Carbon</option></select></label>
-                        <label>Y: <select id="scatter-axis-y"><option value="planx_score" selected>PlanX Score</option><option value="gfa">GFA</option><option value="carbon_kg">Carbon</option><option value="constraint_penalty">Constraint</option></select></label>
+                        <label>X: <select id="scatter-axis-x"><option value="gfa">GFA</option><option value="far">FAR</option><option value="planx_score">PlanX Score</option><option value="wind_ventilation">Wind Vent</option><option value="solar_radiation_kwh">Solar Rad</option><option value="pollution_dispersion">Air Pollution</option><option value="sky_view_factor">Sky View (SVF)</option><option value="street_canyon_hw">Canyon H/W</option><option value="carbon_kg">Carbon</option></select></label>
+                        <label>Y: <select id="scatter-axis-y"><option value="planx_score" selected>PlanX Score</option><option value="wind_ventilation">Wind Vent</option><option value="solar_radiation_kwh">Solar Rad</option><option value="pollution_dispersion">Air Pollution</option><option value="sky_view_factor">Sky View (SVF)</option><option value="gfa">GFA</option><option value="carbon_kg">Carbon</option><option value="constraint_penalty">Constraint</option></select></label>
                     </div>
                     <canvas id="canvas-pareto-scatter" width="310" height="200"></canvas>
                     <p class="chart-caption">Gold = Pareto Rank 1. Blue = Dominated. Click any dot to load phenotype in 3D.</p>

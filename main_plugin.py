@@ -239,6 +239,11 @@ class ParametricProcessPlugin:
                 "carbon": "double",
                 "runoff": "double",
                 "open_space": "double",
+                "wind_score": "double",
+                "solar_kwh": "double",
+                "poll_disp": "double",
+                "svf_ratio": "double",
+                "canyon_hw": "double",
                 "pareto_rank": "integer",
                 "wallacei_id": "string",
             }
@@ -303,6 +308,11 @@ class ParametricProcessPlugin:
                     "carbon": float(item.get("carbon", 0)),
                     "runoff": float(item.get("runoff", 0)),
                     "open_space": float(item.get("open_space", 0)),
+                    "wind_score": float(item.get("wind_score", 0)),
+                    "solar_kwh": float(item.get("solar_kwh", 0)),
+                    "poll_disp": float(item.get("poll_disp", 0)),
+                    "svf_ratio": float(item.get("svf_ratio", 0)),
+                    "canyon_hw": float(item.get("canyon_hw", 0)),
                     "pareto_rank": int(item.get("pareto_rank", 1)),
                     "wallacei_id": str(item.get("wallacei_id", "sol_1")),
                 }

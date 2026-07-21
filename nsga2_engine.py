@@ -108,6 +108,45 @@ def evaluate_phenotype(
     height_shading = max(0.0, (height_m - 12.0) * 1.5)
     daylight_index = round(min(100.0, max(10.0, open_factor + 35.0 - height_shading)), 1)
 
+    # 1. Urban Morphology Metrics
+    # Street canyon aspect ratio (H/W) assuming average street setback width of max(6.0, setback * 2)
+    street_width = max(6.0, setback * 2.0)
+    street_canyon_hw = round(height_m / max(1.0, street_width), 2)
+
+    # Sky View Factor (SVF: 0.0 - 1.0)
+    # SVF decreases as H/W increases and increases with open space ratio
+    svf = round(min(1.0, max(0.15, 1.0 - (street_canyon_hw * 0.22) + (open_space_ratio * 0.3))), 2)
+
+    # 2. Wind Microclimate & Ventilation Score (0 - 100)
+    # Higher open space, lower drag typologies, and lower H/W allow better natural wind flushing
+    typo_drag = {
+        "Tower": 0.35,
+        "Slab": 0.75,
+        "Courtyard": 0.90,
+        "LShape": 0.65,
+        "UShape": 0.70,
+        "PodiumTower": 0.55,
+        "SteppedTower": 0.45,
+        "MultiBuildingBlock": 0.50,
+    }.get(typology, 0.50)
+    
+    wind_ventilation = round(min(100.0, max(10.0, (open_space_ratio * 65.0) + (1.0 - typo_drag) * 30.0 + (1.0 / max(0.5, street_canyon_hw)) * 10.0)), 1)
+
+    # 3. Solar Radiation Potential (kWh/m2/yr)
+    # Roof solar access + facade exposure minus self-shading
+    base_solar_kwh = 1450.0  # Standard annual solar irradiance
+    roof_solar = (footprint_area * 0.85) * (base_solar_kwh * 0.95)
+    facade_area = 2 * (eff_side_x + eff_side_y) * height_m
+    facade_solar = facade_area * (base_solar_kwh * 0.35 * svf)
+    solar_radiation_kwh = round((roof_solar + facade_solar) / max(1.0, gfa), 1)
+
+    # 4. Air Pollution Dispersion & AQI Score (0 - 100)
+    # Street canyon ventilation clears traffic particulates (PM2.5/NO2); green buffer absorbs
+    green_buffer_score = open_space_ratio * 40.0
+    flushing_score = wind_ventilation * 0.5
+    canyon_penalty = max(0.0, (street_canyon_hw - 1.5) * 15.0)
+    pollution_dispersion = round(min(100.0, max(10.0, green_buffer_score + flushing_score - canyon_penalty + 15.0)), 1)
+
     return {
         "footprint_area": round(footprint_area, 1),
         "bcr": round(bcr, 3),
@@ -121,6 +160,11 @@ def evaluate_phenotype(
         "carbon_kg": carbon_kg,
         "runoff_m3": runoff_m3,
         "daylight_index": daylight_index,
+        "street_canyon_hw": street_canyon_hw,
+        "sky_view_factor": svf,
+        "wind_ventilation": wind_ventilation,
+        "solar_radiation_kwh": solar_radiation_kwh,
+        "pollution_dispersion": pollution_dispersion,
     }
 
 
