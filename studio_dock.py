@@ -178,25 +178,37 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Run algorithm with current layer as input, load results."""
+        """Run algorithm with current layer; load result into map."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
         import processing
+        from qgis.core import QgsProject, QgsVectorLayer
         try:
             layer = self.layer_combo.currentLayer()
             params = {}
             if layer is not None:
                 params["INPUT"] = layer
-            result = processing.runAndLoadResults(alg_id, params)
+            # Fill required OUTPUT sinks with memory:
+            alg = QgsApplication.processingRegistry().algorithmById(alg_id)
+            if alg is not None:
+                for p in alg.parameterDefinitions():
+                    if p.type() == "sink" and p.name() not in params:
+                        params[p.name()] = "memory:"
+            result = processing.run(alg_id, params)
+            # Load result layer(s) into map
             if result:
+                for key, value in result.items():
+                    if isinstance(value, str) and value:
+                        result_layer = QgsVectorLayer(value, f"{alg.displayName()}", "ogr") if value else None
+                        if result_layer and result_layer.isValid():
+                            QgsProject.instance().addMapLayer(result_layer)
                 self.iface.messageBar().pushSuccess(
-                    "Parametric Process", "Algorithm completed — result layer loaded."
+                    "Parametric Process", f"'{alg.displayName()}' completed."
                 )
             else:
                 self.iface.messageBar().pushInfo(
-                    "Parametric Process",
-                    "Use Processing → Toolbox → Urban Analytics to configure parameters."
+                    "Parametric Process", "Algorithm produced no output."
                 )
         except Exception as e:
             self.iface.messageBar().pushInfo(

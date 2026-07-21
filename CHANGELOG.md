@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.6.2] - 2026-07-21
+
+- Fix: auto-fill required sink params with memory: and load result layers into map. Detects sink params from algorithm definition.
+
 ## [1.6.1] - 2026-07-21
 
 - Double-click now runs algorithm with runAndLoadResults using current layer. Removed crash-prone execAlgorithmDialog.
