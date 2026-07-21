@@ -188,7 +188,8 @@ class ParametricProcessStudioDock(QDockWidget):
             dlg = processing.createAlgorithmDialog(alg_id, {})
             if dlg is not None:
                 dlg.setModal(True)
-                dlg.exec_()
+                # PyQt5/6 compat: QDialog.exec_() -> exec() in Qt6
+                getattr(dlg, 'exec', getattr(dlg, 'exec_'))()
                 opened = True
         if opened:
             return

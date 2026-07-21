@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.7.2] - 2026-07-21
+
+- Qt6 compat: getattr-based exec/exec_ dispatch for Processing dialog
+
 ## [1.7.1] - 2026-07-21
 
 - Qt6 enum compatibility: fully scoped QgsProcessing.SourceType, QgsFeatureSink.Flag, QgsProcessingParameterNumber.Type, QgsMapLayerProxyModel.Filter
