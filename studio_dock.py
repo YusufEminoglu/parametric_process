@@ -178,9 +178,13 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Run algorithm with current layer; load result into map."""
+        """Run algorithm with default params, load result into map.
+        For full parameter control, use Processing → Toolbox → Urban Analytics."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
+            return
+        alg = QgsApplication.processingRegistry().algorithmById(alg_id)
+        if alg is None:
             return
         import processing
         from qgis.core import QgsProject, QgsVectorLayer
@@ -189,31 +193,25 @@ class ParametricProcessStudioDock(QDockWidget):
             params = {}
             if layer is not None:
                 params["INPUT"] = layer
-            # Fill required OUTPUT sinks with memory:
-            alg = QgsApplication.processingRegistry().algorithmById(alg_id)
-            if alg is not None:
-                for p in alg.parameterDefinitions():
-                    if p.type() == "sink" and p.name() not in params:
-                        params[p.name()] = "memory:"
+            for p in alg.parameterDefinitions():
+                if p.type() == "sink" and p.name() not in params:
+                    params[p.name()] = "memory:"
             result = processing.run(alg_id, params)
-            # Load result layer(s) into map
             if result:
                 for key, value in result.items():
                     if isinstance(value, str) and value:
-                        result_layer = QgsVectorLayer(value, f"{alg.displayName()}", "ogr") if value else None
-                        if result_layer and result_layer.isValid():
-                            QgsProject.instance().addMapLayer(result_layer)
+                        rl = QgsVectorLayer(value, f"{alg.displayName()}", "ogr")
+                        if rl and rl.isValid():
+                            QgsProject.instance().addMapLayer(rl)
                 self.iface.messageBar().pushSuccess(
-                    "Parametric Process", f"'{alg.displayName()}' completed."
-                )
-            else:
-                self.iface.messageBar().pushInfo(
-                    "Parametric Process", "Algorithm produced no output."
+                    "Parametric Process",
+                    f"'{alg.displayName()}' completed. "
+                    "For parameter control: Processing → Toolbox → Urban Analytics"
                 )
         except Exception as e:
             self.iface.messageBar().pushInfo(
                 "Parametric Process",
-                f"Use Processing → Toolbox → Urban Analytics (direct run unavailable: {e})"
+                f"Use Processing → Toolbox → Urban Analytics ({e})"
             )
 
     # ------------------------------------------------------------------ #

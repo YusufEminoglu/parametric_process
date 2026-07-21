@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.6.3] - 2026-07-21
+
+- Clean: dock double-click runs algorithm with defaults. Processing Toolbox for full parameter control. Crash-free.
+
 ## [1.6.2] - 2026-07-21
 
 - Fix: auto-fill required sink params with memory: and load result layers into map. Detects sink params from algorithm definition.
