@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.6] - 2026-07-21
+
+- Web cockpit: minimal pedestrians/cars, morphology-aware CFD wind, grouped export panel, export chip styling
+
 ## [1.4.5] - 2026-07-21
 
 - Fix: Evolutionary Optimization now runs per input feature (each parcel gets own optimized solutions with its own geometry)

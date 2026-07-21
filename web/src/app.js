@@ -1871,9 +1871,19 @@ function parseGeoJSON(data, options = {}) {
         return false;
     }
 
-    // Generate Animated Traffic on road tracks
+    // Generate Animated Traffic on road tracks (minimal default)
     try {
         generateTrafficCars();
+        // Keep only first 4 cars for minimal default
+        if (trafficCars.length > 4) {
+            for (let i = 4; i < trafficCars.length; i++) {
+                if (trafficCars[i].carMesh) {
+                    scene.remove(trafficCars[i].carMesh);
+                    disposeObject3D(trafficCars[i].carMesh);
+                }
+            }
+            trafficCars = trafficCars.slice(0, 4);
+        }
     } catch (err) {
         console.error("PlanX traffic/intersection generation failed; keeping buildings visible.", err);
         window.planxDebug = { roadCorridors: [], intersections: [], trafficCars: 0, trafficError: String(err) };
@@ -2930,8 +2940,8 @@ function spawnSidewalkPedestrians(item, sidewalkRing) {
         });
     }
 
-    // Spawn 2-3 pedestrians per parcel sidewalk
-    const numPeds = 2 + Math.floor(Math.random() * 2);
+    // Spawn 1 pedestrian per parcel sidewalk (minimal default)
+    const numPeds = 1;
     const clothingColors = [0x3b82f6, 0xef4444, 0xf59e0b, 0x8b5cf6, 0x06b6d4, 0xe11d48, 0x84cc16, 0xf97316];
 
     for (let i = 0; i < numPeds; i++) {
@@ -8230,20 +8240,43 @@ function initCfdParticles() {
         cfdParticlesMesh.material.dispose();
         cfdParticlesMesh = null;
     }
-    const particleCount = 200;
-    const instancedGeom = new THREE.ConeGeometry(0.6, 2.2, 4);
+    const particleCount = 250;
+    const instancedGeom = new THREE.ConeGeometry(0.5, 1.8, 4);
     instancedGeom.rotateX(Math.PI / 2);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7 });
     cfdParticlesMesh = new THREE.InstancedMesh(instancedGeom, mat, particleCount);
+    // Enable per-instance colors for morphology-based coloring
+    cfdParticlesMesh.instanceColor = new THREE.InstancedBufferAttribute(
+        new Float32Array(particleCount * 3), 3
+    );
 
     cfdParticlesData = [];
     for (let i = 0; i < particleCount; i++) {
         const x = (Math.random() - 0.5) * 350;
         const y = 2.0 + Math.random() * 28.0;
         const z = (Math.random() - 0.5) * 350;
-        cfdParticlesData.push({ x, y, z, speed: 0.9 + Math.random() * 1.2 });
+        cfdParticlesData.push({ x, y, z, speed: 0.8 + Math.random() * 1.4, baseSpeed: 0.8 + Math.random() * 1.4 });
     }
     scene.add(cfdParticlesMesh);
+}
+
+function _sampleBuildingDensity(px, pz) {
+    // Check proximity to buildings — returns { nearBuilding, canyonGap, buildingHeight }
+    let minDist = 999;
+    let nearestH = 0;
+    for (const pf of parcelFeatures) {
+        if (!pf.outerRing || pf.outerRing.length < 3) continue;
+        // Simple centroid-based check
+        let cx = 0, cy = 0;
+        for (const pt of pf.outerRing) { cx += pt.x; cy += pt.y; }
+        cx /= pf.outerRing.length; cy /= pf.outerRing.length;
+        const dist = Math.hypot(px - cx, pz + cy);  // pz is negative in world space
+        if (dist < minDist) {
+            minDist = dist;
+            nearestH = (pf.params?.floors || 4) * (pf.params?.floorHeight || 3.0);
+        }
+    }
+    return { dist: minDist, height: nearestH, isCanyon: minDist < 25 && nearestH > 9 };
 }
 
 function updateCfdParticles() {
@@ -8255,8 +8288,27 @@ function updateCfdParticles() {
 
     for (let i = 0; i < cfdParticlesData.length; i++) {
         const p = cfdParticlesData[i];
-        p.x += dirX * p.speed;
-        p.z += dirZ * p.speed;
+        const bld = _sampleBuildingDensity(p.x, p.z);
+
+        // Morphology-aware speed modulation
+        let speedMod = 1.0;
+        if (bld.isCanyon) {
+            speedMod = 1.6;  // Canyon Venturi acceleration
+        } else if (bld.dist < 40) {
+            speedMod = 0.4;  // Wake zone / wind shadow behind buildings
+        }
+        const effectiveSpeed = p.baseSpeed * speedMod;
+        p.speed = effectiveSpeed;
+
+        p.x += dirX * effectiveSpeed;
+        p.z += dirZ * effectiveSpeed;
+
+        // Morphology-aware height: particles rise over buildings
+        if (bld.dist < 20 && p.y < bld.height * 1.2) {
+            p.y += 0.4;  // Flow over building
+        } else if (p.y > 3.0 && bld.dist > 60) {
+            p.y -= 0.15; // Settle back down in open areas
+        }
 
         if (Math.abs(p.x) > 220 || Math.abs(p.z) > 220) {
             p.x = -dirX * 200 + (Math.random() - 0.5) * 80;
@@ -8268,8 +8320,18 @@ function updateCfdParticles() {
         dummy.rotation.y = -windAngle;
         dummy.updateMatrix();
         cfdParticlesMesh.setMatrixAt(i, dummy.matrix);
+
+        // Per-instance color: blue=fast/canyon, cyan=normal, orange=slow/wake
+        if (cfdParticlesMesh.instanceColor) {
+            const t = speedMod > 1.3 ? 0 : speedMod < 0.5 ? 1 : 0.5;
+            const cr = 0.2 + t * 0.7;     // red component
+            const cg = 0.5 + (1 - t) * 0.4; // green
+            const cb = 0.9 - t * 0.6;     // blue
+            cfdParticlesMesh.instanceColor.setXYZ(i, cr, cg, cb);
+        }
     }
     cfdParticlesMesh.instanceMatrix.needsUpdate = true;
+    if (cfdParticlesMesh.instanceColor) cfdParticlesMesh.instanceColor.needsUpdate = true;
 }
 
 // Hook CFD update into main animate loop
