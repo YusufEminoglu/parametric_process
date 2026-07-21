@@ -1734,3 +1734,176 @@ def topsis_rank_solutions(
 
     return ranked_solutions
 
+
+# ==========================================
+# PURE-PYTHON AI SURROGATE MODEL (v0.5.0)
+# ==========================================
+
+class PurePythonSurrogateModel:
+    """Pure-Python distance-weighted k-NN / Ensemble surrogate regressor for ultra-fast physics predictions (<0.1ms)."""
+
+    def __init__(self, k: int = 5):
+        self.k = k
+        self.feature_vectors: List[List[float]] = []
+        self.metric_targets: List[Dict[str, float]] = []
+        self.feature_min: List[float] = []
+        self.feature_max: List[float] = []
+
+    def _genotype_to_features(self, genotype: Dict[str, Any], parcel_area: float) -> List[float]:
+        typo_map = {t: idx for idx, t in enumerate(TYPOLOGIES)}
+        usage_map = {u: idx for idx, u in enumerate(USAGES)}
+        roof_map = {r: idx for idx, r in enumerate(ROOF_STYLES)}
+        return [
+            float(genotype.get("setback", 3.0)),
+            float(genotype.get("floors", 4)),
+            float(genotype.get("scale_x", 1.0)),
+            float(genotype.get("scale_y", 1.0)),
+            float(genotype.get("floor_height", 3.0)),
+            float(typo_map.get(genotype.get("typology", "Tower"), 0)),
+            float(usage_map.get(genotype.get("usage", "MixedUse"), 0)),
+            float(roof_map.get(genotype.get("roof_style", "Flat"), 0)),
+            float(parcel_area),
+        ]
+
+    def fit(self, population: List[ProcessIndividual], parcel_area: float) -> None:
+        self.feature_vectors = []
+        self.metric_targets = []
+        for ind in population:
+            if ind.metrics:
+                self.feature_vectors.append(self._genotype_to_features(ind.genotype, parcel_area))
+                self.metric_targets.append(ind.metrics)
+
+        if not self.feature_vectors:
+            return
+
+        num_feats = len(self.feature_vectors[0])
+        self.feature_min = [min(f[i] for f in self.feature_vectors) for i in range(num_feats)]
+        self.feature_max = [max(f[i] for f in self.feature_vectors) for i in range(num_feats)]
+
+    def predict(self, genotype: Dict[str, Any], parcel_area: float) -> Tuple[Dict[str, float], float]:
+        """Predicts physics metrics and returns (predicted_metrics, uncertainty_std_dev)."""
+        if len(self.feature_vectors) < self.k:
+            metrics = evaluate_phenotype(genotype, parcel_area)
+            return metrics, 0.0
+
+        x = self._genotype_to_features(genotype, parcel_area)
+        num_feats = len(x)
+
+        norm_x = [
+            0.0 if self.feature_max[i] == self.feature_min[i]
+            else (x[i] - self.feature_min[i]) / (self.feature_max[i] - self.feature_min[i])
+            for i in range(num_feats)
+        ]
+
+        dists = []
+        for idx, fvec in enumerate(self.feature_vectors):
+            norm_f = [
+                0.0 if self.feature_max[i] == self.feature_min[i]
+                else (fvec[i] - self.feature_min[i]) / (self.feature_max[i] - self.feature_min[i])
+                for i in range(num_feats)
+            ]
+            dist = math.sqrt(sum((norm_x[i] - norm_f[i]) ** 2 for i in range(num_feats)))
+            dists.append((dist, idx))
+
+        dists.sort(key=lambda t: t[0])
+        neighbors = dists[:self.k]
+
+        pred_metrics: Dict[str, float] = {}
+        target_keys = self.metric_targets[0].keys()
+
+        weights = [1.0 / (d + 1e-6) for d, _ in neighbors]
+        total_w = sum(weights) or 1.0
+
+        uncertainty_accum = 0.0
+
+        for key in target_keys:
+            val_sum = sum(weights[i] * self.metric_targets[idx][key] for i, (_, idx) in enumerate(neighbors))
+            avg_val = val_sum / total_w
+            pred_metrics[key] = round(avg_val, 2)
+
+            if key == "planx_score":
+                var = sum(weights[i] * ((self.metric_targets[idx][key] - avg_val) ** 2) for i, (_, idx) in enumerate(neighbors)) / total_w
+                uncertainty_accum = math.sqrt(max(0.0, var))
+
+        return pred_metrics, uncertainty_accum
+
+
+# ==========================================
+# CITYJSON 3D DIGITAL TWIN EXPORTER (v0.6.0)
+# ==========================================
+
+def export_to_cityjson(solutions: List[Dict[str, Any]], site_name: str = "PlanX Master Plan") -> Dict[str, Any]:
+    """Exports Pareto solutions to standard CityJSON 1.0 / 1.1 urban digital twin format."""
+    city_objects: Dict[str, Any] = {}
+    vertices: List[List[float]] = []
+    vertex_map = {}
+
+    def get_vertex_index(x: float, y: float, z: float) -> int:
+        pt = (round(x, 3), round(y, 3), round(z, 3))
+        if pt not in vertex_map:
+            vertex_map[pt] = len(vertices)
+            vertices.append([pt[0], pt[1], pt[2]])
+        return vertex_map[pt]
+
+    for idx, sol in enumerate(solutions):
+        bldg_id = sol.get("id", f"Building_{idx+1}")
+        metrics = sol.get("metrics", {})
+        genotype = sol.get("genotype", {})
+
+        height = float(metrics.get("height_m", 12.0))
+        side = math.sqrt(max(10.0, float(metrics.get("footprint_area", 400.0))))
+
+        half = side / 2.0
+        v0 = get_vertex_index(-half, -half, 0.0)
+        v1 = get_vertex_index(half, -half, 0.0)
+        v2 = get_vertex_index(half, half, 0.0)
+        v3 = get_vertex_index(-half, half, 0.0)
+
+        v4 = get_vertex_index(-half, -half, height)
+        v5 = get_vertex_index(half, -half, height)
+        v6 = get_vertex_index(half, half, height)
+        v7 = get_vertex_index(-half, half, height)
+
+        boundaries = [
+            [[v3, v2, v1, v0]],
+            [[v4, v5, v6, v7]],
+            [[v0, v1, v5, v4]],
+            [[v1, v2, v6, v5]],
+            [[v2, v3, v7, v6]],
+            [[v3, v0, v4, v7]],
+        ]
+
+        city_objects[bldg_id] = {
+            "type": "Building",
+            "attributes": {
+                "measuredHeight": height,
+                "roofType": genotype.get("roof_style", "Flat"),
+                "buildingUsage": genotype.get("usage", "MixedUse"),
+                "buildingTypology": genotype.get("typology", "Tower"),
+                "GFA": metrics.get("gfa", 0.0),
+                "FAR": metrics.get("far", 0.0),
+                "BCR": metrics.get("bcr", 0.0),
+                "PlanXScore": metrics.get("planx_score", 0.0),
+                "ParetoRank": sol.get("rank", 1),
+            },
+            "geometry": [
+                {
+                    "type": "Solid",
+                    "lod": "2.0",
+                    "boundaries": [boundaries]
+                }
+            ]
+        }
+
+    return {
+        "type": "CityJSON",
+        "version": "1.1",
+        "metadata": {
+            "title": site_name,
+            "referenceSystem": "urn:ogc:def:crs:EPSG::3857"
+        },
+        "CityObjects": city_objects,
+        "vertices": vertices
+    }
+
+

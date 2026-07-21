@@ -316,6 +316,24 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response_data).encode('utf-8'))
             return
 
+        if url == "/api/export/cityjson":
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                from .nsga2_engine import export_to_cityjson
+                solutions = data.get("solutions", [])
+                cityjson_obj = export_to_cityjson(solutions)
+                response_data = {"status": "ok", "cityjson": cityjson_obj}
+            except Exception as e:
+                response_data = {"status": "error", "message": str(e)}
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            return
+
         if url == "/api/optimize":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')

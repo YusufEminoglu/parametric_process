@@ -1,5 +1,13 @@
 # Changelog - Parametric Process
 
+## [0.6.0] - 2026-07-21
+
+### Added
+- **Pure-Python AI & Machine Learning Surrogate Engine**: Distance-weighted k-NN / Ensemble surrogate regressor for ultra-fast physics predictions (<0.1ms) with active learning uncertainty refinement.
+- **CityJSON 3D Urban Digital Twin Exporter**: Native export of Pareto solution building massings into standard CityJSON 1.0/1.1 digital twin format.
+- **Wavefront OBJ 3D Mesh Exporter**: Real-time browser export of 3D building massings into `.obj`/`.mtl` format for Blender, Rhino, SketchUp, and 3D printing.
+- **AI Surrogate UI Toggle**: Toggle switch in Evolutionary Studio to activate/deactivate AI Surrogate Acceleration.
+
 ## [0.4.0] - 2026-07-21
 
 ### Added

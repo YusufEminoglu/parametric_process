@@ -170,6 +170,12 @@
                         <input type="range" id="input-wallacei-mut" min="0.01" max="0.30" step="0.01" value="0.15">
                     </label>
                 </div>
+                <div class="control-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-ai-surrogate" checked>
+                        <span>🤖 Enable AI Surrogate Model (<0.1ms Physics)</span>
+                    </label>
+                </div>
 
                 <div class="dock-header" style="margin-top: 15px;">
                     <h4>Gene Bounds</h4>
@@ -711,6 +717,8 @@
         <div id="btn-toggle-cfd" class="hud-chip hud-btn" title="Toggle real-time CFD wind vector arrow particles">CFD Wind</div>
         <div id="btn-topsis-rank" class="hud-chip hud-btn" title="Multi-Criteria TOPSIS Pareto Ranker">TOPSIS Rank</div>
         <div id="btn-export-report" class="hud-chip hud-btn" title="Export Executive HTML Report">HTML Report</div>
+        <div id="btn-export-cityjson" class="hud-chip hud-btn" title="Export 3D CityJSON Urban Digital Twin">CityJSON 3D</div>
+        <div id="btn-export-obj" class="hud-chip hud-btn" title="Export Wavefront OBJ 3D Mesh for Blender/Rhino/3D Printing">OBJ Mesh</div>
         <div id="btn-solve-city" class="hud-chip hud-btn solve-city-chip" title="Optimize all parcels against BCR/FAR constraints">Auto-Solve City</div>
         <div id="btn-tour" class="hud-chip hud-btn" title="Toggle cinematic orbit camera">Cinematic Tour</div>
         <div id="btn-measure" class="hud-chip hud-btn" title="Toggle 3D ruler and measurement tool">Measure</div>

@@ -8372,3 +8372,133 @@ if (btnExportReport) {
     btnExportReport.addEventListener('click', exportExecutiveHtmlReport);
 }
 
+// ==========================================
+// 3D SPATIAL & MESH EXPORTER ENGINE (v0.6.0)
+// ==========================================
+
+function exportWavefrontObj() {
+    let objOutput = "# Wavefront OBJ File exported by PlanX Parametric Process Studio v0.6.0\n# Material Library: none\n\n";
+    let vertexOffset = 1;
+    let bldgCount = 0;
+
+    scene.traverse(child => {
+        if (child.isMesh && child.geometry && child.visible) {
+            if (child.userData && child.userData.parcelItem) {
+                bldgCount++;
+                const geom = child.geometry;
+                const posAttr = geom.getAttribute('position');
+                const indexAttr = geom.getIndex();
+
+                if (!posAttr) return;
+
+                objOutput += `o Building_${bldgCount}\n`;
+
+                const matrixWorld = child.matrixWorld;
+                const vertexMap = [];
+
+                for (let i = 0; i < posAttr.count; i++) {
+                    const vec = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                    vec.applyMatrix4(matrixWorld);
+                    objOutput += `v ${vec.x.toFixed(4)} ${vec.y.toFixed(4)} ${vec.z.toFixed(4)}\n`;
+                    vertexMap.push(vertexOffset + i);
+                }
+
+                if (indexAttr) {
+                    for (let i = 0; i < indexAttr.count; i += 3) {
+                        const a = vertexMap[indexAttr.getX(i)];
+                        const b = vertexMap[indexAttr.getY(i)];
+                        const c = vertexMap[indexAttr.getZ(i)];
+                        objOutput += `f ${a} ${b} ${c}\n`;
+                    }
+                } else {
+                    for (let i = 0; i < posAttr.count; i += 3) {
+                        const a = vertexMap[i];
+                        const b = vertexMap[i + 1];
+                        const c = vertexMap[i + 2];
+                        objOutput += `f ${a} ${b} ${c}\n`;
+                    }
+                }
+
+                vertexOffset += posAttr.count;
+                objOutput += "\n";
+            }
+        }
+    });
+
+    if (bldgCount === 0) {
+        showToast("No building massings found in viewport to export.", "warning");
+        return;
+    }
+
+    const blob = new Blob([objOutput], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'PlanX_Building_Massings.obj';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${bldgCount} building massings to Wavefront OBJ mesh!`, "success");
+}
+
+async function exportCityJson() {
+    const sols = (wallaceiResult && wallaceiResult.pareto_solutions) ? wallaceiResult.pareto_solutions : [];
+    
+    let payloadSols = sols;
+    if (!payloadSols.length) {
+        payloadSols = parcelFeatures.map((item) => ({
+            id: `Building_${item.fid}`,
+            rank: 1,
+            genotype: {
+                typology: item.params.typology,
+                usage: item.params.usage,
+                roof_style: item.params.roofStyle,
+                floors: item.params.floors
+            },
+            metrics: {
+                height_m: item.params.floors * item.params.floorHeight,
+                footprint_area: item.area * 0.45,
+                gfa: item.area * 0.45 * item.params.floors,
+                far: (item.area * 0.45 * item.params.floors) / Math.max(1, item.area),
+                bcr: 0.45,
+                planx_score: 85.0
+            }
+        }));
+    }
+
+    try {
+        const resp = await fetch('/api/export/cityjson', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ solutions: payloadSols })
+        });
+        const data = await resp.json();
+
+        if (data.status === 'ok' && data.cityjson) {
+            const jsonStr = JSON.stringify(data.cityjson, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'PlanX_MasterPlan_DigitalTwin.city.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Exported 3D CityJSON Urban Digital Twin model successfully!", "success");
+        } else {
+            showToast("CityJSON export error: " + (data.message || "Unknown error"), "error");
+        }
+    } catch (err) {
+        showToast("CityJSON network error: " + err.message, "error");
+    }
+}
+
+const btnExportObj = document.getElementById('btn-export-obj');
+if (btnExportObj) {
+    btnExportObj.addEventListener('click', exportWavefrontObj);
+}
+
+const btnExportCityJson = document.getElementById('btn-export-cityjson');
+if (btnExportCityJson) {
+    btnExportCityJson.addEventListener('click', exportCityJson);
+}
+
+
