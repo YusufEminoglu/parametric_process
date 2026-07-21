@@ -8485,6 +8485,19 @@ let isPovActive = false;
 let savedCameraPos = null;
 let savedTargetPos = null;
 
+function getParcelCentroid(item) {
+    if (!item) return { x: 0, y: 0 };
+    if (item.outerRing && item.outerRing.length > 0) {
+        let cx = 0, cy = 0;
+        item.outerRing.forEach(pt => { cx += pt.x; cy += pt.y; });
+        return { x: cx / item.outerRing.length, y: cy / item.outerRing.length };
+    }
+    if (item.buildingMesh && item.buildingMesh.position) {
+        return { x: item.buildingMesh.position.x, y: -item.buildingMesh.position.z };
+    }
+    return { x: 0, y: 0 };
+}
+
 const btnTogglePov = document.getElementById('btn-toggle-pov');
 if (btnTogglePov) {
     btnTogglePov.addEventListener('click', () => {
@@ -8495,9 +8508,12 @@ if (btnTogglePov) {
             savedCameraPos = camera.position.clone();
             savedTargetPos = controls.target.clone();
             
-            const targetCenter = selectedParcel ? selectedParcel.center : { x: 0, y: 0 };
-            camera.position.set(targetCenter.x - 12.0, 1.85, targetCenter.y - 12.0); // 1.85m human height
-            controls.target.set(targetCenter.x, 1.85, targetCenter.y);
+            const targetCenter = getParcelCentroid(selectedParcel);
+            const cx = (targetCenter && typeof targetCenter.x === 'number') ? targetCenter.x : 0;
+            const cy = (targetCenter && typeof targetCenter.y === 'number') ? targetCenter.y : 0;
+
+            camera.position.set(cx - 12.0, 1.85, cy - 12.0); // 1.85m human height
+            controls.target.set(cx, 1.85, cy);
             camera.fov = 65; // realistic human eye FOV
             camera.updateProjectionMatrix();
             controls.update();

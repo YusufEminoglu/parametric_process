@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.8] - 2026-07-22
+
+- Parametric Process Studio v1.9.8 Release: Fix targetCenter centroid calculation in 1.85m Human POV camera handler
+
 ## [1.9.7] - 2026-07-22
 
 - Parametric Process Studio v1.9.7 Release: Sky View Factor (SVF) visualizer, 1.85m human eye-level POV camera, UHI & vegetation canopy cooling simulation, and streamlined aerodynamic wind flows
