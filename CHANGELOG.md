@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.3] - 2026-07-22
+
+- Parametric Process Studio v1.9.3 Release: Classy mechanical architectural studio icon, soft warm classy studio web palette, 7-stop high-divergence heatmaps, and Qt6 graphics fixes
+
 ## [1.9.2] - 2026-07-22
 
 - Parametric Process Studio v1.9.2 Release: High-resolution 3D parametric glassmorphic icon, 7-stop high-divergence spectral heatmaps, microclimate heat & CFD wind simulation, and Qt6 graphics fixes
