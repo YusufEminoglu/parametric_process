@@ -539,42 +539,44 @@ function setupInputListeners() {
         selectedParcel.modified = true;
 
         // Read slider values
-        selectedParcel.params.setback = parseFloat(inSetback.value);
-        selectedParcel.params.floors = parseInt(inFloors.value);
-        selectedParcel.params.floorHeight = parseFloat(inFloorHeight.value);
-        selectedParcel.params.scaleX = parseFloat(inScaleX.value);
-        selectedParcel.params.scaleY = parseFloat(inScaleY.value);
-        selectedParcel.params.typology = inTypology.value;
-        selectedParcel.params.usage = inUsage.value;
-        selectedParcel.params.roofStyle = inRoofStyle.value;
+        if (inSetback) selectedParcel.params.setback = parseFloat(inSetback.value);
+        if (inFloors) selectedParcel.params.floors = parseInt(inFloors.value);
+        if (inFloorHeight) selectedParcel.params.floorHeight = parseFloat(inFloorHeight.value);
+        if (inScaleX) selectedParcel.params.scaleX = parseFloat(inScaleX.value);
+        if (inScaleY) selectedParcel.params.scaleY = parseFloat(inScaleY.value);
+        if (inTypology) selectedParcel.params.typology = inTypology.value;
+        if (inUsage) selectedParcel.params.usage = inUsage.value;
+        if (inRoofStyle) selectedParcel.params.roofStyle = inRoofStyle.value;
         
-        selectedParcel.params.stepbackInterval = parseInt(inStepbackInterval.value);
-        selectedParcel.params.stepbackDepth = parseFloat(inStepbackDepth.value);
+        if (inStepbackInterval) selectedParcel.params.stepbackInterval = parseInt(inStepbackInterval.value);
+        if (inStepbackDepth) selectedParcel.params.stepbackDepth = parseFloat(inStepbackDepth.value);
 
         // Zoning limits
-        selectedParcel.params.maxBcr = parseFloat(inMaxBcr.value);
-        selectedParcel.params.maxFar = parseFloat(inMaxFar.value);
-        selectedParcel.params.maxHeight = parseFloat(inMaxHeight.value);
+        if (inMaxBcr) selectedParcel.params.maxBcr = parseFloat(inMaxBcr.value);
+        if (inMaxFar) selectedParcel.params.maxFar = parseFloat(inMaxFar.value);
+        if (inMaxHeight) selectedParcel.params.maxHeight = parseFloat(inMaxHeight.value);
         selectedParcel.params = sanitizeParcelParams(selectedParcel.params, selectedParcel.area, selectedParcel.outerRing);
 
         // Update labels
-        lblSetback.textContent = selectedParcel.params.setback.toFixed(1);
-        lblFloors.textContent = selectedParcel.params.floors;
-        lblFloorHeight.textContent = selectedParcel.params.floorHeight.toFixed(1);
-        lblScaleX.textContent = selectedParcel.params.scaleX.toFixed(2);
-        lblScaleY.textContent = selectedParcel.params.scaleY.toFixed(2);
-        lblMaxBcr.textContent = selectedParcel.params.maxBcr.toFixed(2);
-        lblMaxFar.textContent = selectedParcel.params.maxFar.toFixed(1);
-        lblMaxHeight.textContent = selectedParcel.params.maxHeight.toFixed(1);
+        if (lblSetback) lblSetback.textContent = selectedParcel.params.setback.toFixed(1);
+        if (lblFloors) lblFloors.textContent = selectedParcel.params.floors;
+        if (lblFloorHeight) lblFloorHeight.textContent = selectedParcel.params.floorHeight.toFixed(1);
+        if (lblScaleX && selectedParcel.params.scaleX != null) lblScaleX.textContent = selectedParcel.params.scaleX.toFixed(2);
+        if (lblScaleY && selectedParcel.params.scaleY != null) lblScaleY.textContent = selectedParcel.params.scaleY.toFixed(2);
+        if (lblMaxBcr && selectedParcel.params.maxBcr != null) lblMaxBcr.textContent = selectedParcel.params.maxBcr.toFixed(2);
+        if (lblMaxFar && selectedParcel.params.maxFar != null) lblMaxFar.textContent = selectedParcel.params.maxFar.toFixed(1);
+        if (lblMaxHeight && selectedParcel.params.maxHeight != null) lblMaxHeight.textContent = selectedParcel.params.maxHeight.toFixed(1);
         
-        lblStepbackInterval.textContent = selectedParcel.params.stepbackInterval;
-        lblStepbackDepth.textContent = selectedParcel.params.stepbackDepth.toFixed(1);
+        if (lblStepbackInterval && selectedParcel.params.stepbackInterval != null) lblStepbackInterval.textContent = selectedParcel.params.stepbackInterval;
+        if (lblStepbackDepth && selectedParcel.params.stepbackDepth != null) lblStepbackDepth.textContent = selectedParcel.params.stepbackDepth.toFixed(1);
 
         // Show/hide stepped tower controls
-        if (selectedParcel.params.typology === 'SteppedTower') {
-            steppedTowerControlsEl.classList.remove('hidden');
-        } else {
-            steppedTowerControlsEl.classList.add('hidden');
+        if (steppedTowerControlsEl) {
+            if (selectedParcel.params.typology === 'SteppedTower') {
+                steppedTowerControlsEl.classList.remove('hidden');
+            } else {
+                steppedTowerControlsEl.classList.add('hidden');
+            }
         }
 
         // Rebuild meshes
@@ -4361,45 +4363,47 @@ function selectParcel(item) {
     setBuildingHighlight(item.buildingMesh, true);
 
     // Populate sliders
-    inSetback.value = item.params.setback;
-    inFloors.value = item.params.floors;
-    inFloorHeight.value = item.params.floorHeight;
+    if (inSetback) inSetback.value = item.params.setback;
+    if (inFloors) inFloors.value = item.params.floors;
+    if (inFloorHeight) inFloorHeight.value = item.params.floorHeight;
     if (inScaleX) inScaleX.value = item.params.scaleX || 1.0;
     if (inScaleY) inScaleY.value = item.params.scaleY || 1.0;
-    inTypology.value = item.params.typology;
-    inUsage.value = item.params.usage;
-    inRoofStyle.value = roofStyleForItem(item);
+    if (inTypology) inTypology.value = item.params.typology;
+    if (inUsage) inUsage.value = item.params.usage;
+    if (inRoofStyle) inRoofStyle.value = roofStyleForItem(item);
     
-    inStepbackInterval.value = item.params.stepbackInterval || 4;
-    inStepbackDepth.value = item.params.stepbackDepth || 1.5;
+    if (inStepbackInterval) inStepbackInterval.value = item.params.stepbackInterval || 4;
+    if (inStepbackDepth) inStepbackDepth.value = item.params.stepbackDepth || 1.5;
     
     // Zoning sliders
-    inMaxBcr.value = item.params.maxBcr;
-    inMaxFar.value = item.params.maxFar;
-    inMaxHeight.value = item.params.maxHeight;
+    if (inMaxBcr) inMaxBcr.value = item.params.maxBcr;
+    if (inMaxFar) inMaxFar.value = item.params.maxFar;
+    if (inMaxHeight) inMaxHeight.value = item.params.maxHeight;
 
     // Populate labels
-    lblSetback.textContent = item.params.setback.toFixed(1);
-    lblFloors.textContent = item.params.floors;
-    lblFloorHeight.textContent = item.params.floorHeight.toFixed(1);
+    if (lblSetback) lblSetback.textContent = item.params.setback.toFixed(1);
+    if (lblFloors) lblFloors.textContent = item.params.floors;
+    if (lblFloorHeight) lblFloorHeight.textContent = item.params.floorHeight.toFixed(1);
     if (lblScaleX) lblScaleX.textContent = (item.params.scaleX || 1.0).toFixed(2);
     if (lblScaleY) lblScaleY.textContent = (item.params.scaleY || 1.0).toFixed(2);
-    lblMaxBcr.textContent = item.params.maxBcr.toFixed(2);
-    lblMaxFar.textContent = item.params.maxFar.toFixed(1);
-    lblMaxHeight.textContent = item.params.maxHeight.toFixed(1);
+    if (lblMaxBcr) lblMaxBcr.textContent = item.params.maxBcr.toFixed(2);
+    if (lblMaxFar) lblMaxFar.textContent = item.params.maxFar.toFixed(1);
+    if (lblMaxHeight) lblMaxHeight.textContent = item.params.maxHeight.toFixed(1);
     
-    lblStepbackInterval.textContent = item.params.stepbackInterval || 4;
-    lblStepbackDepth.textContent = (item.params.stepbackDepth || 1.5).toFixed(1);
+    if (lblStepbackInterval) lblStepbackInterval.textContent = item.params.stepbackInterval || 4;
+    if (lblStepbackDepth) lblStepbackDepth.textContent = (item.params.stepbackDepth || 1.5).toFixed(1);
 
     // Show/hide stepped tower controls
-    if (item.params.typology === 'SteppedTower') {
-        steppedTowerControlsEl.classList.remove('hidden');
-    } else {
-        steppedTowerControlsEl.classList.add('hidden');
+    if (steppedTowerControlsEl) {
+        if (item.params.typology === 'SteppedTower') {
+            steppedTowerControlsEl.classList.remove('hidden');
+        } else {
+            steppedTowerControlsEl.classList.add('hidden');
+        }
     }
 
-    metFid.textContent = item.fid;
-    metArea.textContent = Math.round(item.area).toLocaleString() + " sq m";
+    if (metFid) metFid.textContent = item.fid;
+    if (metArea) metArea.textContent = Math.round(item.area).toLocaleString() + " sq m";
 
     placeholderEl.classList.add('hidden');
     controlsEl.classList.remove('hidden');
@@ -4669,27 +4673,38 @@ function updateDashboard(item) {
     const maxBcr = Math.max(0.01, item.params.maxBcr || 0.45);
     const maxFar = Math.max(0.01, item.params.maxFar || 2.5);
 
-    metFootprint.textContent = Math.round(metrics.footprintArea).toLocaleString() + " sq m";
-    metGfa.textContent = Math.round(metrics.gfa).toLocaleString() + " sq m";
-    metHeight.textContent = metrics.usage === 'Park' ? "0.0 m" : metrics.height.toFixed(1) + " m";
+    if (metFootprint) metFootprint.textContent = Math.round(metrics.footprintArea).toLocaleString() + " sq m";
+    if (metGfa) metGfa.textContent = Math.round(metrics.gfa).toLocaleString() + " sq m";
+    if (metHeight) {
+        metHeight.textContent = metrics.usage === 'Park' ? "0.0 m" : metrics.height.toFixed(1) + " m";
+        metHeight.style.color = metrics.height > item.params.maxHeight && metrics.usage !== 'Park' ? "#ef4444" : "#10b981";
+    }
     if (metZRange) metZRange.textContent = metrics.usage === 'Park' ? "0.0 - 0.0 m" : `0.0 - ${metrics.height.toFixed(1)} m`;
 
-    metBcrLabel.textContent = `${metrics.bcr.toFixed(2)} / ${maxBcr.toFixed(2)}`;
-    metFarLabel.textContent = `${metrics.far.toFixed(2)} / ${maxFar.toFixed(2)}`;
+    if (metBcrLabel) {
+        metBcrLabel.textContent = `${metrics.bcr.toFixed(2)} / ${maxBcr.toFixed(2)}`;
+        metBcrLabel.style.color = metrics.bcr > maxBcr ? "#ef4444" : "#10b981";
+    }
+    if (metFarLabel) {
+        metFarLabel.textContent = `${metrics.far.toFixed(2)} / ${maxFar.toFixed(2)}`;
+        metFarLabel.style.color = metrics.far > maxFar ? "#ef4444" : "#10b981";
+    }
 
     const bcrPercent = Math.min(100, (metrics.bcr / maxBcr) * 100);
     const farPercent = Math.min(100, (metrics.far / maxFar) * 100);
-    bcrFillEl.style.width = `${bcrPercent}%`;
-    farFillEl.style.width = `${farPercent}%`;
+    if (bcrFillEl) {
+        bcrFillEl.style.width = `${bcrPercent}%`;
+        bcrFillEl.className = `gauge-bar-fill ${metrics.bcr > maxBcr ? "red-bar" : "green-bar"}`;
+    }
+    if (farFillEl) {
+        farFillEl.style.width = `${farPercent}%`;
+        farFillEl.className = `gauge-bar-fill ${metrics.far > maxFar ? "red-bar" : "green-bar"}`;
+    }
 
-    bcrFillEl.className = `gauge-bar-fill ${metrics.bcr > maxBcr ? "red-bar" : "green-bar"}`;
-    farFillEl.className = `gauge-bar-fill ${metrics.far > maxFar ? "red-bar" : "green-bar"}`;
-    metBcrLabel.style.color = metrics.bcr > maxBcr ? "#ef4444" : "#10b981";
-    metFarLabel.style.color = metrics.far > maxFar ? "#ef4444" : "#10b981";
-    metHeight.style.color = metrics.height > item.params.maxHeight && metrics.usage !== 'Park' ? "#ef4444" : "#10b981";
-
-    metStatus.textContent = metrics.status;
-    metStatus.className = "stat-val status-badge " + (metrics.violated ? "violation" : "compliant");
+    if (metStatus) {
+        metStatus.textContent = metrics.status;
+        metStatus.className = "stat-val status-badge " + (metrics.violated ? "violation" : "compliant");
+    }
 
     if (metPlanScore) {
         metPlanScore.textContent = `${metrics.planScore}/100`;
