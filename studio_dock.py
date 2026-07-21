@@ -181,16 +181,21 @@ class ParametricProcessStudioDock(QDockWidget):
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
-        # Defer to avoid Qt crash when opening modal dialog from double-click handler
+        # Defer execution so the double-click event completes before
+        # the modal Processing dialog opens (prevents Windows access violation).
         from qgis.PyQt.QtCore import QTimer
-        QTimer.singleShot(0, lambda: self._open_algorithm(alg_id))
+        QTimer.singleShot(50, lambda: self._open_algorithm(alg_id))
 
     def _open_algorithm(self, alg_id: str):
+        import processing
         try:
-            import processing
-            processing.execAlgorithmDialog(alg_id, {})
-        except Exception as exc:
-            self.iface.messageBar().pushWarning("Parametric Process", f"Could not open tool: {exc}")
+            dlg = processing.createAlgorithmDialog(alg_id, {})
+        except AttributeError:
+            # QGIS < 3.40 fallback
+            processing.execAlgorithmDialog(alg_id, {}) if alg_id else None
+            return
+        if dlg is not None:
+            dlg.show()
 
     # ------------------------------------------------------------------ #
     # Cockpit server

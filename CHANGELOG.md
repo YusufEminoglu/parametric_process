@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.2] - 2026-07-21
+
+- Fix: use createAlgorithmDialog+show() instead of execAlgorithmDialog to prevent modal dialog crash from dock tree double-click
+
 ## [1.5.1] - 2026-07-21
 
 - Fix: defer Processing dialog open via QTimer to prevent Qt access-violation crash on double-click
