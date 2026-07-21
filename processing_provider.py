@@ -24,9 +24,11 @@ class ParametricProcessProvider(QgsProcessingProvider):
             UrbanMorphologyAnalyticsAlgorithm,
             ProceduralShapeGrammarAlgorithm,
             MultiParcelDistrictCouplingAlgorithm,
+            PpudPipelineAlgorithm,
         )
         self.addAlgorithm(ParametricOptimizationAlgorithm())
         self.addAlgorithm(UrbanPhysicsEvaluatorAlgorithm())
         self.addAlgorithm(UrbanMorphologyAnalyticsAlgorithm())
         self.addAlgorithm(ProceduralShapeGrammarAlgorithm())
         self.addAlgorithm(MultiParcelDistrictCouplingAlgorithm())
+        self.addAlgorithm(PpudPipelineAlgorithm())

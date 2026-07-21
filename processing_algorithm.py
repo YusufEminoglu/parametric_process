@@ -544,3 +544,212 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
             feedback.setProgress(int(((i + 1) / total) * 100))
 
         return {'OUTPUT': dest_id}
+
+
+class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
+    """PPUD Sequential Pipeline: Plot Layout → Building Config → Incremental Fabric."""
+
+    def name(self):
+        return 'ppud_pipeline'
+
+    def displayName(self):
+        return '6. PPUD Sequential Pipeline (Plot→Building→Fabric)'
+
+    def group(self):
+        return 'Urban Analytics'
+
+    def groupId(self):
+        return 'urban_analytics'
+
+    def createInstance(self):
+        return PpudPipelineAlgorithm()
+
+    def initAlgorithm(self, config=None):
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                'INPUT', 'Input Block Polygon Layer', types=[QgsProcessing.TypeVectorPolygon]
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                'BLOCK_TYPOLOGY', 'Block Typology',
+                options=['PerimeterBlock', 'LinearBlock', 'PavilionBlock', 'OrganicBlock', 'HybridBlock'],
+                defaultValue=0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                'STRATEGY', 'Subdivision Strategy',
+                options=['frontage', 'grid', 'perimeter', 'organic', 'radial', 'hybrid'],
+                defaultValue=2
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Double, 0.45
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Double, 2.0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'MAX_HEIGHT', 'Max Height (m)', QgsProcessingParameterNumber.Double, 18.0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'INCREMENTAL_STEPS', 'Incremental Development Steps',
+                QgsProcessingParameterNumber.Integer, 5
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                'CLIMATE_FEEDBACK', 'Climate Feedback',
+                options=['Enabled', 'Disabled'], defaultValue=0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink('OUTPUT_PLOTS', 'PPUD Subdivided Plots Layer')
+        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink('OUTPUT_FBC', 'Form-Based Code Diagram Layer')
+        )
+
+    def processAlgorithm(self, parameters, context, feedback):
+        source = self.parameterAsSource(parameters, 'INPUT', context)
+        block_typology_idx = self.parameterAsEnum(parameters, 'BLOCK_TYPOLOGY', context)
+        strategy_idx = self.parameterAsEnum(parameters, 'STRATEGY', context)
+        max_bcr = self.parameterAsDouble(parameters, 'MAX_BCR', context)
+        max_far = self.parameterAsDouble(parameters, 'MAX_FAR', context)
+        max_height = self.parameterAsDouble(parameters, 'MAX_HEIGHT', context)
+        incremental_steps = self.parameterAsInt(parameters, 'INCREMENTAL_STEPS', context)
+        climate_feedback = self.parameterAsEnum(parameters, 'CLIMATE_FEEDBACK', context) == 0
+
+        block_typologies_list = ['PerimeterBlock', 'LinearBlock', 'PavilionBlock', 'OrganicBlock', 'HybridBlock']
+        strategies_list = ['frontage', 'grid', 'perimeter', 'organic', 'radial', 'hybrid']
+        block_typology_name = block_typologies_list[block_typology_idx]
+        strategy = strategies_list[strategy_idx]
+
+        from .ppud_pipeline import PpudPipeline
+
+        features = list(source.getFeatures()) if source else []
+        if not features:
+            return {'OUTPUT_PLOTS': None, 'OUTPUT_FBC': None}
+
+        plot_fields = QgsFields()
+        plot_fields.append(QgsField('plot_id', QVariant.Int))
+        plot_fields.append(QgsField('block_id', QVariant.String))
+        plot_fields.append(QgsField('area_m2', QVariant.Double))
+        plot_fields.append(QgsField('typology', QVariant.String))
+        plot_fields.append(QgsField('usage', QVariant.String))
+        plot_fields.append(QgsField('floors', QVariant.Int))
+        plot_fields.append(QgsField('height_m', QVariant.Double))
+        plot_fields.append(QgsField('setback', QVariant.Double))
+        plot_fields.append(QgsField('gfa', QVariant.Double))
+        plot_fields.append(QgsField('far', QVariant.Double))
+        plot_fields.append(QgsField('bcr', QVariant.Double))
+        plot_fields.append(QgsField('planx_score', QVariant.Double))
+        plot_fields.append(QgsField('carbon_kg', QVariant.Double))
+        plot_fields.append(QgsField('fabric_step', QVariant.Int))
+
+        (sink_plots, dest_plots) = self.parameterAsSink(
+            parameters, 'OUTPUT_PLOTS', context, plot_fields,
+            source.wkbType(), source.sourceCrs()
+        )
+
+        fbc_fields = QgsFields()
+        fbc_fields.append(QgsField('plot_id', QVariant.Int))
+        fbc_fields.append(QgsField('build_to_line', QVariant.Int))
+        fbc_fields.append(QgsField('max_floors', QVariant.Int))
+        fbc_fields.append(QgsField('max_height_m', QVariant.Double))
+        fbc_fields.append(QgsField('setback_m', QVariant.Double))
+        fbc_fields.append(QgsField('block_type', QVariant.String))
+
+        (sink_fbc, dest_fbc) = self.parameterAsSink(
+            parameters, 'OUTPUT_FBC', context, fbc_fields,
+            source.wkbType(), source.sourceCrs()
+        )
+
+        pipeline = PpudPipeline()
+        total_blocks = len(features)
+
+        for b_idx, feature in enumerate(features):
+            if feedback.isCanceled():
+                break
+
+            geom = feature.geometry()
+            if not geom or geom.isEmpty():
+                continue
+
+            ring = []
+            polygon_pts = (
+                geom.asMultiPolygon()[0]
+                if geom.isMultipart() and geom.asMultiPolygon()
+                else geom.asPolygon()
+            )
+            if polygon_pts and len(polygon_pts[0]) >= 3:
+                ring = [{'x': pt.x(), 'y': pt.y()} for pt in polygon_pts[0]]
+
+            if not ring:
+                continue
+
+            result = pipeline.run_full_pipeline(ring, {
+                "strategy": strategy,
+                "block_typology": block_typology_name,
+                "max_bcr": max_bcr,
+                "max_far": max_far,
+                "max_height": max_height,
+                "incremental_steps": incremental_steps,
+                "climate_feedback": climate_feedback,
+                "parent_block_id": str(feature.id()) if feature.id() else f"block_{b_idx+1}",
+            })
+
+            configured = result.get("stage2_configured", [])
+            fabric_history = result.get("stage3_fabric", {}).get("fabric_history", [])
+
+            plot_dev_step = {}
+            for step_data in fabric_history:
+                for pid in step_data.get("developed_plot_ids", []):
+                    if pid not in plot_dev_step:
+                        plot_dev_step[pid] = step_data["step"]
+
+            for cp in configured:
+                g = cp.get("genotype", {})
+                m = cp.get("metrics", {})
+
+                new_f = QgsFeature(plot_fields)
+                new_f.setGeometry(geom)
+
+                new_f.setAttribute('plot_id', int(cp.get('plot_id', 0)))
+                new_f.setAttribute('block_id', cp.get('parent_block', ''))
+                new_f.setAttribute('area_m2', float(cp.get('area_m2', 0)))
+                new_f.setAttribute('typology', str(g.get('typology', 'Tower')))
+                new_f.setAttribute('usage', str(g.get('usage', 'MixedUse')))
+                new_f.setAttribute('floors', int(g.get('floors', 4)))
+                new_f.setAttribute('height_m', float(m.get('height_m', 0)))
+                new_f.setAttribute('setback', float(g.get('setback', 3.0)))
+                new_f.setAttribute('gfa', float(m.get('gfa', 0)))
+                new_f.setAttribute('far', float(m.get('far', 0)))
+                new_f.setAttribute('bcr', float(m.get('bcr', 0)))
+                new_f.setAttribute('planx_score', float(m.get('planx_score', 0)))
+                new_f.setAttribute('carbon_kg', float(m.get('carbon_kg', 0)))
+                new_f.setAttribute('fabric_step', int(plot_dev_step.get(cp.get('plot_id', 0), 1)))
+
+                sink_plots.addFeature(new_f, QgsFeatureSink.FastInsert)
+
+                fbc_f = QgsFeature(fbc_fields)
+                fbc_f.setGeometry(geom)
+                fbc_f.setAttribute('plot_id', int(cp.get('plot_id', 0)))
+                fbc_f.setAttribute('build_to_line', 1 if m.get('bcr', 0) > 0.3 else 0)
+                fbc_f.setAttribute('max_floors', int(g.get('floors', 4)))
+                fbc_f.setAttribute('max_height_m', float(m.get('height_m', 0)))
+                fbc_f.setAttribute('setback_m', float(g.get('setback', 3.0)))
+                fbc_f.setAttribute('block_type', block_typology_name)
+                sink_fbc.addFeature(fbc_f, QgsFeatureSink.FastInsert)
+
+            feedback.setProgress(int(((b_idx + 1) / total_blocks) * 100))
+
+        return {'OUTPUT_PLOTS': dest_plots, 'OUTPUT_FBC': dest_fbc}

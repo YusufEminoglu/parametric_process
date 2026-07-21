@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.3.0] - 2026-07-21
+
+- PPUD Pipeline: 3-stage sequential urban design pipeline (Plot Layout → Building Config → Incremental Fabric), 6 subdivision strategies, 5 block typologies, form-based code export
+
 ## [1.2.0] - 2026-07-21
 
 - v1.2.0: AI Code Review enhancements (Real Perimeter Compactness, Directional Solar Shadow Azimuth, and Typology JSON Disk Persistence)

@@ -120,6 +120,11 @@ class ParametricProcessPlugin:
         self.action_cityjson.setStatusTip("Export Pareto Massings to CityJSON 1.1 or OBJ 3D Mesh")
         self.action_cityjson.triggered.connect(self.show_dialog)
 
+        icon_ppud = os.path.join(self.plugin_dir, "icons", "icon_ppud.png")
+        self.action_ppud = QAction(QIcon(icon_ppud), "PPUD Pipeline (Plot→Building→Fabric)", self.iface.mainWindow())
+        self.action_ppud.setStatusTip("Run PPUD Sequential Pipeline: Plot Layout → Building Config → Incremental Fabric")
+        self.action_ppud.triggered.connect(lambda: self.show_dialog_tab(3))
+
         # Add all to toolbar & menu
         self.actions = [
             self.action,
@@ -128,6 +133,7 @@ class ParametricProcessPlugin:
             self.action_grammar,
             self.action_district,
             self.action_cityjson,
+            self.action_ppud,
         ]
 
         for act in self.actions:

@@ -225,7 +225,7 @@ class PluginDialog(QDialog):
         tab_about = QWidget()
         about_layout = QVBoxLayout(tab_about)
         info_label = QLabel(
-            "<b>Parametric Process Studio v0.8.1</b><br><br>"
+            "<b>Parametric Process Studio v1.3.0</b><br><br>"
             "Standalone generative parametric urban design, procedural shape grammar, and multi-objective evolutionary optimization lab for QGIS.<br><br>"
             "• <b>Solvers:</b> NSGA-II, NSGA-III (Ref Points), MOEA/D (Decomposition), SPEA-2<br>"
             "• <b>AI Acceleration:</b> Pure-Python Surrogate Model (&lt;0.1ms/eval)<br>"
@@ -236,6 +236,44 @@ class PluginDialog(QDialog):
         )
         info_label.setWordWrap(True)
         about_layout.addWidget(info_label)
+
+        # Tab 5: PPUD Pipeline
+        tab_ppud = QWidget()
+        ppud_layout = QFormLayout(tab_ppud)
+        ppud_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.combo_block_typology = QComboBox(self)
+        self.combo_block_typology.addItems([
+            "PerimeterBlock (Kapalı Avlu Blok)",
+            "LinearBlock (Çizgisel Sıra Blok)",
+            "PavilionBlock (Serbest Noktasal Blok)",
+            "OrganicBlock (Organik Doku)",
+            "HybridBlock (Karma Blok)",
+        ])
+
+        self.combo_ppud_strategy = QComboBox(self)
+        self.combo_ppud_strategy.addItems([
+            "perimeter (Çeper Parseller + Avlu)",
+            "frontage (Cephe Genişliği Tabanlı)",
+            "grid (Izgara / Grid)",
+            "organic (Organik Düzensiz)",
+            "radial (Işınsal / Radial)",
+            "hybrid (Karma Strateji)",
+        ])
+
+        self.spin_ppud_steps = QSpinBox(self)
+        self.spin_ppud_steps.setRange(2, 20)
+        self.spin_ppud_steps.setValue(5)
+
+        self.chk_ppud_climate = QCheckBox("İklim Geri Beslemesi (Climate Feedback Loop)", self)
+        self.chk_ppud_climate.setChecked(True)
+
+        ppud_layout.addRow(QLabel("Block Typology:"), self.combo_block_typology)
+        ppud_layout.addRow(QLabel("Subdivision Strategy:"), self.combo_ppud_strategy)
+        ppud_layout.addRow(QLabel("Incremental Steps:"), self.spin_ppud_steps)
+        ppud_layout.addRow(self.chk_ppud_climate)
+
+        self.tabs.addTab(tab_ppud, "🏗️ PPUD Pipeline")
 
         self.tabs.addTab(tab_about, "ℹ️ About Suite")
 

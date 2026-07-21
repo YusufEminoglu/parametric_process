@@ -143,3 +143,364 @@ def generate_procedural_massing_spec(
         "stepback_levels": max(1, floors // 4) if typology == "SteppedTower" else 0,
         "is_courtyard": typology == "Courtyard",
     }
+
+
+# ==========================================
+# MULTI-STRATEGY SUBDIVISION ENGINE (PPUD)
+# ==========================================
+
+
+def subdivide_grid(
+    ring: List[Dict[str, float]],
+    target_width: float = 20.0,
+    target_depth: float = 30.0,
+    min_lot_area: float = 300.0,
+) -> List[List[Dict[str, float]]]:
+    """Subdivides a block into a regular grid of rectangular plots.
+
+    Finds the dominant axis of the ring and creates rows × columns of roughly
+    equal-sized rectangular sub-lots.
+    """
+    total_area = calculate_polygon_area(ring)
+    if total_area < min_lot_area * 2.0 or len(ring) < 3:
+        return [ring]
+
+    cx, cy = calculate_ring_centroid(ring)
+
+    # Compute bounding-box extents along dominant axes
+    xs = [pt["x"] for pt in ring]
+    ys = [pt["y"] for pt in ring]
+    width = max(xs) - min(xs)
+    height = max(ys) - min(ys)
+
+    cols = max(1, int(width / target_width))
+    rows = max(1, int(height / target_depth))
+
+    if cols * rows <= 1:
+        return [ring]
+
+    col_w = width / cols
+    row_h = height / rows
+
+    x0 = min(xs)
+    y0 = min(ys)
+
+    sublots = []
+    for r in range(rows):
+        for c in range(cols):
+            x1 = x0 + c * col_w
+            y1 = y0 + r * row_h
+            x2 = x1 + col_w
+            y2 = y1 + row_h
+
+            lot_ring = [
+                {"x": x1, "y": y1},
+                {"x": x2, "y": y1},
+                {"x": x2, "y": y2},
+                {"x": x1, "y": y2},
+            ]
+            if calculate_polygon_area(lot_ring) >= min_lot_area * 0.5:
+                sublots.append(lot_ring)
+
+    return sublots if sublots else [ring]
+
+
+def subdivide_perimeter(
+    ring: List[Dict[str, float]],
+    depth_ratio: float = 0.30,
+    min_lot_area: float = 200.0,
+) -> List[List[Dict[str, float]]]:
+    """Subdivides a block into perimeter plots wrapping a central courtyard.
+
+    Each edge of the ring produces depth_ratio-depth plots facing outward,
+    while the interior is left as a shared courtyard (not returned as a plot).
+    """
+    total_area = calculate_polygon_area(ring)
+    if total_area < min_lot_area * 3.0 or len(ring) < 4:
+        return [ring]
+
+    # Calculate appropriate inset depth based on block size
+    side_est = math.sqrt(total_area)
+    inset_distance = depth_ratio * side_est * 0.45
+
+    inset = offset_ring_inward(ring, inset_distance)
+    inset_area = calculate_polygon_area(inset)
+    if inset_area < min_lot_area * 0.5:
+        # Fallback: use frontage strategy if inset would consume too much
+        return subdivide_parcel_block(ring, target_frontage=18.0, min_lot_area=min_lot_area)
+
+    n = len(ring)
+    sublots = []
+
+    for i in range(n):
+        p1 = ring[i]
+        p2 = ring[(i + 1) % n]
+        q1 = inset[i]
+        q2 = inset[(i + 1) % n]
+
+        edge_len = math.hypot(p2["x"] - p1["x"], p2["y"] - p1["y"])
+        num_splits = max(1, int(edge_len / 18.0))
+
+        for s in range(num_splits):
+            t0 = s / num_splits
+            t1 = (s + 1) / num_splits
+
+            # Outer edge points: p1 → p2
+            rp1 = {"x": p1["x"] + t0 * (p2["x"] - p1["x"]), "y": p1["y"] + t0 * (p2["y"] - p1["y"])}
+            rp2 = {"x": p1["x"] + t1 * (p2["x"] - p1["x"]), "y": p1["y"] + t1 * (p2["y"] - p1["y"])}
+
+            # Inner edge points: q1 → q2 (same direction), ordered for CCW lot ring
+            ip_near_p2 = {"x": q1["x"] + t1 * (q2["x"] - q1["x"]), "y": q1["y"] + t1 * (q2["y"] - q1["y"])}
+            ip_near_p1 = {"x": q1["x"] + t0 * (q2["x"] - q1["x"]), "y": q1["y"] + t0 * (q2["y"] - q1["y"])}
+
+            # CCW ring: outer_p1 → outer_p2 → inner_p2 → inner_p1
+            lot_ring = [rp1, rp2, ip_near_p2, ip_near_p1]
+            if calculate_polygon_area(lot_ring) >= min_lot_area * 0.3:
+                sublots.append(lot_ring)
+
+    return sublots if sublots else [ring]
+
+
+def subdivide_organic(
+    ring: List[Dict[str, float]],
+    min_area: float = 180.0,
+    randomness: float = 0.40,
+    target_plot_count: int = 8,
+) -> List[List[Dict[str, float]]]:
+    """Subdivides a block into irregular organic plots using recursive splits
+    with randomized split positions and varying frontage widths.
+
+    Produces a medieval-style fabric with varied plot sizes and non-uniform boundaries.
+    Uses a simplified recursive bisection that splits along varying axes.
+    """
+    total_area = calculate_polygon_area(ring)
+    if total_area < min_area * 2.0 or len(ring) < 3:
+        return [ring]
+
+    import random as _random
+    # Use a deterministic seed based on ring geometry for reproducibility
+    cx, cy = calculate_ring_centroid(ring)
+    _rng = _random.Random(int(cx * 1000 + cy * 100 + total_area))
+
+    def _recursive_split(poly_ring: List[Dict[str, float]], depth: int = 0) -> List[List[Dict[str, float]]]:
+        area = calculate_polygon_area(poly_ring)
+        if area < min_area * 1.6 or depth > 5:
+            return [poly_ring]
+
+        n = len(poly_ring)
+        if n < 4:
+            return [poly_ring]
+
+        # Find the longest edge
+        best_i, best_len = 0, -1.0
+        for i in range(n):
+            p1 = poly_ring[i]
+            p2 = poly_ring[(i + 1) % n]
+            d = math.hypot(p2["x"] - p1["x"], p2["y"] - p1["y"])
+            if d > best_len:
+                best_len = d
+                best_i = i
+
+        if best_len < 6.0:
+            return [poly_ring]
+
+        # Split position along the longest edge (with randomness)
+        split_t = 0.3 + _rng.random() * randomness  # 0.3–0.7 range
+        p_a = poly_ring[best_i]
+        p_b = poly_ring[(best_i + 1) % n]
+        split_pt = {
+            "x": p_a["x"] + split_t * (p_b["x"] - p_a["x"]),
+            "y": p_a["y"] + split_t * (p_b["y"] - p_a["y"]),
+        }
+
+        # Find the opposite edge (the one closest to the split point's opposite)
+        opposite_i = (best_i + n // 2) % n
+        p_c = poly_ring[opposite_i]
+        p_d = poly_ring[(opposite_i + 1) % n]
+
+        # Target point on opposite edge (with independent randomness)
+        opp_t = 0.3 + _rng.random() * randomness
+        opp_pt = {
+            "x": p_c["x"] + opp_t * (p_d["x"] - p_c["x"]),
+            "y": p_c["y"] + opp_t * (p_d["y"] - p_c["y"]),
+        }
+
+        # Build two child polygons split by the line (split_pt → opp_pt)
+        left_ring = []
+        right_ring = []
+        crossed = False
+        split_start_i = best_i
+        split_end_i = opposite_i
+
+        for i in range(n):
+            pt = poly_ring[i]
+            if i == split_start_i:
+                left_ring.append(pt)
+                left_ring.append(split_pt)
+                right_ring.append(split_pt)
+                crossed = True
+            elif i == split_end_i:
+                left_ring.append(opp_pt)
+                right_ring.append(opp_pt)
+                right_ring.append(pt)
+                left_ring.append(pt)
+                crossed = False
+            else:
+                if crossed:
+                    right_ring.append(pt)
+                else:
+                    left_ring.append(pt)
+
+        if len(left_ring) < 3 or len(right_ring) < 3:
+            return [poly_ring]
+
+        results = []
+        results.extend(_recursive_split(left_ring, depth + 1))
+        results.extend(_recursive_split(right_ring, depth + 1))
+        return results
+
+    sublots = _recursive_split(ring)
+    valid = [s for s in sublots if calculate_polygon_area(s) >= min_area * 0.35]
+    return valid if valid else [ring]
+
+
+def subdivide_radial(
+    ring: List[Dict[str, float]],
+    num_sectors: int = 8,
+    inner_radius_ratio: float = 0.15,
+    min_lot_area: float = 200.0,
+) -> List[List[Dict[str, float]]]:
+    """Subdivides a block into radial (pie-slice) plots emanating from the centroid.
+
+    Creates a small central plaza/courtyard (inner radius) with radiating plots.
+    The outer radius is computed as the minimum distance from centroid to ring edges
+    so that all plots stay within the block.
+    """
+    total_area = calculate_polygon_area(ring)
+    if total_area < min_lot_area * 3.0 or len(ring) < 3:
+        return [ring]
+
+    cx, cy = calculate_ring_centroid(ring)
+
+    # Compute outer radius as the minimum distance from centroid to any edge
+    # so radial plots stay fully inside the block
+    n = len(ring)
+    outer_r = float("inf")
+    for i in range(n):
+        p1 = ring[i]
+        p2 = ring[(i + 1) % n]
+        # Distance from centroid to edge p1→p2
+        edge_dx = p2["x"] - p1["x"]
+        edge_dy = p2["y"] - p1["y"]
+        edge_len_sq = edge_dx * edge_dx + edge_dy * edge_dy
+        if edge_len_sq < 1e-9:
+            dist = math.hypot(cx - p1["x"], cy - p1["y"])
+        else:
+            t = max(0.0, min(1.0, ((cx - p1["x"]) * edge_dx + (cy - p1["y"]) * edge_dy) / edge_len_sq))
+            proj_x = p1["x"] + t * edge_dx
+            proj_y = p1["y"] + t * edge_dy
+            dist = math.hypot(cx - proj_x, cy - proj_y)
+        outer_r = min(outer_r, dist)
+
+    if outer_r <= 0 or outer_r == float("inf"):
+        return [ring]
+
+    inner_r = max(2.0, outer_r * inner_radius_ratio)
+
+    angle_step = 2.0 * math.pi / num_sectors
+    sublots = []
+    for i in range(num_sectors):
+        a0 = i * angle_step
+        a1 = (i + 1) * angle_step
+
+        p1 = {"x": cx + inner_r * math.cos(a0), "y": cy + inner_r * math.sin(a0)}
+        p2 = {"x": cx + inner_r * math.cos(a1), "y": cy + inner_r * math.sin(a1)}
+        p3 = {"x": cx + outer_r * math.cos(a1), "y": cy + outer_r * math.sin(a1)}
+        p4 = {"x": cx + outer_r * math.cos(a0), "y": cy + outer_r * math.sin(a0)}
+
+        lot_ring = [p1, p2, p3, p4]
+        if calculate_polygon_area(lot_ring) >= min_lot_area * 0.4:
+            sublots.append(lot_ring)
+
+    return sublots if sublots else [ring]
+
+
+def subdivide_hybrid(
+    ring: List[Dict[str, float]],
+    perimeter_depth_ratio: float = 0.25,
+    interior_strategy: str = "grid",
+    interior_grid_width: float = 22.0,
+    min_lot_area: float = 200.0,
+) -> List[List[Dict[str, float]]]:
+    """Subdivides a block using a hybrid approach: perimeter plots along edges
+    plus interior plots using a secondary strategy (grid or organic).
+
+    Creates a rich, varied fabric — perimeter for street-facing continuity,
+    interior for density or courtyard clusters.
+    """
+    total_area = calculate_polygon_area(ring)
+    if total_area < min_lot_area * 4.0 or len(ring) < 4:
+        return [ring]
+
+    # Step 1: Extract perimeter plots
+    side_est = math.sqrt(total_area)
+    inset = offset_ring_inward(ring, perimeter_depth_ratio * side_est * 0.45)
+    inset_area = calculate_polygon_area(inset)
+
+    perimeter_plots = subdivide_perimeter(ring, perimeter_depth_ratio, min_lot_area)
+
+    # Step 2: Subdivide interior using secondary strategy
+    if inset_area >= min_lot_area * 1.5 and len(inset) >= 3:
+        if interior_strategy == "grid":
+            interior_plots = subdivide_grid(inset, interior_grid_width, interior_grid_width, min_lot_area)
+        elif interior_strategy == "organic":
+            interior_plots = subdivide_organic(inset, min_lot_area, randomness=0.30)
+        else:
+            interior_plots = [inset]
+    else:
+        interior_plots = []
+
+    all_plots = perimeter_plots + interior_plots
+    return all_plots if all_plots else [ring]
+
+
+# ==========================================
+# UNIFIED SUBDIVISION DISPATCHER
+# ==========================================
+
+SUBDIVISION_STRATEGIES = {
+    "frontage": subdivide_parcel_block,
+    "grid": subdivide_grid,
+    "perimeter": subdivide_perimeter,
+    "organic": subdivide_organic,
+    "radial": subdivide_radial,
+    "hybrid": subdivide_hybrid,
+}
+
+
+def subdivide_parcel_block_strategy(
+    ring: List[Dict[str, float]],
+    strategy: str = "frontage",
+    **params: Any,
+) -> List[List[Dict[str, float]]]:
+    """Unified entry point for all subdivision strategies.
+
+    Args:
+        ring: Polygon ring as list of {"x": float, "y": float} dicts.
+        strategy: One of "frontage", "grid", "perimeter", "organic", "radial", "hybrid".
+        **params: Strategy-specific parameters (see STRATEGY_PARAM_DEFAULTS in block_typologies.py).
+
+    Returns:
+        List of sub-lot polygon rings.
+    """
+    strategy_fn = SUBDIVISION_STRATEGIES.get(strategy, subdivide_parcel_block)
+
+    # Filter params to only those accepted by the strategy function
+    import inspect
+    try:
+        sig = inspect.signature(strategy_fn)
+        valid_params = {k: v for k, v in params.items() if k in sig.parameters}
+    except (ValueError, TypeError):
+        valid_params = params
+
+    return strategy_fn(ring, **valid_params)

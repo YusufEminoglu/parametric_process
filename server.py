@@ -454,6 +454,62 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response_data).encode('utf-8'))
             return
 
+        if url == "/api/ppud/run":
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                from .ppud_pipeline import run_ppud_pipeline
+
+                # Extract block ring from GeoJSON features or direct ring
+                features_data = data.get("features", [])
+                results = []
+
+                for feat in features_data:
+                    geom = feat.get("geometry", {})
+                    coords = geom.get("coordinates", [])
+                    if geom.get("type") == "Polygon" and coords:
+                        ring = [{"x": pt[0], "y": pt[1]} for pt in coords[0]]
+                    elif geom.get("type") == "MultiPolygon" and coords:
+                        ring = [{"x": pt[0], "y": pt[1]} for pt in coords[0][0]]
+                    else:
+                        continue
+
+                    result = run_ppud_pipeline(
+                        block_ring=ring,
+                        strategy=data.get("strategy", "perimeter"),
+                        block_typology=data.get("block_typology", "PerimeterBlock"),
+                        max_bcr=float(data.get("max_bcr", 0.45)),
+                        max_far=float(data.get("max_far", 2.0)),
+                        max_height=float(data.get("max_height", 18.0)),
+                        incremental_steps=int(data.get("incremental_steps", 5)),
+                        climate_feedback=bool(data.get("climate_feedback", True)),
+                        sim_params=data.get("sim_params"),
+                    )
+
+                    # Also generate form-based code
+                    from .plan_note_codifier import export_form_based_code
+                    fbc = export_form_based_code(
+                        result["stage2_configured"],
+                        data.get("block_typology", "PerimeterBlock"),
+                        sum(p.get("area_m2", 0) for p in result["stage1_plots"]),
+                        float(data.get("max_bcr", 0.45)),
+                        float(data.get("max_far", 2.0)),
+                        float(data.get("max_height", 18.0)),
+                    )
+                    result["form_based_code"] = fbc
+                    results.append(result)
+
+                response_data = {"status": "ok", "results": results}
+            except Exception as e:
+                response_data = {"status": "error", "message": str(e)}
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            return
+
         self.send_error(404, "Endpoint Not Found")
 
 

@@ -663,6 +663,11 @@ function setupInputListeners() {
         btnSolveCity.addEventListener('click', solveCityLayout);
     }
 
+    const btnPpud = document.getElementById('btn-ppud');
+    if (btnPpud) {
+        btnPpud.addEventListener('click', runPpudPipeline);
+    }
+
     // Cinematic Tour Toggle
     if (btnTour) {
         btnTour.addEventListener('click', () => {
@@ -6567,6 +6572,53 @@ function solveCityLayout() {
     updateCitySummary();
 
     showToast(`Procedural solver optimized ${parcelFeatures.length} parcels.`, "success");
+}
+
+async function runPpudPipeline() {
+    if (!parcelFeatures || parcelFeatures.length === 0) {
+        showToast("No block features loaded for PPUD pipeline.", "warning");
+        return;
+    }
+    showToast("Running PPUD Pipeline...", "info");
+    try {
+        const features = parcelFeatures.map(p => ({
+            type: "Feature",
+            geometry: {
+                type: "Polygon",
+                coordinates: [[...p.outerRing.map(pt => [pt.x, pt.y]), [p.outerRing[0].x, p.outerRing[0].y]]]
+            },
+            properties: { fid: p.fid }
+        }));
+        const resp = await fetch('/api/ppud/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                features,
+                strategy: 'perimeter',
+                block_typology: 'PerimeterBlock',
+                max_bcr: 0.45,
+                max_far: 2.0,
+                max_height: 18.0,
+                incremental_steps: 5,
+                climate_feedback: true
+            })
+        });
+        const data = await resp.json();
+        if (data.status === 'ok' && data.results) {
+            const summary = data.results[0]?.summary || {};
+            showToast(
+                `PPUD: ${summary.plot_count || '?'} plots, ` +
+                `FAR ${summary.site_far || '?'}, ` +
+                `Diversity ${summary.final_typology_diversity || '?'}`,
+                "success"
+            );
+        } else {
+            showToast("PPUD pipeline failed: " + (data.message || "unknown"), "error");
+        }
+    } catch (err) {
+        console.error("PPUD error", err);
+        showToast("PPUD pipeline error: " + err.message, "error");
+    }
 }
 
 // Procedural landscaping and facade assets
