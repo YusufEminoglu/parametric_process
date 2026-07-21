@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.6.1] - 2026-07-21
+
+- Double-click now runs algorithm with runAndLoadResults using current layer. Removed crash-prone execAlgorithmDialog.
+
 ## [1.6.0] - 2026-07-21
 
 - Clean stable release: removed experimental 3D-cockpit auto-launch and dialog-opening features. Algorithms run normally via Processing Toolbox. First QGIS Hub upload candidate.

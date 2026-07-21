@@ -178,18 +178,31 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Show algorithm help on double-click; user runs from Processing Toolbox."""
+        """Run algorithm with current layer as input, load results."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
-        alg = QgsApplication.processingRegistry().algorithmById(alg_id)
-        if alg is None:
-            return
-        help_text = alg.shortHelpString() or alg.displayName()
-        self.iface.messageBar().pushInfo(
-            "Parametric Process",
-            f"Run '{alg.displayName()}' from Processing → Toolbox → Urban Analytics"
-        )
+        import processing
+        try:
+            layer = self.layer_combo.currentLayer()
+            params = {}
+            if layer is not None:
+                params["INPUT"] = layer
+            result = processing.runAndLoadResults(alg_id, params)
+            if result:
+                self.iface.messageBar().pushSuccess(
+                    "Parametric Process", "Algorithm completed — result layer loaded."
+                )
+            else:
+                self.iface.messageBar().pushInfo(
+                    "Parametric Process",
+                    "Use Processing → Toolbox → Urban Analytics to configure parameters."
+                )
+        except Exception as e:
+            self.iface.messageBar().pushInfo(
+                "Parametric Process",
+                f"Use Processing → Toolbox → Urban Analytics (direct run unavailable: {e})"
+            )
 
     # ------------------------------------------------------------------ #
     # Cockpit server
