@@ -8,6 +8,11 @@
 
 - v1.0.0 MAJOR RELEASE: PlanX-grade multi-tool icon suite, dedicated toolbar actions, and complete academic workflow
 
+## [1.1.1] - 2026-07-21
+
+### Added
+- **Multi-Polygon Geometry Guard**: Safe multi-part polygon handling in Processing algorithms.
+
 ## [1.1.0] - 2026-07-21 - ULTIMATE FEATURE RELEASE
 
 ### Added

@@ -455,7 +455,7 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
                 continue
 
             ring = []
-            polygon_pts = geom.asPolygon()
+            polygon_pts = geom.asMultiPolygon()[0] if geom.isMultipart() and geom.asMultiPolygon() else geom.asPolygon()
             if polygon_pts and len(polygon_pts[0]) >= 3:
                 ring = [{'x': pt.x(), 'y': pt.y()} for pt in polygon_pts[0]]
 
