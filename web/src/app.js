@@ -1018,6 +1018,17 @@ function lerpColorHex(colorA, colorB, t) {
     return a.lerp(b, clamp01(t)).getHex();
 }
 
+// High-Divergence Multi-Stop Color Scale (7 vibrant stops from Deep Indigo to Crimson Red)
+function getDivergentHeatmapColor(t) {
+    const clampT = Math.max(0, Math.min(1, t));
+    if (clampT < 0.16) return lerpColorHex(0x1e1b4b, 0x06b6d4, clampT / 0.16);         // Navy Blue -> Cyan
+    if (clampT < 0.33) return lerpColorHex(0x06b6d4, 0x10b981, (clampT - 0.16) / 0.17);  // Cyan -> Emerald Green
+    if (clampT < 0.50) return lerpColorHex(0x10b981, 0x84cc16, (clampT - 0.33) / 0.17);  // Emerald -> Lime Yellow
+    if (clampT < 0.66) return lerpColorHex(0x84cc16, 0xf59e0b, (clampT - 0.50) / 0.16);  // Lime -> Amber Gold
+    if (clampT < 0.83) return lerpColorHex(0xf59e0b, 0xf97316, (clampT - 0.66) / 0.17);  // Amber -> Neon Orange
+    return lerpColorHex(0xf97316, 0xdc2626, (clampT - 0.83) / 0.17);                    // Orange -> Crimson Red
+}
+
 function colorForParcel(item) {
     const metrics = calculateParcelMetrics(item);
     if (selectedParcel === item && heatmapMode === 'compliance') {
@@ -1031,52 +1042,37 @@ function colorForParcel(item) {
         // Sol-Air Surface Temperature Heat Simulation (°C)
         const floors = item.params.floors || 4;
         const bcr = metrics.bcr || 0.3;
-        // High density/height buildings trap solar heat -> elevated Sol-Air temp (24°C to 48°C)
         const solAirTemp = 24.0 + (floors * 0.8) + (bcr * 18.0);
-        const t = clamp01((solAirTemp - 22.0) / 26.0); // 22°C to 48°C
-        return t < 0.5
-            ? lerpColorHex(0x0ea5e9, 0xf59e0b, t * 2)  // Blue -> Yellow
-            : lerpColorHex(0xf59e0b, 0xdc2626, (t - 0.5) * 2); // Yellow -> Dark Red
+        return getDivergentHeatmapColor((solAirTemp - 22.0) / 26.0); // 22°C to 48°C
     }
 
     if (heatmapMode === 'solar') {
         // Solar Irradiance (kWh/m²) Simulation
         const solarRad = (metrics.solarRadKwh !== undefined) ? metrics.solarRadKwh : (500 + (item.params.floors || 4) * 45);
-        const t = clamp01((solarRad - 200) / 1200); // 200 to 1400 kWh/m²
-        return t < 0.5
-            ? lerpColorHex(0x1e3a8a, 0xf59e0b, t * 2)  // Deep Blue -> Amber
-            : lerpColorHex(0xf59e0b, 0xef4444, (t - 0.5) * 2); // Amber -> Crimson Red
+        return getDivergentHeatmapColor((solarRad - 200) / 1200); // 200 to 1400 kWh/m²
     }
 
     if (heatmapMode === 'utci') {
         // UTCI Microclimate Heat Stress Index (°C)
         const utci = (metrics.utciScore !== undefined) ? metrics.utciScore : (24 + (item.params.floors || 4) * 0.5);
-        const t = clamp01((utci - 18) / 24); // 18°C (Neutral) to 42°C (Extreme Stress)
-        return t < 0.5
-            ? lerpColorHex(0x10b981, 0xf59e0b, t * 2)  // Green -> Amber
-            : lerpColorHex(0xf59e0b, 0xd946ef, (t - 0.5) * 2); // Amber -> Magenta
+        return getDivergentHeatmapColor((utci - 18) / 24); // 18°C (Neutral) to 42°C (Extreme Stress)
     }
 
     if (heatmapMode === 'density') {
-        const t = clamp01(metrics.densityPpHa / 800);
-        return t < 0.5
-            ? lerpColorHex(0x0ea5e9, 0xf59e0b, t * 2)
-            : lerpColorHex(0xf59e0b, 0x7c3aed, (t - 0.5) * 2);
+        return getDivergentHeatmapColor(metrics.densityPpHa / 800);
     }
+
     if (heatmapMode === 'carbon') {
         const carbonPerSqm = metrics.gfa > 0 ? metrics.carbon / metrics.gfa : 0;
-        const t = clamp01(carbonPerSqm / 0.08);
-        return t < 0.5
-            ? lerpColorHex(0x10b981, 0xf59e0b, t * 2)
-            : lerpColorHex(0xf59e0b, 0xdc2626, (t - 0.5) * 2);
+        return getDivergentHeatmapColor(carbonPerSqm / 0.08);
     }
+
     if (heatmapMode === 'compliance') {
         return metrics.violated ? 0x7f1d1d : 0x334155;
     }
 
     const score = metrics.planScore !== undefined ? metrics.planScore : calculatePlanScore(metrics, item);
-    if (score < 55) return lerpColorHex(0x7f1d1d, 0xf59e0b, score / 55);
-    return lerpColorHex(0xf59e0b, 0x10b981, (score - 55) / 45);
+    return getDivergentHeatmapColor(score / 100);
 }
 
 function refreshParcelHeatmap() {
@@ -1092,8 +1088,9 @@ function refreshParcelHeatmap() {
                 if (child.isMesh && child.material) {
                     const mats = Array.isArray(child.material) ? child.material : [child.material];
                     mats.forEach(m => {
+                        if (m.isRoofMesh) return; // Preserve pitched roof material style
                         if (m.color && !m.emissiveMap) {
-                            // Tint solid-color materials (roof, courtyard, etc.)
+                            // Tint solid-color materials (courtyard, base, etc.)
                             m.color.copy(heatColor).multiplyScalar(0.7);
                         } else if (m.color && m.emissiveMap) {
                             // Blend heatmap tint into wall material
@@ -3407,6 +3404,7 @@ function buildHippedRoof(parentMesh, footprintPoints, height) {
         roughness: 0.7,
         side: THREE.DoubleSide
     });
+    mat.isRoofMesh = true;
 
     const mesh = new THREE.Mesh(geom, mat);
     mesh.castShadow = true;
@@ -3420,7 +3418,7 @@ function buildGableRoof(parentMesh, footprintPoints, height) {
     const N = footprintPoints.length;
 
     const midY = (ob.minY + ob.maxY) / 2;
-    const ridgeH = 3.5; // height of the ridge above building roof height
+    const ridgeH = 4.5; // height of the ridge above building roof height
 
     const topVerts = footprintPoints.map(pt => new THREE.Vector3(pt.x, height, -pt.y));
 
@@ -3458,10 +3456,11 @@ function buildGableRoof(parentMesh, footprintPoints, height) {
     geom.computeVertexNormals();
 
     const mat = new THREE.MeshStandardMaterial({
-        color: 0x475569, // slate grey
+        color: 0x2563eb, // royal blue slate
         roughness: 0.65,
         side: THREE.DoubleSide
     });
+    mat.isRoofMesh = true;
 
     const mesh = new THREE.Mesh(geom, mat);
     mesh.castShadow = true;
@@ -3471,9 +3470,9 @@ function buildGableRoof(parentMesh, footprintPoints, height) {
 
 // Mansard roof generator with steep sides and a flat top cap
 function buildMansardRoof(parentMesh, footprintPoints, height) {
-    const slopeH = 2.0; // Height of the steep slope
+    const slopeH = 3.0; // Height of the steep slope
     const topH = height + slopeH;
-    const insetVal = 1.5; // Inset distance for the top flat cap
+    const insetVal = 1.8; // Inset distance for the top flat cap
 
     // Calculate inset points using offsetPolygonRing
     const innerRing = offsetPolygonRing(footprintPoints, insetVal);
@@ -3511,10 +3510,11 @@ function buildMansardRoof(parentMesh, footprintPoints, height) {
     slopeGeom.computeVertexNormals();
 
     const mat = new THREE.MeshStandardMaterial({
-        color: 0x334155, // French slate blue/grey
+        color: 0xd97706, // copper amber mansard tile
         roughness: 0.7,
         side: THREE.DoubleSide
     });
+    mat.isRoofMesh = true;
 
     const slopeMesh = new THREE.Mesh(slopeGeom, mat);
     slopeMesh.castShadow = true;
@@ -3536,6 +3536,7 @@ function buildMansardRoof(parentMesh, footprintPoints, height) {
         color: 0x1e293b, // dark flat cap roof
         roughness: 0.8
     });
+    capMat.isRoofMesh = true;
 
     const capMesh = new THREE.Mesh(capGeom, capMat);
     capMesh.castShadow = true;
