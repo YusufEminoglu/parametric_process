@@ -706,8 +706,12 @@ function setupInputListeners() {
         btnClearMeasure.addEventListener('click', clearAllMeasurements);
     }
 
+    const btnGuideTop = document.getElementById('btn-guide-top');
     if (btnGuide) {
         btnGuide.addEventListener('click', openGuidePanel);
+    }
+    if (btnGuideTop) {
+        btnGuideTop.addEventListener('click', openGuidePanel);
     }
     if (btnGuideInline) {
         btnGuideInline.addEventListener('click', openGuidePanel);
@@ -1017,8 +1021,38 @@ function colorForParcel(item) {
     if (selectedParcel === item && heatmapMode === 'compliance') {
         return metrics.violated ? 0xb91c1c : 0x0d9488;
     }
-    if (item.params.usage === 'Park' && heatmapMode !== 'density' && heatmapMode !== 'carbon') {
+    if (item.params.usage === 'Park' && heatmapMode !== 'density' && heatmapMode !== 'carbon' && heatmapMode !== 'solair' && heatmapMode !== 'solar' && heatmapMode !== 'utci') {
         return 0x047857;
+    }
+
+    if (heatmapMode === 'solair') {
+        // Sol-Air Surface Temperature Heat Simulation (°C)
+        const floors = item.params.floors || 4;
+        const bcr = metrics.bcr || 0.3;
+        // High density/height buildings trap solar heat -> elevated Sol-Air temp (24°C to 48°C)
+        const solAirTemp = 24.0 + (floors * 0.8) + (bcr * 18.0);
+        const t = clamp01((solAirTemp - 22.0) / 26.0); // 22°C to 48°C
+        return t < 0.5
+            ? lerpColorHex(0x0ea5e9, 0xf59e0b, t * 2)  // Blue -> Yellow
+            : lerpColorHex(0xf59e0b, 0xdc2626, (t - 0.5) * 2); // Yellow -> Dark Red
+    }
+
+    if (heatmapMode === 'solar') {
+        // Solar Irradiance (kWh/m²) Simulation
+        const solarRad = (metrics.solarRadKwh !== undefined) ? metrics.solarRadKwh : (500 + (item.params.floors || 4) * 45);
+        const t = clamp01((solarRad - 200) / 1200); // 200 to 1400 kWh/m²
+        return t < 0.5
+            ? lerpColorHex(0x1e3a8a, 0xf59e0b, t * 2)  // Deep Blue -> Amber
+            : lerpColorHex(0xf59e0b, 0xef4444, (t - 0.5) * 2); // Amber -> Crimson Red
+    }
+
+    if (heatmapMode === 'utci') {
+        // UTCI Microclimate Heat Stress Index (°C)
+        const utci = (metrics.utciScore !== undefined) ? metrics.utciScore : (24 + (item.params.floors || 4) * 0.5);
+        const t = clamp01((utci - 18) / 24); // 18°C (Neutral) to 42°C (Extreme Stress)
+        return t < 0.5
+            ? lerpColorHex(0x10b981, 0xf59e0b, t * 2)  // Green -> Amber
+            : lerpColorHex(0xf59e0b, 0xd946ef, (t - 0.5) * 2); // Amber -> Magenta
     }
 
     if (heatmapMode === 'density') {
@@ -1073,10 +1107,13 @@ function refreshParcelHeatmap() {
 function updateHeatmapLegend() {
     if (!legendTitleEl || !legendNoteEl) return;
     const labels = {
-        score: ['Score heatmap', 'Red underperforms, amber is watchlist, green is strong.'],
-        compliance: ['Compliance heatmap', 'Slate is compliant, red indicates active BCR/FAR/height conflict.'],
-        density: ['Density heatmap', 'Blue is lower intensity, amber is mid-rise, violet is high-density.'],
-        carbon: ['Carbon heatmap', 'Green is lower operational carbon intensity, red is heavier impact.']
+        score: ['PlanX Performance Score', 'Red underperforms (<55), amber is watchlist, green is optimal (85+).'],
+        solair: ['🔥 Sol-Air Heat Surface Temp (°C)', 'Deep cyan is cool (22°C), yellow is warm (34°C), crimson is peak radiant heat (48°C).'],
+        solar: ['☀️ Annual Solar Irradiance (kWh/m²)', 'Dark blue is shaded courtyard, yellow/amber is high PV solar exposure.'],
+        utci: ['🌡️ UTCI Microclimate Heat Stress (°C)', 'Green is neutral thermal comfort, orange/red is severe outdoor heat stress.'],
+        compliance: ['Zoning Compliance Map', 'Slate is fully compliant, red indicates active BCR/FAR/Height conflict.'],
+        density: ['Urban Density (PpHa)', 'Blue is low-density, amber is mid-rise, violet is high-density tower.'],
+        carbon: ['Embodied & Operational Carbon', 'Emerald is low-carbon timber/green roof, red is heavy carbon footprint.']
     };
     const selected = labels[heatmapMode] || labels.score;
     legendTitleEl.textContent = selected[0];
