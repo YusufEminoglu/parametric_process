@@ -178,25 +178,22 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Show algorithm details and reveal Processing Toolbox."""
+        """Run algorithm with defaults and load result layer (crash-free)."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
         alg = QgsApplication.processingRegistry().algorithmById(alg_id)
-        if alg is None:
-            return
-        # Reveal Processing Toolbox so the user can run the tool natively
+        name = alg.displayName() if alg else alg_id
+        import processing
         import contextlib
         with contextlib.suppress(Exception):
-            from qgis.PyQt.QtWidgets import QDockWidget
-            for w in self.iface.mainWindow().findChildren(QDockWidget):
-                if w.windowTitle() == "Processing Toolbox":
-                    w.setVisible(True)
-                    w.raise_()
-                    break
+            result = processing.runAndLoadResults(alg_id, {"INPUT": self.layer_combo.currentLayer()})
+            if result:
+                self.iface.messageBar().pushSuccess("Parametric Process", f"'{name}' completed — result layer loaded.")
+                return
         self.iface.messageBar().pushInfo(
             "Parametric Process",
-            f"Processing Toolbox opened → Urban Analytics → '{alg.displayName()}'"
+            f"Open Processing → Toolbox → Urban Analytics → '{name}' to configure parameters."
         )
 
     # ------------------------------------------------------------------ #

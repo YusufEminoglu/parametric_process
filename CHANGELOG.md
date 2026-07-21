@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.6] - 2026-07-21
+
+- Double-click now runs algorithm with defaults via processing.runAndLoadResults (crash-free); fallback hint to Processing Toolbox
+
 ## [1.5.5] - 2026-07-21
 
 - Fix: removed crash-prone execAlgorithmDialog; double-click now reveals Processing Toolbox with algorithm hint
