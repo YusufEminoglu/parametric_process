@@ -178,32 +178,18 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Open algorithm dialog using QGIS native AlgorithmDialog."""
+        """Show algorithm help on double-click; user runs from Processing Toolbox."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
         alg = QgsApplication.processingRegistry().algorithmById(alg_id)
         if alg is None:
             return
-        try:
-            from processing.gui.AlgorithmDialog import AlgorithmDialog
-            instance = alg.create() if hasattr(alg, 'create') else alg.createInstance()
-            dlg = AlgorithmDialog(instance)
-            dlg.setModal(True)
-            dlg.exec_()
-        except Exception as exc:
-            # Fallback: run with defaults
-            import processing
-            import contextlib
-            with contextlib.suppress(Exception):
-                result = processing.runAndLoadResults(alg_id, {"INPUT": self.layer_combo.currentLayer()})
-                if result:
-                    self.iface.messageBar().pushSuccess("Parametric Process", f"'{alg.displayName()}' completed.")
-                    return
-            self.iface.messageBar().pushInfo(
-                "Parametric Process",
-                f"Use Processing → Toolbox → Urban Analytics → '{alg.displayName()}'"
-            )
+        help_text = alg.shortHelpString() or alg.displayName()
+        self.iface.messageBar().pushInfo(
+            "Parametric Process",
+            f"Run '{alg.displayName()}' from Processing → Toolbox → Urban Analytics"
+        )
 
     # ------------------------------------------------------------------ #
     # Cockpit server
