@@ -5,6 +5,7 @@ Provides headless evolutionary optimization and multi-domain urban physics evalu
 """
 from __future__ import annotations
 
+import contextlib
 import os
 
 from qgis.core import (
@@ -33,6 +34,61 @@ from .nsga2_engine import (
 )
 
 PLUGIN_DIR = os.path.dirname(__file__)
+
+
+# Store last output for "View in 3D" button
+_last_output_layer_name = None
+
+
+def _offer_3d_view(layer_name: str) -> None:
+    """Push a QGIS message bar item offering to view the result in the 3D cockpit."""
+    global _last_output_layer_name
+    _last_output_layer_name = layer_name
+    from qgis.PyQt.QtWidgets import QPushButton
+    from qgis.core import Qgis
+    with contextlib.suppress(Exception):
+        from .main_plugin import get_iface
+        iface = get_iface()
+        if iface is None:
+            return
+        msg_bar = iface.messageBar()
+        btn = QPushButton("🚀 View in 3D Cockpit")
+        btn.setStyleSheet(
+            "QPushButton { background: #0f766e; color: white; border-radius: 4px; "
+            "padding: 4px 12px; font-weight: bold; }"
+            "QPushButton:hover { background: #0d9488; }"
+        )
+        btn.clicked.connect(lambda: _launch_cockpit_for_layer(_last_output_layer_name, iface))
+        msg_bar.pushWidget(btn, Qgis.MessageLevel.Success, duration=15)
+
+
+def _launch_cockpit_for_layer(layer_name: str, iface) -> None:
+    """Find the named layer and launch the 3D cockpit with it."""
+    from qgis.core import QgsProject, QgsVectorLayer
+    from qgis.PyQt.QtCore import Qt
+    layers = QgsProject.instance().mapLayersByName(layer_name)
+    if not layers:
+        iface.messageBar().pushWarning("Parametric Process", f"Layer '{layer_name}' not found.")
+        return
+    layer = layers[0]
+    if not isinstance(layer, QgsVectorLayer):
+        iface.messageBar().pushWarning("Parametric Process", "Layer must be a vector layer.")
+        return
+    try:
+        from .studio_dock import ParametricProcessStudioDock
+        dock = None
+        for d in iface.mainWindow().findChildren(ParametricProcessStudioDock):
+            dock = d
+            break
+        if dock is None:
+            dock = ParametricProcessStudioDock(iface)
+            iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+        dock.setVisible(True)
+        dock.raise_()
+        dock.layer_combo.setLayer(layer)
+        dock._launch_cockpit()
+    except Exception as e:
+        iface.messageBar().pushWarning("Parametric Process", f"Could not open 3D cockpit: {e}")
 
 
 def _icon(filename: str) -> QIcon:
@@ -279,6 +335,7 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
                 progress = int(((f_idx * len(pareto_sols)) + idx + 1) / max(1, total_features * len(pareto_sols)) * 100)
                 feedback.setProgress(progress)
 
+        _offer_3d_view('Pareto Front Output')
         return {'OUTPUT': dest_id}
 
 
@@ -430,6 +487,7 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
             sink.addFeature(new_f, QgsFeatureSink.FastInsert)
             feedback.setProgress(int(current * total))
 
+        _offer_3d_view('Enriched Evaluated Layers')
         return {'OUTPUT': dest_id}
 
 
@@ -531,6 +589,7 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
             sink.addFeature(new_f, QgsFeatureSink.FastInsert)
             feedback.setProgress(int(((i + 1) / total) * 100))
 
+        _offer_3d_view('Output Morphology Layer')
         return {'OUTPUT': dest_id}
 
 
@@ -639,6 +698,7 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
 
             feedback.setProgress(int(((i + 1) / total) * 100))
 
+        _offer_3d_view('Subdivided Sub-Lots Layer')
         return {'OUTPUT': dest_id}
 
 
@@ -737,6 +797,7 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
             sink.addFeature(new_f, QgsFeatureSink.FastInsert)
             feedback.setProgress(int(((i + 1) / total) * 100))
 
+        _offer_3d_view('Coupled District Layer')
         return {'OUTPUT': dest_id}
 
 
@@ -990,4 +1051,5 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
 
             feedback.setProgress(int(((b_idx + 1) / total_blocks) * 100))
 
+        _offer_3d_view('PPUD Subdivided Plots')
         return {'OUTPUT_PLOTS': dest_plots, 'OUTPUT_FBC': dest_fbc}

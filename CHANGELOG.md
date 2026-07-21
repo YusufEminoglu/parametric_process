@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.5.0] - 2026-07-21
+
+- Post-algorithm 'View in 3D Cockpit' button: each of 6 algorithms now offers one-click 3D visualization of results via QGIS message bar
+
 ## [1.4.7] - 2026-07-21
 
 - Heatmap fix: now tints 3D building massing (not just ground). CFD wind: 3-zone color groups (cyan=fast, orange=canyon, red=wake) with morphology classification.

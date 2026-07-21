@@ -18,17 +18,30 @@ from .processing_provider import ParametricProcessProvider
 
 PLUGIN_DIR = os.path.dirname(__file__)
 
+# Module-level iface reference — set during initGui, read by processing_algorithm
+# to push "View in 3D Cockpit" message bar actions after algorithm completion.
+_iface = None
+
+
+def get_iface():
+    """Return the QGIS interface instance, or None if plugin is not loaded."""
+    return _iface
+
 
 class ParametricProcessPlugin:
     """Plugin entry: Processing provider + Studio dock."""
 
     def __init__(self, iface):
+        global _iface
         self.iface = iface
+        _iface = iface
         self.provider = None
         self.dock = None
         self.action = None
 
     def initGui(self) -> None:
+        global _iface
+        _iface = self.iface
         # Processing Toolbox — 6 algorithms under "Urban Analytics"
         self.provider = ParametricProcessProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
