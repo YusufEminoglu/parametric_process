@@ -445,35 +445,37 @@ function init() {
     // 9. Clear city air: no fog by default.
     scene.fog = null;
 
-    // Build Solar Orbit Arc
+    // Build Solar Orbit Arc high in celestial sky
     const arcPoints = [];
-    const radius = 500;
+    const radius = 3500;
     const segments = 64;
     for (let i = 0; i <= segments; i++) {
         const theta = (i / segments) * Math.PI; // 0 to 180 degrees
         const x = Math.cos(theta + Math.PI) * radius;
-        const y = Math.sin(theta) * radius;
-        const z = 100;
+        const y = Math.max(100, Math.sin(theta) * radius);
+        const z = 800;
         arcPoints.push(new THREE.Vector3(x, y, z));
     }
     const arcGeom = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const arcMat = new THREE.LineDashedMaterial({
         color: 0xeab308,
-        dashSize: 10,
-        gapSize: 8,
+        dashSize: 40,
+        gapSize: 20,
         transparent: true,
-        opacity: 0.35
+        opacity: 0.25
     });
     const solarArc = new THREE.Line(arcGeom, arcMat);
     solarArc.computeLineDistances();
     scene.add(solarArc);
     window.solarArc = solarArc;
 
-    // Build Sun/Moon Sphere
-    const sunSphereGeom = new THREE.SphereGeometry(10, 16, 16);
+    // Build Celestial Sun/Moon Sphere high above ground
+    const sunSphereGeom = new THREE.SphereGeometry(35, 16, 16);
     const sunSphereMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
     const sunSphere = new THREE.Mesh(sunSphereGeom, sunSphereMat);
+    sunSphere.position.set(0, 3500, 0); // Position celestial sun high in sky
     scene.add(sunSphere);
+    window.sunSphere = sunSphere;
     updateSolarPhysics((inTime && inTime.value) ? parseFloat(inTime.value) : 12.0);
 
     // 10. Interaction
@@ -1204,21 +1206,23 @@ function updateSolarPhysics(timeVal) {
     const angle = ((timeVal - 6) / 16) * Math.PI; // map 6:00-22:00 to 0-180 degrees
     const isNight = timeVal < 7.5 || timeVal > 19.5;
 
-    // Dome Orbit position
-    const radius = 500;
-    dirLight.position.x = Math.cos(angle + Math.PI) * radius;
-    dirLight.position.y = Math.sin(angle) * radius;
-    dirLight.position.z = 100;
+    // Celestial Dome Orbit position (far out in the sky, offset by site center)
+    const radius = 3500;
+    const sunX = Math.cos(angle + Math.PI) * radius;
+    const sunY = Math.sin(angle) * radius;
+    const sunZ = 800;
 
-    // Update Sun/Moon sphere mesh
+    dirLight.position.set(sunX, Math.max(100, sunY), sunZ);
+
+    // Update Sun/Moon sphere mesh high in celestial sky dome
     if (window.sunSphere) {
-        window.sunSphere.position.copy(dirLight.position);
-        if (isNight) {
-            window.sunSphere.material.color.setHex(0xe2e8f0); // silver moon
-            window.sunSphere.scale.setScalar(0.75);
+        if (isNight || sunY < 20) {
+            window.sunSphere.visible = false;
         } else {
-            window.sunSphere.material.color.setHex(0xfef08a); // glowing yellow sun
-            window.sunSphere.scale.setScalar(1.0);
+            window.sunSphere.visible = true;
+            window.sunSphere.position.set(sunX, sunY, sunZ);
+            window.sunSphere.material.color.setHex(0xfef08a); // glowing yellow celestial sun
+            window.sunSphere.scale.setScalar(1.5);
         }
     }
 
