@@ -178,47 +178,36 @@ class ParametricProcessStudioDock(QDockWidget):
             parent.setExpanded(True)
 
     def _launch_algorithm(self, item, _column):
-        """Open Processing Toolbox and highlight the algorithm."""
+        """Open algorithm configuration dialog."""
         alg_id = item.data(0, Qt.ItemDataRole.UserRole)
         if not alg_id:
             return
+        alg = QgsApplication.processingRegistry().algorithmById(alg_id)
+        if alg is None:
+            return
+        import processing
         import contextlib
-        # Reveal Processing Toolbox — search by objectName, windowTitle, or class name
+        opened = False
         with contextlib.suppress(Exception):
-            from qgis.PyQt.QtWidgets import QDockWidget, QTreeWidget
-            found_dock = None
-            for dock in self.iface.mainWindow().findChildren(QDockWidget):
-                name = dock.objectName() or ""
-                title = dock.windowTitle() or ""
-                if "rocessing" in name or "rocessing" in title or "Toolbox" in title:
-                    found_dock = dock
+            dlg = processing.createAlgorithmDialog(alg_id, {})
+            if dlg is not None:
+                dlg.setModal(True)
+                dlg.exec_()
+                opened = True
+        if opened:
+            return
+        # Fallback: open native Processing Toolbox
+        with contextlib.suppress(Exception):
+            for a in self.iface.mainWindow().menuBar().actions():
+                if "rocessing" in a.text():
+                    for sub in a.menu().actions():
+                        if "oolbox" in sub.text():
+                            sub.trigger()
+                            break
                     break
-            if found_dock is None:
-                # Try the Processing menu action
-                for a in self.iface.mainWindow().menuBar().actions():
-                    if "rocessing" in a.text() or "rocess" in a.text():
-                        a.menu()  # trigger the menu to show
-                        for sub in a.menu().actions():
-                            if "oolbox" in sub.text():
-                                sub.trigger()
-                                break
-                        break
-                # Search again
-                for dock in self.iface.mainWindow().findChildren(QDockWidget):
-                    if "rocessing" in (dock.objectName() or "") or "rocessing" in (dock.windowTitle() or ""):
-                        found_dock = dock
-                        break
-            if found_dock is not None:
-                found_dock.setVisible(True)
-                found_dock.raise_()
-                self.iface.messageBar().pushInfo(
-                    "Parametric Process",
-                    "Processing Toolbox opened. Double-click the algorithm under Urban Analytics to configure and run."
-                )
-                return
         self.iface.messageBar().pushInfo(
             "Parametric Process",
-            "Use Processing → Toolbox → Urban Analytics to configure and run."
+            "Double-click the algorithm in Processing Toolbox → Urban Analytics to configure."
         )
 
     # ------------------------------------------------------------------ #

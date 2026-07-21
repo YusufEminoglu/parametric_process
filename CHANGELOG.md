@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.6.6] - 2026-07-21
+
+- Use createAlgorithmDialog+exec_() for parameter dialog; fallback to Processing Toolbox menu trigger
+
 ## [1.6.5] - 2026-07-21
 
 - Fix: broader Processing Toolbox search + trigger via Processing menu action if dock not found
