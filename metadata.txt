@@ -1,0 +1,26 @@
+[general]
+name=Parametric Process
+qgisMinimumVersion=3.28
+qgisMaximumVersion=4.99
+description=Parametric Generative Design and Multi-Objective Evolutionary Optimization Studio for QGIS.
+version=0.1.0
+author=Yusuf Eminoglu
+email=yusuf.eminoglu@deu.edu.tr
+
+about=Parametric Process is a standalone generative urban design and multi-objective evolutionary optimization lab for QGIS. Select urban block/parcel layers, launch the local 3D cockpit, run NSGA-II evolutionary simulations across density, daylight, carbon, and urban quality metrics, analyze Pareto trade-offs via Parallel Coordinates (PCP) and Pareto Front Scatter plots, preview 3D phenotypes in real time, and sync optimal solutions directly into QGIS vector layers.
+
+tracker=https://github.com/YusufEminoglu/parametric_process/issues
+repository=https://github.com/YusufEminoglu/parametric_process
+homepage=https://github.com/YusufEminoglu/parametric_process
+
+category=Vector
+tags=parametric,generative,urban,design,3d,evolutionary,optimization,nsga2,pareto,planning,massing
+icon=icons/icon.png
+
+experimental=False
+deprecated=False
+hasProcessingProvider=no
+license=GPL-3.0-or-later
+
+changelog=
+    Parametric Process 0.1.0 - Initial Release: Parametric generative urban design suite with NSGA-II multi-objective evolutionary solver, 3D Three.js cockpit, Parallel Coordinate Plot (PCP), 2D Pareto Front Scatter plot, Diamond/Radar phenotype charts, generation convergence graph, real-time phenotype 3D preview, and 2-way QGIS vector layer sync.
