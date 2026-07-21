@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.4.7] - 2026-07-21
+
+- Heatmap fix: now tints 3D building massing (not just ground). CFD wind: 3-zone color groups (cyan=fast, orange=canyon, red=wake) with morphology classification.
+
 ## [1.4.6] - 2026-07-21
 
 - Web cockpit: minimal pedestrians/cars, morphology-aware CFD wind, grouped export panel, export chip styling

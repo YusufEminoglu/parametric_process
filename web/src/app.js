@@ -1047,8 +1047,27 @@ function colorForParcel(item) {
 
 function refreshParcelHeatmap() {
     parcelFeatures.forEach(item => {
+        // Tint the ground parcel mesh
         if (item.parcelMesh && item.parcelMesh.material) {
             item.parcelMesh.material.color.setHex(colorForParcel(item));
+        }
+        // Tint the 3D building massing
+        const heatColor = new THREE.Color(colorForParcel(item));
+        if (item.buildingMesh) {
+            item.buildingMesh.traverse(child => {
+                if (child.isMesh && child.material) {
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach(m => {
+                        if (m.color && !m.emissiveMap) {
+                            // Tint solid-color materials (roof, courtyard, etc.)
+                            m.color.copy(heatColor).multiplyScalar(0.7);
+                        } else if (m.color && m.emissiveMap) {
+                            // Blend heatmap tint into wall material
+                            m.color.lerp(heatColor, 0.5);
+                        }
+                    });
+                }
+            });
         }
     });
 }
@@ -8240,98 +8259,120 @@ function initCfdParticles() {
         cfdParticlesMesh.material.dispose();
         cfdParticlesMesh = null;
     }
-    const particleCount = 250;
-    const instancedGeom = new THREE.ConeGeometry(0.5, 1.8, 4);
-    instancedGeom.rotateX(Math.PI / 2);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.7 });
-    cfdParticlesMesh = new THREE.InstancedMesh(instancedGeom, mat, particleCount);
-    // Enable per-instance colors for morphology-based coloring
-    cfdParticlesMesh.instanceColor = new THREE.InstancedBufferAttribute(
-        new Float32Array(particleCount * 3), 3
-    );
+    // Build 3 color-coded particle groups for clear morphology zones
+    const particleCount = 500;
+    const coneGeom = new THREE.ConeGeometry(0.45, 1.6, 4);
+    coneGeom.rotateX(Math.PI / 2);
+
+    // Fast/open zone: cyan-blue
+    const matFast = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65 });
+    const fastGroup = new THREE.InstancedMesh(coneGeom, matFast, 250);
+    // Canyon zone: orange
+    const matCanyon = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.75 });
+    const canyonGroup = new THREE.InstancedMesh(coneGeom, matCanyon, 150);
+    // Wake zone: red
+    const matWake = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.7 });
+    const wakeGroup = new THREE.InstancedMesh(coneGeom, matWake, 100);
+
+    cfdParticlesMesh = new THREE.Group();
+    cfdParticlesMesh.add(fastGroup);
+    cfdParticlesMesh.add(canyonGroup);
+    cfdParticlesMesh.add(wakeGroup);
 
     cfdParticlesData = [];
     for (let i = 0; i < particleCount; i++) {
         const x = (Math.random() - 0.5) * 350;
-        const y = 2.0 + Math.random() * 28.0;
+        const y = 2.5 + Math.random() * 26.0;
         const z = (Math.random() - 0.5) * 350;
-        cfdParticlesData.push({ x, y, z, speed: 0.8 + Math.random() * 1.4, baseSpeed: 0.8 + Math.random() * 1.4 });
+        cfdParticlesData.push({
+            x, y, z,
+            speed: 0.7 + Math.random() * 1.5,
+            zone: 'fast',  // fast / canyon / wake
+            groupIdx: Math.min(2, Math.floor(i / 167))
+        });
     }
     scene.add(cfdParticlesMesh);
 }
 
-function _sampleBuildingDensity(px, pz) {
-    // Check proximity to buildings — returns { nearBuilding, canyonGap, buildingHeight }
-    let minDist = 999;
-    let nearestH = 0;
+function _classifyWindZone(px, pz, py) {
+    // Classify a point into wind zone based on building proximity and height
+    let minDist = 999, nearestH = 0, buildingCount = 0;
     for (const pf of parcelFeatures) {
         if (!pf.outerRing || pf.outerRing.length < 3) continue;
-        // Simple centroid-based check
+        // Building centroid
         let cx = 0, cy = 0;
         for (const pt of pf.outerRing) { cx += pt.x; cy += pt.y; }
         cx /= pf.outerRing.length; cy /= pf.outerRing.length;
-        const dist = Math.hypot(px - cx, pz + cy);  // pz is negative in world space
-        if (dist < minDist) {
-            minDist = dist;
-            nearestH = (pf.params?.floors || 4) * (pf.params?.floorHeight || 3.0);
-        }
+        const dist = Math.hypot(px - cx, pz + cy);
+        const h = (pf.params?.floors || 4) * (pf.params?.floorHeight || 3.0);
+        if (dist < 50) buildingCount++;
+        if (dist < minDist) { minDist = dist; nearestH = h; }
     }
-    return { dist: minDist, height: nearestH, isCanyon: minDist < 25 && nearestH > 9 };
+    // Canyon: between close buildings, mid-height
+    if (buildingCount >= 2 && minDist < 30 && py < nearestH * 0.8) return 'canyon';
+    // Wake: downwind of a building (determined by proximity to building back side)
+    if (minDist < 25 && py < nearestH * 0.6) return 'wake';
+    // Fast: open areas or above buildings
+    return 'fast';
 }
 
 function updateCfdParticles() {
     if (!isCfdActive || !cfdParticlesMesh) return;
     const dummy = new THREE.Object3D();
-    const windAngle = Math.PI * 1.25; // Southwest prevailing wind
+    const windAngle = Math.PI * 1.25;
     const dirX = Math.cos(windAngle);
     const dirZ = Math.sin(windAngle);
 
+    const fastGroup = cfdParticlesMesh.children[0];
+    const canyonGroup = cfdParticlesMesh.children[1];
+    const wakeGroup = cfdParticlesMesh.children[2];
+    const counts = [0, 0, 0];
+
     for (let i = 0; i < cfdParticlesData.length; i++) {
         const p = cfdParticlesData[i];
-        const bld = _sampleBuildingDensity(p.x, p.z);
+        p.zone = _classifyWindZone(p.x, p.z, p.y);
 
-        // Morphology-aware speed modulation
-        let speedMod = 1.0;
-        if (bld.isCanyon) {
-            speedMod = 1.6;  // Canyon Venturi acceleration
-        } else if (bld.dist < 40) {
-            speedMod = 0.4;  // Wake zone / wind shadow behind buildings
-        }
-        const effectiveSpeed = p.baseSpeed * speedMod;
-        p.speed = effectiveSpeed;
+        let speedMod = p.zone === 'canyon' ? 2.2 : p.zone === 'wake' ? 0.3 : 1.0;
+        const effSpeed = p.speed * speedMod;
 
-        p.x += dirX * effectiveSpeed;
-        p.z += dirZ * effectiveSpeed;
+        p.x += dirX * effSpeed;
+        p.z += dirZ * effSpeed;
 
-        // Morphology-aware height: particles rise over buildings
-        if (bld.dist < 20 && p.y < bld.height * 1.2) {
-            p.y += 0.4;  // Flow over building
-        } else if (p.y > 3.0 && bld.dist > 60) {
-            p.y -= 0.15; // Settle back down in open areas
-        }
+        // Rise over buildings in wake zone
+        if (p.zone === 'wake') p.y += 0.3;
+        else if (p.zone === 'canyon' && p.y > 2) p.y -= 0.1;
+        if (p.y > 30) p.y = 2;
 
+        // Wrap around
         if (Math.abs(p.x) > 220 || Math.abs(p.z) > 220) {
             p.x = -dirX * 200 + (Math.random() - 0.5) * 80;
             p.z = -dirZ * 200 + (Math.random() - 0.5) * 80;
-            p.y = 2.0 + Math.random() * 28.0;
+            p.y = 2.5 + Math.random() * 26.0;
         }
 
         dummy.position.set(p.x, p.y, p.z);
         dummy.rotation.y = -windAngle;
         dummy.updateMatrix();
-        cfdParticlesMesh.setMatrixAt(i, dummy.matrix);
 
-        // Per-instance color: blue=fast/canyon, cyan=normal, orange=slow/wake
-        if (cfdParticlesMesh.instanceColor) {
-            const t = speedMod > 1.3 ? 0 : speedMod < 0.5 ? 1 : 0.5;
-            const cr = 0.2 + t * 0.7;     // red component
-            const cg = 0.5 + (1 - t) * 0.4; // green
-            const cb = 0.9 - t * 0.6;     // blue
-            cfdParticlesMesh.instanceColor.setXYZ(i, cr, cg, cb);
+        const targetGroup = p.zone === 'canyon' ? canyonGroup : p.zone === 'wake' ? wakeGroup : fastGroup;
+        const gi = p.zone === 'canyon' ? 1 : p.zone === 'wake' ? 2 : 0;
+        const idx = counts[gi];
+        if (idx < targetGroup.count) {
+            targetGroup.setMatrixAt(idx, dummy.matrix);
+            counts[gi]++;
         }
     }
-    cfdParticlesMesh.instanceMatrix.needsUpdate = true;
-    if (cfdParticlesMesh.instanceColor) cfdParticlesMesh.instanceColor.needsUpdate = true;
+
+    // Hide unused instances
+    for (const [gi, group] of [fastGroup, canyonGroup, wakeGroup].entries()) {
+        for (let j = counts[gi]; j < group.count; j++) {
+            dummy.position.set(0, -999, 0);
+            dummy.updateMatrix();
+            group.setMatrixAt(j, dummy.matrix);
+        }
+        group.instanceMatrix.needsUpdate = true;
+        group.count = counts[gi]; // track visible count
+    }
 }
 
 // Hook CFD update into main animate loop
