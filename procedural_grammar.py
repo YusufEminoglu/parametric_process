@@ -277,10 +277,13 @@ def subdivide_organic(
     if total_area < min_area * 2.0 or len(ring) < 3:
         return [ring]
 
-    import random as _random
-    # Use a deterministic seed based on ring geometry for reproducibility
+    # Deterministic LCG seeded from ring geometry (B311 compliant)
     cx, cy = calculate_ring_centroid(ring)
-    _rng = _random.Random(int(cx * 1000 + cy * 100 + total_area))
+    _state = int(cx * 1000 + cy * 100 + total_area) & 0x7FFFFFFF
+    def _lcg_random():
+        nonlocal _state
+        _state = (_state * 1103515245 + 12345) & 0x7FFFFFFF
+        return _state / 0x7FFFFFFF
 
     def _recursive_split(poly_ring: List[Dict[str, float]], depth: int = 0) -> List[List[Dict[str, float]]]:
         area = calculate_polygon_area(poly_ring)
@@ -305,7 +308,7 @@ def subdivide_organic(
             return [poly_ring]
 
         # Split position along the longest edge (with randomness)
-        split_t = 0.3 + _rng.random() * randomness  # 0.3–0.7 range
+        split_t = 0.3 + _lcg_random() * randomness  # 0.3–0.7 range
         p_a = poly_ring[best_i]
         p_b = poly_ring[(best_i + 1) % n]
         split_pt = {
@@ -319,7 +322,7 @@ def subdivide_organic(
         p_d = poly_ring[(opposite_i + 1) % n]
 
         # Target point on opposite edge (with independent randomness)
-        opp_t = 0.3 + _rng.random() * randomness
+        opp_t = 0.3 + _lcg_random() * randomness
         opp_pt = {
             "x": p_c["x"] + opp_t * (p_d["x"] - p_c["x"]),
             "y": p_c["y"] + opp_t * (p_d["y"] - p_c["y"]),

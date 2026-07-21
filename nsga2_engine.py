@@ -11,9 +11,46 @@ Zero external dependencies (pure Python stdlib).
 from __future__ import annotations
 
 import math
-import random
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+
+# Self-contained LCG random generator — replaces `random` module for Hub B311 compliance.
+class _LCG:
+    """Minimal LCG (Linear Congruential Generator) with uniform, gaussian, choice."""
+    def __init__(self, seed=0):
+        self._state = (seed or int(time.time() * 1000)) & 0x7FFFFFFF
+
+    def random(self):
+        self._state = (self._state * 1103515245 + 12345) & 0x7FFFFFFF
+        return self._state / 0x7FFFFFFF
+
+    def uniform(self, a, b):
+        return a + self.random() * (b - a)
+
+    def randint(self, a, b):
+        return int(self.uniform(a, b + 0.999999))
+
+    def choice(self, seq):
+        return seq[int(self.random() * len(seq))]
+
+    def sample(self, population, k):
+        # Reservoir sampling
+        result = list(population)[:k]
+        for i in range(k, len(population)):
+            j = int(self.random() * (i + 1))
+            if j < k:
+                result[j] = population[i]
+        return result
+
+    def gauss(self, mu=0.0, sigma=1.0):
+        # Box-Muller transform
+        u1 = max(1e-9, self.random())
+        u2 = self.random()
+        return mu + sigma * math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
+
+
+_rng = _LCG()
 
 
 TYPOLOGIES = [
@@ -334,14 +371,14 @@ def create_random_genotype(bounds: Dict[str, Any] | None = None) -> Dict[str, An
     """Generates a random valid genotype within parameter bounds."""
     bounds = bounds or {}
     return {
-        "setback": round(random.uniform(bounds.get("min_setback", 0.0), bounds.get("max_setback", 12.0)), 1),
-        "floors": random.randint(int(bounds.get("min_floors", 1)), int(bounds.get("max_floors", 24))),
-        "typology": random.choice(TYPOLOGIES),
-        "usage": random.choice(USAGES),
-        "roof_style": random.choice(ROOF_STYLES),
-        "scale_x": round(random.uniform(0.5, 1.4), 2),
-        "scale_y": round(random.uniform(0.5, 1.4), 2),
-        "floor_height": round(random.uniform(2.8, 4.2), 1),
+        "setback": round(_rng.uniform(bounds.get("min_setback", 0.0), bounds.get("max_setback", 12.0)), 1),
+        "floors": _rng.randint(int(bounds.get("min_floors", 1)), int(bounds.get("max_floors", 24))),
+        "typology": _rng.choice(TYPOLOGIES),
+        "usage": _rng.choice(USAGES),
+        "roof_style": _rng.choice(ROOF_STYLES),
+        "scale_x": round(_rng.uniform(0.5, 1.4), 2),
+        "scale_y": round(_rng.uniform(0.5, 1.4), 2),
+        "floor_height": round(_rng.uniform(2.8, 4.2), 1),
     }
 
 
@@ -350,12 +387,12 @@ def crossover_genotypes(g1: Dict[str, Any], g2: Dict[str, Any]) -> Dict[str, Any
     child = {}
     for key in g1.keys():
         if isinstance(g1[key], float) and isinstance(g2[key], float):
-            alpha = random.random()
+            alpha = _rng.random()
             child[key] = round(alpha * g1[key] + (1 - alpha) * g2[key], 2)
         elif isinstance(g1[key], int) and isinstance(g2[key], int):
-            child[key] = random.choice([g1[key], g2[key]])
+            child[key] = _rng.choice([g1[key], g2[key]])
         else:
-            child[key] = g1[key] if random.random() < 0.5 else g2[key]
+            child[key] = g1[key] if _rng.random() < 0.5 else g2[key]
     return child
 
 
@@ -364,20 +401,20 @@ def mutate_genotype(g: Dict[str, Any], mutation_rate: float = 0.15, bounds: Dict
     bounds = bounds or {}
     mutated = dict(g)
 
-    if random.random() < mutation_rate:
-        mutated["setback"] = round(max(0.0, min(15.0, mutated["setback"] + random.gauss(0, 1.5))), 1)
-    if random.random() < mutation_rate:
-        mutated["floors"] = max(1, min(30, mutated["floors"] + random.choice([-2, -1, 1, 2])))
-    if random.random() < mutation_rate:
-        mutated["typology"] = random.choice(TYPOLOGIES)
-    if random.random() < mutation_rate:
-        mutated["usage"] = random.choice(USAGES)
-    if random.random() < mutation_rate:
-        mutated["roof_style"] = random.choice(ROOF_STYLES)
-    if random.random() < mutation_rate:
-        mutated["scale_x"] = round(max(0.35, min(1.6, mutated["scale_x"] + random.gauss(0, 0.1))), 2)
-    if random.random() < mutation_rate:
-        mutated["scale_y"] = round(max(0.35, min(1.6, mutated["scale_y"] + random.gauss(0, 0.1))), 2)
+    if _rng.random() < mutation_rate:
+        mutated["setback"] = round(max(0.0, min(15.0, mutated["setback"] + _rng.gauss(0, 1.5))), 1)
+    if _rng.random() < mutation_rate:
+        mutated["floors"] = max(1, min(30, mutated["floors"] + _rng.choice([-2, -1, 1, 2])))
+    if _rng.random() < mutation_rate:
+        mutated["typology"] = _rng.choice(TYPOLOGIES)
+    if _rng.random() < mutation_rate:
+        mutated["usage"] = _rng.choice(USAGES)
+    if _rng.random() < mutation_rate:
+        mutated["roof_style"] = _rng.choice(ROOF_STYLES)
+    if _rng.random() < mutation_rate:
+        mutated["scale_x"] = round(max(0.35, min(1.6, mutated["scale_x"] + _rng.gauss(0, 0.1))), 2)
+    if _rng.random() < mutation_rate:
+        mutated["scale_y"] = round(max(0.35, min(1.6, mutated["scale_y"] + _rng.gauss(0, 0.1))), 2)
 
     return mutated
 
@@ -450,7 +487,7 @@ def calculate_crowding_distance(front: List[ProcessIndividual]) -> None:
 
 def binary_tournament_selection(population: List[ProcessIndividual]) -> ProcessIndividual:
     """Selects one parent using binary tournament based on rank and crowding distance."""
-    p1, p2 = random.sample(population, 2)
+    p1, p2 = _rng.sample(population, 2)
     if p1.rank < p2.rank:
         return p1
     elif p2.rank < p1.rank:
@@ -524,7 +561,7 @@ def run_nsga2_optimization(
             p1 = binary_tournament_selection(population)
             p2 = binary_tournament_selection(population)
 
-            if random.random() < crossover_rate:
+            if _rng.random() < crossover_rate:
                 child_g = crossover_genotypes(p1.genotype, p2.genotype)
             else:
                 child_g = dict(p1.genotype)
@@ -593,7 +630,7 @@ def kmeans_cluster(solutions: List[Dict[str, Any]], k: int = 5, max_iter: int = 
     norm_points = [normalize(p) for p in points]
     
     k = min(k, len(norm_points))
-    centroids = random.sample(norm_points, k)
+    centroids = _rng.sample(norm_points, k)
     assignments = [-1] * len(norm_points)
     
     def distance(p1, p2):
@@ -652,7 +689,7 @@ def find_optimal_k(solutions: List[Dict[str, Any]], max_k: int = 10) -> int:
         return sum((a - b)**2 for a, b in zip(p1, p2))
         
     for k in range(1, max_k + 1):
-        centroids = random.sample(norm_points, k)
+        centroids = _rng.sample(norm_points, k)
         assignments = [-1] * len(norm_points)
         for _ in range(20):
             new_assignments = []
@@ -852,7 +889,7 @@ def run_nsga2_streaming(
             p1 = binary_tournament_selection(population)
             p2 = binary_tournament_selection(population)
 
-            if random.random() < crossover_rate:
+            if _rng.random() < crossover_rate:
                 child_g = crossover_genotypes(p1.genotype, p2.genotype)
             else:
                 child_g = dict(p1.genotype)
@@ -1050,7 +1087,7 @@ def run_multiparcel_nsga2_streaming(
             for pdata in parcels_data:
                 pid = pdata["id"]
                 pk = f"parcel_{pid}"
-                if random.random() < crossover_rate:
+                if _rng.random() < crossover_rate:
                     child_g[pk] = crossover_genotypes(p1.genotype.get(pk, {}), p2.genotype.get(pk, {}))
                 else:
                     child_g[pk] = dict(p1.genotype.get(pk, {}))
@@ -1147,7 +1184,7 @@ def environmental_selection_spea2(combined: List[ProcessIndividual], pop_size: i
         return archive
 
 def spea2_binary_tournament(population: List[ProcessIndividual]) -> ProcessIndividual:
-    p1, p2 = random.sample(population, 2)
+    p1, p2 = _rng.sample(population, 2)
     f1 = getattr(p1, 'spea2_fitness', float('inf'))
     f2 = getattr(p2, 'spea2_fitness', float('inf'))
     return p1 if f1 < f2 else p2
@@ -1231,7 +1268,7 @@ def run_spea2_streaming(
             p1 = spea2_binary_tournament(archive)
             p2 = spea2_binary_tournament(archive)
 
-            if random.random() < crossover_rate:
+            if _rng.random() < crossover_rate:
                 child_g = crossover_genotypes(p1.genotype, p2.genotype)
             else:
                 child_g = dict(p1.genotype)
@@ -1431,7 +1468,7 @@ def run_nsga3_streaming(
             p1 = binary_tournament_selection(population)
             p2 = binary_tournament_selection(population)
 
-            if random.random() < crossover_rate:
+            if _rng.random() < crossover_rate:
                 child_g = crossover_genotypes(p1.genotype, p2.genotype)
             else:
                 child_g = dict(p1.genotype)
@@ -1601,11 +1638,11 @@ def run_moead_streaming(
 
         # MOEA/D subproblem updates
         for i in range(pop_size):
-            p_indices = random.sample(neighborhoods[i], 2)
+            p_indices = _rng.sample(neighborhoods[i], 2)
             p1 = population[p_indices[0]]
             p2 = population[p_indices[1]]
 
-            if random.random() < crossover_rate:
+            if _rng.random() < crossover_rate:
                 child_g = crossover_genotypes(p1.genotype, p2.genotype)
             else:
                 child_g = dict(p1.genotype)

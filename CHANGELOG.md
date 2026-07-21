@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.8.0] - 2026-07-21
+
+- B311 compliance: replaced random module with self-contained LCG in nsga2_engine, procedural_grammar, ppud_pipeline. Deleted .bandit — aiming for full Validated status.
+
 ## [1.7.2] - 2026-07-21
 
 - Qt6 compat: getattr-based exec/exec_ dispatch for Processing dialog

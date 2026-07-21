@@ -17,10 +17,10 @@ that can be invoked headless (QGIS Processing) or interactively (web cockpit).
 from __future__ import annotations
 
 import math
-import random
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from .nsga2_engine import _LCG
 from .block_typologies import (
     build_zoning_envelope,
     get_block_typology,
@@ -165,8 +165,7 @@ class PpudPipeline:
     """
 
     def __init__(self, seed: int | None = None):
-        if seed is not None:
-            random.seed(seed)
+        self._rng = _LCG(seed) if seed is not None else _LCG()
 
     # ----- Stage 1: Plot Layout Generation -----
 
@@ -268,7 +267,7 @@ class PpudPipeline:
             for _ in range(optimization_rounds):
                 # Generate a candidate genotype biased toward compatible types
                 genotype = create_random_genotype()
-                genotype["typology"] = random.choice(compatible_types)
+                genotype["typology"] = self._rng.choice(compatible_types)
 
                 # Evaluate
                 metrics = evaluate_phenotype(
@@ -344,7 +343,10 @@ class PpudPipeline:
 
         # Randomize development order
         dev_order = list(range(n_plots))
-        random.shuffle(dev_order)
+        # Fisher-Yates shuffle using LCG
+        for i in range(len(dev_order) - 1, 0, -1):
+            j = int(self._rng.random() * (i + 1))
+            dev_order[i], dev_order[j] = dev_order[j], dev_order[i]
 
         developed_ids: List[int] = []
         fabric_history: List[Dict[str, Any]] = []

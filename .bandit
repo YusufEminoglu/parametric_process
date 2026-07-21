@@ -1,3 +1,0 @@
-[bandit]
-# Evolutionary simulation non-cryptographic RNG, reviewed safe.
-skips = B311
