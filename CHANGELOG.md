@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.0] - 2026-07-22
+
+- Parametric Process Studio v2.0.0 Release: Inverse Distance Weighting (IDW) Kernel Interpolation Engine with 1-meter height sensitivity across all heatmaps
+
 ## [1.9.9] - 2026-07-22
 
 - Parametric Process Studio v1.9.9 Release: Re-architected Heatmap Legend directly into the Left Tool Drawer to eliminate 3D viewport overlaps

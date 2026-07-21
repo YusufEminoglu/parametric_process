@@ -1029,6 +1029,46 @@ function getDivergentHeatmapColor(t) {
     return lerpColorHex(0xf97316, 0xdc2626, (clampT - 0.83) / 0.17);                    // Orange -> Crimson Red
 }
 
+// Spatial Inverse Distance Weighting (IDW) Kernel Interpolation Engine
+function computeIdwHeatmapValue(targetItem, extractorFn, powerExp = 2.0, radiusMax = 120.0) {
+    if (!parcelFeatures || parcelFeatures.length <= 1) return extractorFn(targetItem);
+    
+    const targetPt = getParcelCentroid(targetItem);
+    let sumWeightedValue = 0.0;
+    let sumWeights = 0.0;
+    
+    for (let i = 0; i < parcelFeatures.length; i++) {
+        const neighbor = parcelFeatures[i];
+        const rawVal = extractorFn(neighbor);
+        
+        if (neighbor === targetItem) {
+            // Local building weight (primary 1m height impact)
+            const selfWeight = 4.0;
+            sumWeightedValue += selfWeight * rawVal;
+            sumWeights += selfWeight;
+            continue;
+        }
+        
+        const nPt = getParcelCentroid(neighbor);
+        const dist = Math.hypot(targetPt.x - nPt.x, targetPt.y - nPt.y);
+        
+        if (dist <= radiusMax) {
+            const weight = 1.0 / Math.pow(Math.max(1.0, dist), powerExp);
+            sumWeightedValue += weight * rawVal;
+            sumWeights += weight;
+        }
+    }
+    
+    return sumWeights > 0 ? (sumWeightedValue / sumWeights) : extractorFn(targetItem);
+}
+
+function getRawParcelHeight(item) {
+    const fl = item.params?.floors || 4;
+    const fh = item.params?.floorHeight || 3.0;
+    const setback = item.params?.setback || 0;
+    return (fl * fh) + (setback * 0.2); // Meter-precise total building height
+}
+
 function colorForParcel(item) {
     const metrics = calculateParcelMetrics(item);
     if (selectedParcel === item && heatmapMode === 'compliance') {
@@ -1039,64 +1079,84 @@ function colorForParcel(item) {
     }
 
     if (heatmapMode === 'svf') {
-        // Sky View Factor (SVF) Simulation (0.12 = deep canyon, 0.95 = open sky)
-        const height = metrics.height || 12.0;
-        const width = Math.sqrt(item.area || 500);
-        const canyonRatio = height / Math.max(5, width * 0.4);
-        const svf = Math.max(0.12, Math.min(0.96, 1.0 / Math.sqrt(1 + canyonRatio * canyonRatio)));
-        return getDivergentHeatmapColor(1.0 - svf); // Indigo/Violet for deep canyon (low SVF), Sky Teal for open canopy (high SVF)
+        // IDW Kernel Sky View Factor (SVF) Simulation with 1m height sensitivity
+        const idwSvf = computeIdwHeatmapValue(item, (target) => {
+            const h = getRawParcelHeight(target);
+            const w = Math.sqrt(target.area || 500);
+            const canyonRatio = h / Math.max(4, w * 0.35);
+            return Math.max(0.10, Math.min(0.96, 1.0 / Math.sqrt(1 + canyonRatio * canyonRatio)));
+        });
+        return getDivergentHeatmapColor(1.0 - idwSvf); // Deep Indigo for canyon (low SVF), Sky Teal for open plaza
     }
 
     if (heatmapMode === 'uhi') {
-        // Urban Heat Island & Vegetation Evapotranspirative Cooling Simulation
-        const floors = item.params.floors || 4;
-        const bcr = metrics.bcr || 0.35;
-        const isPark = item.params.usage === 'Park';
-        const isGreenRoof = item.params.roofStyle === 'Flat' || isPark;
-        
-        // Baseline UHI + Vegetation Cooling Delta (-3.5°C for Parks, -1.8°C for Green Roofs)
-        const baseUhi = 1.2 + (floors * 0.45) + (bcr * 3.2);
-        const vegCooling = isPark ? -3.5 : (isGreenRoof ? -1.8 : -0.4);
-        const netUhiTemp = 28.0 + baseUhi + vegCooling;
-        
-        return getDivergentHeatmapColor((netUhiTemp - 26.0) / 12.0); // Cooled Teal (26°C) to Severe UHI Crimson (38°C)
+        // IDW Kernel Urban Heat Island & Evapotranspirative Vegetation Cooling Simulation
+        const idwUhi = computeIdwHeatmapValue(item, (target) => {
+            const h = getRawParcelHeight(target);
+            const bcr = (target.params.footprintArea || 200) / Math.max(1, target.area || 500);
+            const isPark = target.params.usage === 'Park';
+            const isGreenRoof = target.params.roofStyle === 'Flat' || isPark;
+            const vegCooling = isPark ? -4.2 : (isGreenRoof ? -2.2 : -0.4);
+            return 26.0 + 1.2 + (h * 0.35) + (bcr * 4.5) + vegCooling;
+        });
+        return getDivergentHeatmapColor((idwUhi - 25.0) / 18.0); // Cooled Sage (25°C) to Severe UHI Crimson (43°C)
     }
 
     if (heatmapMode === 'solair') {
-        // Sol-Air Surface Temperature Heat Simulation (°C)
-        const floors = item.params.floors || 4;
-        const bcr = metrics.bcr || 0.3;
-        const solAirTemp = 24.0 + (floors * 0.8) + (bcr * 18.0);
-        return getDivergentHeatmapColor((solAirTemp - 22.0) / 26.0); // 22°C to 48°C
+        // IDW Kernel Sol-Air Surface Temperature Heat Simulation (°C) with 1m height sensitivity
+        const idwSolAir = computeIdwHeatmapValue(item, (target) => {
+            const h = getRawParcelHeight(target);
+            const bcr = (target.params.footprintArea || 200) / Math.max(1, target.area || 500);
+            return 22.0 + (h * 0.65) + (bcr * 18.0); // 1m height adds 0.65°C radiant temp
+        });
+        return getDivergentHeatmapColor((idwSolAir - 22.0) / 32.0); // 22°C (15m) to 54°C (40m+)
     }
 
     if (heatmapMode === 'solar') {
-        // Solar Irradiance (kWh/m²) Simulation
-        const solarRad = (metrics.solarRadKwh !== undefined) ? metrics.solarRadKwh : (500 + (item.params.floors || 4) * 45);
-        return getDivergentHeatmapColor((solarRad - 200) / 1200); // 200 to 1400 kWh/m²
+        // IDW Kernel Solar Irradiance (kWh/m²) Simulation
+        const idwSolar = computeIdwHeatmapValue(item, (target) => {
+            const h = getRawParcelHeight(target);
+            return 200 + (h * 28.0) + ((target.params.floors || 4) * 15.0); // Sensitive to 1m height increment
+        });
+        return getDivergentHeatmapColor((idwSolar - 200) / 1300); // 200 to 1500 kWh/m²
     }
 
     if (heatmapMode === 'utci') {
-        // UTCI Microclimate Heat Stress Index (°C)
-        const utci = (metrics.utciScore !== undefined) ? metrics.utciScore : (24 + (item.params.floors || 4) * 0.5);
-        return getDivergentHeatmapColor((utci - 18) / 24); // 18°C (Neutral) to 42°C (Extreme Stress)
+        // IDW Kernel UTCI Outdoor Thermal Stress Index (°C)
+        const idwUtci = computeIdwHeatmapValue(item, (target) => {
+            const h = getRawParcelHeight(target);
+            const bcr = (target.params.footprintArea || 200) / Math.max(1, target.area || 500);
+            return 18.0 + (h * 0.52) + (bcr * 12.0);
+        });
+        return getDivergentHeatmapColor((idwUtci - 18.0) / 26.0); // 18°C (Neutral) to 44°C (Extreme Stress)
     }
 
     if (heatmapMode === 'density') {
-        return getDivergentHeatmapColor(metrics.densityPpHa / 800);
+        const idwDensity = computeIdwHeatmapValue(item, (target) => {
+            const targetMetrics = calculateParcelMetrics(target);
+            return targetMetrics.densityPpHa;
+        });
+        return getDivergentHeatmapColor(idwDensity / 800);
     }
 
     if (heatmapMode === 'carbon') {
-        const carbonPerSqm = metrics.gfa > 0 ? metrics.carbon / metrics.gfa : 0;
-        return getDivergentHeatmapColor(carbonPerSqm / 0.08);
+        const idwCarbon = computeIdwHeatmapValue(item, (target) => {
+            const targetMetrics = calculateParcelMetrics(target);
+            return targetMetrics.gfa > 0 ? targetMetrics.carbon / targetMetrics.gfa : 0;
+        });
+        return getDivergentHeatmapColor(idwCarbon / 0.08);
     }
 
     if (heatmapMode === 'compliance') {
         return metrics.violated ? 0x7f1d1d : 0x334155;
     }
 
-    const score = metrics.planScore !== undefined ? metrics.planScore : calculatePlanScore(metrics, item);
-    return getDivergentHeatmapColor(score / 100);
+    // Default Score Heatmap with IDW Spatial Height & Density Influence
+    const idwScore = computeIdwHeatmapValue(item, (target) => {
+        const targetMetrics = calculateParcelMetrics(target);
+        return targetMetrics.planScore !== undefined ? targetMetrics.planScore : calculatePlanScore(targetMetrics, target);
+    });
+    return getDivergentHeatmapColor(idwScore / 100);
 }
 
 function refreshParcelHeatmap() {
