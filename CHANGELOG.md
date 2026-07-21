@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [1.9.6] - 2026-07-22
+
+- Parametric Process Studio v1.9.6 Release: Clean plugin scope separation and title alignment (Parametric Process Studio)
+
 ## [1.9.5] - 2026-07-22
 
 - Parametric Process Studio v1.9.5 Release: High-contrast typography fix for Heatmap mode dropdowns, Design Parameters dropdowns, and bottom city scorecard stats banner

@@ -1,4 +1,4 @@
-/* app.js - PlanX Urban Procedural 3D */
+/* app.js - Parametric Process Studio */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
