@@ -42,6 +42,7 @@ export class WorkflowModeler {
         this.edgeLayer = document.getElementById('workflow-edge-layer');
         this.emptyHint = document.getElementById('workflow-empty-hint');
         this.paletteList = document.getElementById('workflow-palette-list');
+        this.oneClickToggle = document.getElementById('workflow-one-click');
         this.nameInput = document.getElementById('workflow-name');
         this.templateSelect = document.getElementById('workflow-template');
         this.inspectorTitle = document.getElementById('workflow-inspector-title');
@@ -87,6 +88,9 @@ export class WorkflowModeler {
         this.deleteNodeButton?.addEventListener('click', () => this.deleteSelection());
         document.getElementById('workflow-preview-result')?.addEventListener('click', () => this.previewResult());
         document.getElementById('workflow-sync-result')?.addEventListener('click', () => this.syncResult());
+        document.getElementById('workflow-open-guide')?.addEventListener('click', () => {
+            this.options.onGuide?.('guide-workflow');
+        });
         this.nameInput?.addEventListener('change', () => {
             this.graph.name = this.nameInput.value.trim() || 'Untitled Workflow';
         });
@@ -153,8 +157,36 @@ export class WorkflowModeler {
         return candidate;
     }
 
-    addNode(type, x = null, y = null) {
+    smartPredecessor(type) {
+        if (!this.catalog[type]?.accepts_input) return null;
+        if (this.selectedNodeId && this.graph.nodes.some(node => node.id === this.selectedNodeId)) {
+            return this.selectedNodeId;
+        }
+        const connectedSources = new Set(this.graph.edges.map(edge => edge.source));
+        const terminals = this.graph.nodes.filter(node => !connectedSources.has(node.id));
+        return terminals.length === 1 ? terminals[0].id : null;
+    }
+
+    connectNodes(sourceId, targetId) {
+        const sourceNode = this.graph.nodes.find(node => node.id === sourceId);
+        const targetNode = this.graph.nodes.find(node => node.id === targetId);
+        if (!sourceNode || !targetNode || sourceId === targetId || !this.catalog[targetNode.type]?.accepts_input) {
+            return false;
+        }
+        if (this.wouldCreateCycle(sourceId, targetId)) {
+            this.options.notify?.('That connection would create a workflow cycle.', 'warning');
+            return false;
+        }
+        this.graph.edges = this.graph.edges.filter(edge => edge.target !== targetId);
+        if (!this.graph.edges.some(edge => edge.source === sourceId && edge.target === targetId)) {
+            this.graph.edges.push({ id: this.nextIdentifier('edge'), source: sourceId, target: targetId });
+        }
+        return true;
+    }
+
+    addNode(type, x = null, y = null, { smartConnect = false } = {}) {
         if (!this.catalog[type] || this.graph.nodes.length >= 64) return;
+        const predecessorId = smartConnect ? this.smartPredecessor(type) : null;
         const index = this.graph.nodes.length;
         const node = this.makeNode(
             type,
@@ -162,8 +194,15 @@ export class WorkflowModeler {
             y ?? 50 + Math.floor(index / 5) * 145,
         );
         this.graph.nodes.push(node);
+        const connected = predecessorId ? this.connectNodes(predecessorId, node.id) : false;
         this.renderGraph();
         this.selectNode(node.id);
+        this.setStatus(
+            connected
+                ? `${this.catalog[type].label} added, selected and connected.`
+                : `${this.catalog[type].label} added and selected.`,
+            'success',
+        );
     }
 
     renderPalette() {
@@ -191,7 +230,9 @@ export class WorkflowModeler {
                 const detail = document.createElement('small');
                 detail.textContent = spec.description;
                 button.append(title, detail);
-                button.addEventListener('click', () => this.addNode(type));
+                button.addEventListener('click', () => this.addNode(type, null, null, {
+                    smartConnect: this.oneClickToggle?.checked !== false,
+                }));
                 button.addEventListener('dragstart', event => {
                     event.dataTransfer?.setData('application/x-parametric-node', type);
                     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
@@ -244,6 +285,9 @@ export class WorkflowModeler {
         ports.appendChild(this.makePort(node.id, 'output'));
 
         header.addEventListener('pointerdown', event => this.startNodeDrag(event, node));
+        element.addEventListener('pointerdown', event => {
+            if (event.button === 0) this.selectNode(node.id);
+        });
         element.addEventListener('click', event => {
             event.stopPropagation();
             this.selectNode(node.id);
@@ -288,15 +332,7 @@ export class WorkflowModeler {
     completeConnection(targetId) {
         const sourceId = this.connectingSourceId;
         if (!sourceId || sourceId === targetId) return;
-        if (this.wouldCreateCycle(sourceId, targetId)) {
-            this.options.notify?.('That connection would create a workflow cycle.', 'warning');
-            this.cancelConnection();
-            return;
-        }
-        this.graph.edges = this.graph.edges.filter(edge => edge.target !== targetId);
-        if (!this.graph.edges.some(edge => edge.source === sourceId && edge.target === targetId)) {
-            this.graph.edges.push({ id: this.nextIdentifier('edge'), source: sourceId, target: targetId });
-        }
+        this.connectNodes(sourceId, targetId);
         this.cancelConnection();
         this.renderEdges();
     }

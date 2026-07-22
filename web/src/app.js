@@ -84,6 +84,10 @@ const btnGuideInline = document.getElementById('btn-guide-inline');
 const btnGuideClose = document.getElementById('btn-guide-close');
 const guidePanelEl = document.getElementById('guide-panel');
 const guideScrimEl = document.getElementById('guide-scrim');
+const guideSearchEl = document.getElementById('guide-search');
+const guideSearchStatusEl = document.getElementById('guide-search-status');
+const guideContentEl = document.getElementById('guide-content');
+const guideNavEl = document.getElementById('guide-nav');
 const inScenarioPreset = document.getElementById('input-scenario-preset');
 const btnApplyPreset = document.getElementById('btn-apply-preset');
 const scenarioNoteEl = document.getElementById('scenario-note');
@@ -712,13 +716,13 @@ function setupInputListeners() {
 
     const btnGuideTop = document.getElementById('btn-guide-top');
     if (btnGuide) {
-        btnGuide.addEventListener('click', openGuidePanel);
+        btnGuide.addEventListener('click', () => openGuidePanel());
     }
     if (btnGuideTop) {
-        btnGuideTop.addEventListener('click', openGuidePanel);
+        btnGuideTop.addEventListener('click', () => openGuidePanel());
     }
     if (btnGuideInline) {
-        btnGuideInline.addEventListener('click', openGuidePanel);
+        btnGuideInline.addEventListener('click', () => openGuidePanel());
     }
     if (btnGuideClose) {
         btnGuideClose.addEventListener('click', closeGuidePanel);
@@ -726,6 +730,11 @@ function setupInputListeners() {
     if (guideScrimEl) {
         guideScrimEl.addEventListener('click', closeGuidePanel);
     }
+    guideNavEl?.addEventListener('click', event => {
+        const button = event.target.closest('[data-guide-target]');
+        if (button) navigateGuide(button.dataset.guideTarget);
+    });
+    guideSearchEl?.addEventListener('input', filterGuideContents);
 
     if (inScenarioPreset) {
         inScenarioPreset.addEventListener('change', () => {
@@ -789,12 +798,47 @@ function isUiEventTarget(target) {
     );
 }
 
-function openGuidePanel() {
+function guideSections() {
+    return guideContentEl ? Array.from(guideContentEl.querySelectorAll('.guide-section')) : [];
+}
+
+function navigateGuide(sectionId) {
+    const target = document.getElementById(sectionId);
+    if (!target || target.classList.contains('guide-search-hidden')) return;
+    guideNavEl?.querySelectorAll('[data-guide-target]').forEach(button => {
+        button.classList.toggle('active', button.dataset.guideTarget === sectionId);
+    });
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function filterGuideContents() {
+    const term = (guideSearchEl?.value || '').trim().toLocaleLowerCase('tr-TR');
+    let visible = 0;
+    guideSections().forEach(section => {
+        const match = !term || section.textContent.toLocaleLowerCase('tr-TR').includes(term);
+        section.classList.toggle('guide-search-hidden', !match);
+        const navButton = guideNavEl?.querySelector(`[data-guide-target="${section.id}"]`);
+        navButton?.classList.toggle('guide-search-hidden', !match);
+        if (match) visible += 1;
+    });
+    if (guideSearchStatusEl) {
+        guideSearchStatusEl.textContent = term
+            ? `${visible} bölüm eşleşti`
+            : `${guideSections().length} bölüm`;
+    }
+}
+
+function openGuidePanel(sectionId = 'guide-start') {
     if (!guidePanelEl) return;
+    if (guideSearchEl) guideSearchEl.value = '';
     guidePanelEl.classList.remove('hidden');
     if (guideScrimEl) {
         guideScrimEl.classList.remove('hidden');
     }
+    filterGuideContents();
+    requestAnimationFrame(() => navigateGuide(
+        typeof sectionId === 'string' ? sectionId : 'guide-start',
+    ));
 }
 
 function closeGuidePanel() {
@@ -9061,6 +9105,7 @@ const workflowModeler = new WorkflowModeler({
     getSelectedFeatureId: () => selectedParcel?.fid ?? null,
     notify: showToast,
     onOpen: () => setStudioMode('workflow'),
+    onGuide: sectionId => openGuidePanel(sectionId),
     onPreview: solution => {
         activeParetoSolution = solution;
         displaySolutionCard(solution);

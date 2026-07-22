@@ -57,6 +57,57 @@ body.workflow-mode #city-scorecard {
     line-height: 1.45;
 }
 
+.workflow-one-click-control {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 8px;
+    padding: 9px;
+    border: 1px solid #b7ddd8;
+    border-radius: 8px;
+    background: #effaf8;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.workflow-one-click-control input {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--accent);
+}
+
+.workflow-one-click-control span,
+.workflow-one-click-control strong,
+.workflow-one-click-control small {
+    display: block;
+}
+
+.workflow-one-click-control strong {
+    font-size: 0.7rem;
+}
+
+.workflow-one-click-control small {
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 0.6rem;
+}
+
+.workflow-guide-button {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 8px;
+    border: 1px solid #8065ad;
+    border-radius: 8px;
+    background: #f5f0fb;
+    color: #563d82;
+    cursor: pointer;
+    font: 800 0.67rem var(--font-family);
+}
+
+.workflow-guide-button:hover {
+    background: #ebe1f6;
+}
+
 .workflow-palette-list {
     display: flex;
     flex-direction: column;

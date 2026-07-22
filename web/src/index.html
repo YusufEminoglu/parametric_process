@@ -47,8 +47,8 @@
             if (loading) loading.style.display = 'none';
         };
     </script>
-    <link rel="stylesheet" href="style.css?v=2.0.4">
-    <link rel="stylesheet" href="workflow_modeler.css?v=2.0.4">
+    <link rel="stylesheet" href="style.css?v=2.0.5">
+    <link rel="stylesheet" href="workflow_modeler.css?v=2.0.5">
     <script type="importmap">
         {
             "imports": {
@@ -68,7 +68,7 @@
         <div class="spinner"></div>
         <h2>Parametric Process Studio</h2>
         <p id="loading-text">Loading layer features from QGIS...</p>
-        <div class="version-badge">v2.0.4 - QGIS 4 Ready</div>
+        <div class="version-badge">v2.0.5 - QGIS 4 Ready</div>
     </div>
 
     <!-- 3D WebGL Viewport Canvas -->
@@ -79,7 +79,7 @@
         <div class="nav-brand">
             <span class="brand-icon">🏢</span>
             <span class="brand-title">Parametric Process Studio</span>
-            <span class="brand-badge">v2.0.4</span>
+            <span class="brand-badge">v2.0.5</span>
         </div>
 
         <div class="mode-tabs-container">
@@ -92,7 +92,7 @@
             <span class="nav-stat">Parcels: <strong id="hud-total-parcels">0</strong></span>
             <span class="nav-stat">Max Z: <strong id="hud-max-z">0 m</strong></span>
             <button id="btn-sync-top" class="nav-btn primary-btn" onclick="document.getElementById('btn-sync')?.click()">⚡ Sync QGIS</button>
-            <button id="btn-guide-top" class="nav-btn" onclick="document.getElementById('btn-guide')?.click()">❓ Guide</button>
+            <button id="btn-guide-top" class="nav-btn" type="button">❓ Guide</button>
         </div>
     </header>
 
@@ -102,7 +102,12 @@
                 <p class="workflow-eyebrow">Rule Components</p>
                 <h2>Node Palette</h2>
             </div>
-            <p class="workflow-help">Drag or click a component to add it. Connect an output dot to the next input dot.</p>
+            <p class="workflow-help">Tek tık: bileşeni ekler, seçer ve seçili son düğüme bağlar. Sürükle-bırak ve portlar manuel kurgu için kullanılabilir.</p>
+            <label class="workflow-one-click-control" title="Paletten eklenen yeni bileşeni seçili son düğüme otomatik bağlar">
+                <input id="workflow-one-click" type="checkbox" checked>
+                <span><strong>Tek Tık Zincir</strong><small>Ekle + seç + otomatik bağla</small></span>
+            </label>
+            <button id="workflow-open-guide" class="workflow-guide-button" type="button">Analitik Workflow Rehberi</button>
             <div id="workflow-palette-list" class="workflow-palette-list"></div>
         </aside>
 
@@ -213,7 +218,7 @@
         <div id="btn-measure" class="hud-chip hud-btn" title="Toggle 3D ruler tool">Measure Tool</div>
         <div id="hud-btn-clear-measure" class="hud-chip hud-btn hidden" style="color: #ef4444;" title="Clear 3D measurements">Clear Measure</div>
         <div id="btn-tour" class="hud-chip hud-btn" title="Toggle cinematic orbit camera">Cinematic Tour</div>
-        <div id="btn-guide" class="hud-chip hud-btn" title="Open quick guide">User Guide</div>
+        <div id="btn-guide" class="hud-chip hud-btn" title="Open the analytical user and decision guide">User Guide</div>
 
         <div class="palette-category">📦 Digital Twin Exports</div>
         <div id="btn-export-report" class="hud-chip hud-btn export-chip" title="Export Executive HTML Report">HTML Report</div>
@@ -692,37 +697,220 @@
     <!-- Centered Toast Notifications -->
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- User Guide Scrim & Panel -->
+    <!-- Analytical User Guide Scrim & Panel -->
     <div id="guide-scrim" class="guide-scrim hidden"></div>
-    <section id="guide-panel" class="guide-panel glass-panel hidden" role="dialog" aria-labelledby="guide-title" aria-modal="false">
-        <div class="guide-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <section id="guide-panel" class="guide-panel hidden" role="dialog" aria-labelledby="guide-title" aria-modal="false">
+        <div class="guide-header">
             <div>
-                <p class="guide-kicker">Quick start guide</p>
-                <h2 id="guide-title">How to use Parametric Process Studio</h2>
+                <p class="guide-kicker">PlanX karar ve workflow el kitabı</p>
+                <h2 id="guide-title">Parametric Process Studio: Uçtan Uca Analitik Rehber</h2>
+                <p class="guide-subtitle">Ne yapılır, neden yapılır, sonuç nasıl okunur ve karara nasıl dönüştürülür?</p>
             </div>
-            <button id="btn-guide-close" class="guide-close" type="button" aria-label="Close guide" style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer;">✕</button>
+            <button id="btn-guide-close" class="guide-close" type="button" aria-label="Rehberi kapat">✕</button>
         </div>
 
-        <div class="guide-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-top:16px;">
-            <article class="guide-step">
-                <span class="guide-step-no">1</span>
-                <h3>Prepare a QGIS layer</h3>
-                <p>Select a polygon vector layer that represents parcels or blocks. A projected CRS in meters gives accurate metric areas.</p>
-            </article>
-            <article class="guide-step">
-                <span class="guide-step-no">2</span>
-                <h3>Launch the cockpit</h3>
-                <p>Start the browser cockpit from the QGIS plugin dock. Viewport features load in real-time.</p>
-            </article>
-            <article class="guide-step">
-                <span class="guide-step-no">3</span>
-                <h3>Select a parcel</h3>
-                <p>Click any parcel in 3D to tune setback, height, usage, and typologies in the inspector.</p>
-            </article>
-            <article class="guide-step">
-                <span class="guide-step-no">4</span>
-                <h3>Run Evolutionary Optimization</h3>
-                <p>Switch to Evolutionary Studio tab, choose NSGA-II/SPEA-2, select objectives, and run multi-objective optimization.</p>
+        <div class="guide-tools">
+            <label for="guide-search">Rehberde ara</label>
+            <input id="guide-search" type="search" placeholder="Örn. TOPSIS, FAR, karbon, yakınsama, QGIS…" autocomplete="off">
+            <span id="guide-search-status" aria-live="polite">10 bölüm</span>
+        </div>
+
+        <div class="guide-layout">
+            <nav id="guide-nav" class="guide-nav" aria-label="Rehber bölümleri">
+                <button type="button" data-guide-target="guide-start">1. Karar modeli</button>
+                <button type="button" data-guide-target="guide-data">2. Veri hazırlama</button>
+                <button type="button" data-guide-target="guide-workspaces">3. Çalışma alanları</button>
+                <button type="button" data-guide-target="guide-workflow">4. Workflow Modeler</button>
+                <button type="button" data-guide-target="guide-nodes">5. Node referansı</button>
+                <button type="button" data-guide-target="guide-optimizer">6. Optimizasyon</button>
+                <button type="button" data-guide-target="guide-results">7. Sonuçları okuma</button>
+                <button type="button" data-guide-target="guide-decision">8. Karar ve aksiyon</button>
+                <button type="button" data-guide-target="guide-improve">9. İyileştirme</button>
+                <button type="button" data-guide-target="guide-output">10. Çıktı ve denetim</button>
+            </nav>
+
+            <article id="guide-content" class="guide-content">
+                <section id="guide-start" class="guide-section guide-searchable">
+                    <p class="guide-section-label">01 · Önce karar sorusu</p>
+                    <h3>Modeli çalıştırmadan önce “iyi çözüm”ü tanımlayın</h3>
+                    <p>Parametric Process tek bir doğru proje üretmez; aynı imar ve geometri koşulları altında farklı performans dengeleri sunan alternatifler üretir. Başarılı kullanım, araç seçimiyle değil karar sorusuyla başlar.</p>
+                    <div class="guide-callout guide-callout-primary">
+                        <strong>Önerilen karar cümlesi</strong>
+                        <p>“Yasal BCR/FAR/yükseklik sınırlarını aşmadan, kabul edilebilir karbon ve açık alan düzeyinde, yeterli GFA ve mikroiklim performansı sağlayan 3–5 uygulanabilir alternatifi belirle.”</p>
+                    </div>
+                    <div class="guide-process-ribbon" aria-label="Analitik karar döngüsü">
+                        <span>1 · Kapsam</span><b>→</b><span>2 · Kısıt</span><b>→</b><span>3 · Üret</span><b>→</b><span>4 · Ölç</span><b>→</b><span>5 · Kıyasla</span><b>→</b><span>6 · Doğrula</span><b>→</b><span>7 · Uygula</span>
+                    </div>
+                    <div class="guide-card-grid">
+                        <div class="guide-card"><h4>Sert eşikler</h4><p>Mevzuat, mülkiyet, minimum açık alan, maksimum yükseklik gibi ihlal edilemeyecek koşullar.</p></div>
+                        <div class="guide-card"><h4>Tercihler</h4><p>GFA, karbon, rüzgâr, güneş, finans ve kamusal alan gibi birbiriyle takas edilen hedefler.</p></div>
+                        <div class="guide-card"><h4>Karar kanıtı</h4><p>Pareto konumu, TOPSIS sırası, duyarlılık, 3B kontrol ve QGIS üzerinde mekânsal doğrulama.</p></div>
+                    </div>
+                    <p class="guide-warning"><strong>Sınır:</strong> Çıktılar erken tasarım ve alternatif değerlendirme desteğidir. Statik, yangın, ulaşım, jeoteknik, yasal uygunluk veya ayrıntılı CFD raporunun yerine geçmez.</p>
+                </section>
+
+                <section id="guide-data" class="guide-section guide-searchable">
+                    <p class="guide-section-label">02 · Girdi kalitesi</p>
+                    <h3>QGIS katmanını analize hazır hâle getirin</h3>
+                    <table class="guide-table">
+                        <thead><tr><th>Kontrol</th><th>Neden önemli?</th><th>Önerilen işlem</th></tr></thead>
+                        <tbody>
+                            <tr><td>Geometri</td><td>Geçersiz veya kendini kesen poligon alan/offset üretimini bozar.</td><td>Fix Geometries çalıştırın; boş ve sıfır alanlı objeleri kaldırın.</td></tr>
+                            <tr><td>CRS</td><td>Coğrafi derece birimi metre tabanlı mesafe ve alanı çarpıtır.</td><td>Çalışma bölgesine uygun projeksiyonlu CRS kullanın; ekranda EPSG:3857 yalnızca görüntüleme köprüsüdür.</td></tr>
+                            <tr><td>Ölçek</td><td>Çok büyük katman tarayıcı ve optimizasyon süresini artırır.</td><td>Önce seçili ada/parsellerle pilot koşu yapın, sonra kapsamı büyütün.</td></tr>
+                            <tr><td>Kimlik</td><td>QGIS’e geri yazım feature ID üzerinden eşleşir.</td><td>Kaynak katmanı koşu sırasında silmeyin, filtreyi veya ID düzenini değiştirmeyin.</td></tr>
+                            <tr><td>Bağlam</td><td>Tek parsel sonucu komşuluk etkilerini eksik temsil edebilir.</td><td>Gölge/rüzgâr/ilçe fiziği için anlamlı bir komşuluk kümesi seçin.</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="guide-check-row"><span>□ Katman poligon</span><span>□ CRS metre tabanlı</span><span>□ Geometri geçerli</span><span>□ Kapsam bilinçli</span><span>□ Kaynak kopyası alındı</span></div>
+                </section>
+
+                <section id="guide-workspaces" class="guide-section guide-searchable">
+                    <p class="guide-section-label">03 · Doğru yüzeyi seçme</p>
+                    <h3>Üç çalışma alanı, üç farklı karar düzeyi</h3>
+                    <div class="guide-card-grid guide-card-grid-three">
+                        <div class="guide-card"><h4>Parametric Cockpit</h4><p><strong>Ne zaman?</strong> Tek parseli hızlı düzenlemek, kütleyi ve katmanları görsel kontrol etmek için.</p><p><strong>Çıktı:</strong> Anlık metrik, 3B fenotip ve QGIS parametre güncellemesi.</p></div>
+                        <div class="guide-card"><h4>Evolutionary Studio</h4><p><strong>Ne zaman?</strong> Çok sayıda alternatif üretip Pareto, PCP, yakınsama ve küme analizi yapmak için.</p><p><strong>Çıktı:</strong> Popülasyon, Pareto ön cephesi ve seçilebilir adaylar.</p></div>
+                        <div class="guide-card"><h4>Workflow Modeler</h4><p><strong>Ne zaman?</strong> Tekrarlanabilir kural zinciri kurmak, JSON olarak saklamak ve ekip standardı oluşturmak için.</p><p><strong>Çıktı:</strong> Denetlenebilir DAG, koşu günlüğü, seçili çözümler ve QGIS güncellemeleri.</p></div>
+                    </div>
+                    <p><strong>Pratik sıra:</strong> Cockpit ile veri/geometriyi doğrula → Evolutionary Studio ile hedef davranışını öğren → Workflow Modeler ile kararlı süreci standartlaştır.</p>
+                </section>
+
+                <section id="guide-workflow" class="guide-section guide-searchable">
+                    <p class="guide-section-label">04 · Grasshopper tarzı kural zinciri</p>
+                    <h3>Workflow Modeler nasıl kullanılır?</h3>
+                    <ol class="guide-steps">
+                        <li><strong>Şablon seçin:</strong> Balanced genel optimizasyon; PPUD parsel/kütle üretimi; District çevresel bağlaşım; Blank özel akış içindir.</li>
+                        <li><strong>Tek Tık Zincir açıkken</strong> paletten bir kutuya bir kez basın. Yeni kutu eklenir, seçilir ve seçili son kutuya bağlanır.</li>
+                        <li><strong>Inspector</strong> üzerinden parametreleri düzenleyin. Bir kutuya ilk basışta seçim gerçekleşir; ikinci tık gerekmez.</li>
+                        <li><strong>Manuel bağlantı:</strong> Çıkış noktasına, sonra hedef giriş noktasına basın. Dallanma veya özel sıra için sürükle-bırak kullanın.</li>
+                        <li><strong>Run Workflow</strong> ile önce DAG doğrulanır, sonra her node sırayla çalışır. Logdaki her satır yürütme kanıtıdır.</li>
+                        <li><strong>Preview Best in 3D</strong> yalnızca görsel ön incelemedir. <strong>Sync Result to QGIS</strong> kullanıcı onayıyla alanları kaynak katmana yazar.</li>
+                    </ol>
+                    <div class="guide-callout"><strong>Geçerli temel zincir</strong><code>QGIS Site Layer → Zoning Envelope → Evolutionary Solver → TOPSIS Ranker → Select Best → QGIS Output</code></div>
+                    <details open><summary>Bağlantı kuralları</summary><ul><li>Her akışın kökü QGIS Site Layer olmalıdır.</li><li>Bir node tek bir doğrudan giriş alır; bir kaynak birden fazla kola çıkabilir.</li><li>Döngü oluşturulamaz; yürütme sırası topolojik olarak hesaplanır.</li><li>Bağlantısız kutu koşuyu durdurur. Delete seçili node/bağlantıyı kaldırır, Escape bağlantı modunu iptal eder.</li></ul></details>
+                    <details><summary>Şablonları ne zaman kullanmalı?</summary><ul><li><strong>Balanced:</strong> Plan kararı ve çok amaçlı tasarım için varsayılan.</li><li><strong>PPUD:</strong> Ada → alt parsel → yapı konfigürasyonu → kademeli doku üretimi.</li><li><strong>District:</strong> Üretilen kütlelerin gölge, kanyon rüzgârı, konfor ve yağmur suyu bağlaşımını incelemek.</li><li><strong>Blank:</strong> Kurumsal standart veya deneysel zincir. Önce Site Layer ekleyin.</li></ul></details>
+                </section>
+
+                <section id="guide-nodes" class="guide-section guide-searchable">
+                    <p class="guide-section-label">05 · Teknik node sözlüğü</p>
+                    <h3>Her kutu ne yapar, ne zaman kullanılır?</h3>
+                    <div class="guide-node-list">
+                        <details open><summary><span class="node-dot node-blue"></span>QGIS Site Layer · Input</summary><p>Canlı poligon katmanını okur. <strong>scope=all</strong> bütün objeleri, <strong>selected</strong> yalnız QGIS seçimini işler. Pilot kalibrasyonda selected; nihai alan çalışmasında kontrollü all kullanın.</p></details>
+                        <details><summary><span class="node-dot node-amber"></span>Zoning Envelope · Rules</summary><p><strong>max_bcr</strong> taban alanı/parsel alanı, <strong>max_far</strong> toplam inşaat alanı/parsel alanı, <strong>max_height</strong> metre üst sınırıdır. Bunları hedef değil sert uygunluk eşiği olarak kurun; mevzuat kaynağını koşu kaydına ekleyin.</p></details>
+                        <details><summary><span class="node-dot node-violet"></span>Shape Grammar · Generate</summary><p>Aday alt parseller üretir. Frontage yol cephesi mantığı; grid düzenli ağ; perimeter çevre blok; organic düzensiz doku; radial odaklı kurgu; hybrid karma stratejidir. target_frontage ve min_lot_area üretim çeşitliliğini belirler.</p></details>
+                        <details><summary><span class="node-dot node-purple"></span>PPUD Fabric · Generate</summary><p>Parsel yerleşimi, yapı konfigürasyonu ve incremental fabric aşamalarını ardışık yürütür. <strong>incremental_steps</strong> kademeli oluşum derinliği, <strong>climate_feedback</strong> iklim geri beslemesi, <strong>seed</strong> tekrarlanabilirlik sağlar. max_features ile önce küçük örnek test edin.</p></details>
+                        <details><summary><span class="node-dot node-green"></span>Evolutionary Solver · Optimize</summary><p>Karar değişkenlerinden popülasyon üretir ve objective yönlerine göre evrimleştirir. population çeşitlilik, generations yakınsama bütçesidir. Aynı seed aynı koşuyu karşılaştırmayı kolaylaştırır; hedef veya sınır değişince yeni senaryo kimliği kullanın.</p></details>
+                        <details><summary><span class="node-dot node-cyan"></span>District Physics · Analyze</summary><p>Gölge, sokak kanyonu rüzgârı, dış mekân konforu ve yağmur suyu bağlaşımını alan ölçeğinde değerlendirir. Tek bina yerine komşu kütlelerle yorumlayın; yön ve bağlam değişimlerine karşı duyarlılık koşusu yapın.</p></details>
+                        <details><summary><span class="node-dot node-pink"></span>TOPSIS Ranker · Decide</summary><p>Pareto adaylarını ideal çözüme yakınlık ve en kötü çözüme uzaklık üzerinden göreli sıralar. TOPSIS puanı mutlak kalite değildir; yalnız aynı aday kümesi, aynı objective tanımı ve aynı yönler içinde anlamlıdır.</p></details>
+                        <details><summary><span class="node-dot node-red"></span>Select Best · Decide</summary><p>topsis, en yüksek PlanX Score, en düşük karbon veya en yüksek GFA yöntemlerinden biriyle ilk 1–10 adayı seçer. Yönetim kararı için tek aday yerine genellikle 3–5 alternatif kısa listeleyin.</p></details>
+                        <details><summary><span class="node-dot node-teal"></span>QGIS Output · Output</summary><p>FAR, BCR, GFA, kat, tipoloji, karbon, rüzgâr, güneş, runoff ve Pareto alanları için gözden geçirilebilir update paketi üretir. apply_mode=selected güvenli pilot; all kontrollü toplu uygulamadır.</p></details>
+                    </div>
+                </section>
+
+                <section id="guide-optimizer" class="guide-section guide-searchable">
+                    <p class="guide-section-label">06 · Arama stratejisi</p>
+                    <h3>Algoritma ve koşu bütçesi nasıl seçilir?</h3>
+                    <table class="guide-table">
+                        <thead><tr><th>Algoritma</th><th>Güçlü olduğu durum</th><th>Dikkat</th></tr></thead>
+                        <tbody>
+                            <tr><td>NSGA-II</td><td>2–4 hedef, hızlı başlangıç, dengeli varsayılan.</td><td>Çok hedefte ayrıştırma gücü düşebilir.</td></tr>
+                            <tr><td>SPEA-2</td><td>Yoğunluk ve arşiv kalitesi önemliyse; benzer çözümleri ayırmak için.</td><td>Küçük popülasyonda arşiv çeşitliliğini izleyin.</td></tr>
+                            <tr><td>NSGA-III</td><td>4+ hedefli many-objective problemlerde referans yönleriyle dağılım için.</td><td>Popülasyon çok küçükse hedef uzayı seyrek kalır.</td></tr>
+                            <tr><td>MOEA/D</td><td>Hedefleri alt problemlere ayrıştırarak dengeli kapsam arandığında.</td><td>Hedef ölçekleri aşırı farklıysa normalizasyonu sonuç grafiklerinde kontrol edin.</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="guide-card-grid">
+                        <div class="guide-card"><h4>Keşif koşusu</h4><p>Population 16–24, generations 5–10. Amaç parametre hatası, boş Pareto ve yanlış objective yönünü erken görmek.</p></div>
+                        <div class="guide-card"><h4>Kalibrasyon koşusu</h4><p>Population 30–50, generations 15–30. Aynı seed ile tek parametreyi değiştirip etkisini kıyaslayın.</p></div>
+                        <div class="guide-card"><h4>Nihai kısa liste</h4><p>En az 2–3 farklı seed; yakınsama ve Pareto kapsaması kararlıysa karar analizi yapın.</p></div>
+                    </div>
+                    <details open><summary>Objective yönü nasıl belirlenir?</summary><p><strong>Max:</strong> planx_score, gfa, wind_ventilation, solar_radiation_kwh, pollution_dispersion, sky_view_factor, daylight_index, roi_percentage, pv_yield_mwh, open_space_ratio. <strong>Min:</strong> carbon_kg, runoff_m3, constraint_penalty. UTCI gibi konfor göstergelerinde modeldeki tanımı kontrol edin; sayısal büyüklüğü körlemesine max/min yapmayın.</p></details>
+                    <details><summary>Crossover ve mutation</summary><p>Crossover mevcut iyi özellikleri birleştirir; mutation yeni bölgeleri keşfeder. Çözümler birbirine çok benziyorsa mutation oranını kademeli artırın. Sonuçlar rastgele ve kararsızsa popülasyon/generation artırıp mutation’ı azaltarak yeniden karşılaştırın.</p></details>
+                </section>
+
+                <section id="guide-results" class="guide-section guide-searchable">
+                    <p class="guide-section-label">07 · Analitik okuma</p>
+                    <h3>Grafikler ne söyler, ne söylemez?</h3>
+                    <table class="guide-table">
+                        <thead><tr><th>Görünüm</th><th>Nasıl okunur?</th><th>Karar sinyali</th></tr></thead>
+                        <tbody>
+                            <tr><td>Pareto Scatter</td><td>Bir hedef iyileşirken diğerinin maliyetini gösterir. Dış sınırdaki çözümler baskın değildir.</td><td>Dirsek noktaları küçük fedakârlıkla büyük kazanım sağlayan adaylardır.</td></tr>
+                            <tr><td>PCP</td><td>Her çizgi bir çözüm, her dikey eksen bir metrik. Brush ile kabul aralığı filtrelenir.</td><td>Aynı anda bütün eşikleri geçen çizgiler kısa liste çekirdeğidir.</td></tr>
+                            <tr><td>Fitness trajectory</td><td>Min/mean/max ve standart sapmanın nesiller boyunca değişimi.</td><td>İyileşme durup varyans korunuyorsa yakınsama; varyans erken sıfırlanıyorsa çeşitlilik kaybı.</td></tr>
+                            <tr><td>Radar</td><td>Tek adayın normalize edilmiş çoklu performans profili.</td><td>Şekil karşılaştırılır; alan büyüklüğü tek başına mutlak başarı değildir.</td></tr>
+                            <tr><td>K-Means / PCA</td><td>Benzer çözüm ailelerini ve uç tipleri gruplar.</td><td>Her anlamlı kümeden temsilci seçmek alternatif çeşitliliğini korur.</td></tr>
+                            <tr><td>Population table</td><td>Ham genotype, metrik, rank ve uygunluk denetimi.</td><td>Grafik yorumunu sayısal değer ve constraint_penalty ile doğrulayın.</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="guide-callout guide-callout-primary"><strong>Okuma sırası</strong><p>Önce constraint_penalty ve mevzuat → sonra Pareto → PCP ile eşik filtresi → küme temsilleri → 3B/mekânsal kontrol → TOPSIS ve duyarlılık.</p></div>
+                    <details><summary>Temel metriklerin yorumu</summary><ul><li><strong>FAR/BCR/height:</strong> Üretim kapasitesi ve kütle yoğunluğu; zoning üst sınırlarıyla birlikte okunur.</li><li><strong>GFA:</strong> Toplam üretilebilir kat alanı; kalite veya uygulanabilirlik göstergesi değildir.</li><li><strong>carbon_kg:</strong> Model varsayımlarına bağlı karşılaştırmalı yaşam döngüsü yükü.</li><li><strong>wind_ventilation / pedestrian_wind_comfort:</strong> Havalanma ile yaya rahatsızlığını birlikte okuyun; yüksek hız her yerde iyi değildir.</li><li><strong>solar / daylight / PV:</strong> Cephe ve çatı enerji fırsatları; gölge ve aşırı ısınma ile çapraz kontrol edilir.</li><li><strong>runoff / open_space:</strong> Geçirimsizlik ve kamusal/yeşil alan dengesini gösterir.</li><li><strong>PlanX Score:</strong> Birleşik yardımcı puandır; ham metriklerin yerine geçmez.</li></ul></details>
+                </section>
+
+                <section id="guide-decision" class="guide-section guide-searchable">
+                    <p class="guide-section-label">08 · Analizden yönetişime</p>
+                    <h3>Sonuç nasıl karara ve aksiyona çevrilir?</h3>
+                    <ol class="guide-steps">
+                        <li><strong>Uygunluk kapısı:</strong> İhlalli adayları ayırın; istisna varsayımı varsa açıkça kaydedin.</li>
+                        <li><strong>Kısa liste:</strong> Pareto ve PCP filtresiyle 3–5 aday tutun; yalnız en yüksek birleşik puanı seçmeyin.</li>
+                        <li><strong>Temsil çeşitliliği:</strong> Farklı K-Means kümelerinden en az bir aday alın.</li>
+                        <li><strong>TOPSIS senaryosu:</strong> “Yoğunluk”, “iklim”, “düşük karbon” gibi farklı tercih setleriyle sıralamanın değişip değişmediğini ölçün.</li>
+                        <li><strong>Dayanıklılık:</strong> Seed, imar eşiği ve kritik maliyet/iklim girdilerini değiştirin. Sürekli üst sıralarda kalan adayları robust kabul edin.</li>
+                        <li><strong>Mekânsal doğrulama:</strong> 3B önizleme ve QGIS üzerinde erişim, komşuluk, cephe, mülkiyet ve servis alanlarını inceleyin.</li>
+                        <li><strong>Karar kaydı:</strong> Seçim gerekçesi, elenen alternatifler, riskler, koşullar ve sonraki uzman analizlerini kaydedin.</li>
+                    </ol>
+                    <table class="guide-table">
+                        <thead><tr><th>Bulgudan</th><th>Karara</th><th>Aksiyona</th></tr></thead>
+                        <tbody>
+                            <tr><td>GFA yüksek, karbon/runoff kötü</td><td>Yoğunluk hedefi koşullu kabul</td><td>Tipoloji/malzeme değiştir; açık alan ve geçirgen yüzey alt sınırı koy.</td></tr>
+                            <tr><td>Rüzgâr zayıf, kanyon oranı yüksek</td><td>Kütle sürekliliğini kır</td><td>Setback, yükseklik kademesi ve rüzgâr koridorunu alternatif olarak yeniden üret.</td></tr>
+                            <tr><td>TOPSIS sırası küçük ağırlık değişiminde ters dönüyor</td><td>Karar kırılgan</td><td>Tek kazanan yerine kısa listeyi koru; ek veri ve paydaş ağırlığı topla.</td></tr>
+                            <tr><td>Farklı seedlerde aynı çözüm ailesi öne çıkıyor</td><td>Çözüm robust</td><td>Detay tasarım, maliyet ve mevzuat doğrulamasına geçir.</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="guide-improve" class="guide-section guide-searchable">
+                    <p class="guide-section-label">09 · Teşhis ve iterasyon</p>
+                    <h3>Sonuç kalitesi nasıl iyileştirilir?</h3>
+                    <table class="guide-table">
+                        <thead><tr><th>Belirti</th><th>Muhtemel neden</th><th>İyileştirme</th></tr></thead>
+                        <tbody>
+                            <tr><td>Koşu başlamıyor</td><td>Bağlantısız node, Site Layer kökü yok, döngü veya çoklu giriş.</td><td>Logdaki ilk validation mesajını düzeltin; temel zincire dönüp node’ları sırayla ekleyin.</td></tr>
+                            <tr><td>Uygun çözüm yok</td><td>FAR/BCR/yükseklik birlikte fiziksel olarak olanaksız veya hedefler çelişkili.</td><td>Önce mevzuat doğruluğunu kontrol edin; karar uzayını genişletin, kısıtı keyfî gevşetmeyin.</td></tr>
+                            <tr><td>Tüm çözümler benzer</td><td>Mutation düşük, aralık dar veya erken yakınsama.</td><td>Mutation’ı küçük adımla artırın; popülasyonu büyütün; genotype sınırlarını gözden geçirin.</td></tr>
+                            <tr><td>Sonuçlar her koşuda değişiyor</td><td>Arama bütçesi düşük veya problem çok modlu.</td><td>Seed’i sabitleyerek kalibre edin; sonra çoklu seed ile robust sıralama yapın.</td></tr>
+                            <tr><td>TOPSIS anlamsız görünüyor</td><td>Objective yönü yanlış, aday kümesi zayıf veya tek metrik baskın.</td><td>Min/max yönlerini doğrulayın; Pareto dışını ele; ham metrik ve PCP ile sıralamayı denetleyin.</td></tr>
+                            <tr><td>3B iyi, metrik kötü</td><td>Görsel beğeni ile ölçülen hedef farklı.</td><td>Metrik varsayımlarını açın; gerekiyorsa yeni hedef/sınır tanımlayın, puanı görsele uydurmayın.</td></tr>
+                            <tr><td>Tarayıcı yavaş</td><td>Çok özellik, yüksek popülasyon veya arka planda aktif 3B.</td><td>Selected scope ve pilot alan kullanın; koşu bütçesini kademeli büyütün.</td></tr>
+                        </tbody>
+                    </table>
+                    <p><strong>Bilimsel iterasyon kuralı:</strong> Aynı karşılaştırmada yalnız bir ana varsayımı değiştirin; seed, workflow JSON ve veri anlık görüntüsünü sabit tutun.</p>
+                </section>
+
+                <section id="guide-output" class="guide-section guide-searchable">
+                    <p class="guide-section-label">10 · Uygulama ve izlenebilirlik</p>
+                    <h3>QGIS’e güvenli aktarım ve karar kaydı</h3>
+                    <ol class="guide-steps">
+                        <li>Önce <strong>Preview Best in 3D</strong>; kütle, yönelim, yükseklik ve komşuluk anomalisini kontrol edin.</li>
+                        <li><strong>Save</strong> tarayıcı profilinde hızlı kayıt; <strong>Export JSON</strong> taşınabilir ve arşivlenebilir süreç kaydıdır.</li>
+                        <li>İlk senkronizasyonda <strong>apply_mode=selected</strong> kullanın ve bir özellikte oluşan alanları denetleyin.</li>
+                        <li>Kaynak katmanın yedeğini alın; düzenleme oturumunu commit etmeden önce attribute diff’i inceleyin.</li>
+                        <li>Koşu kimliği için tarih, veri sürümü, CRS, seed, algoritma, population, generations ve karar senaryosunu kaydedin.</li>
+                    </ol>
+                    <div class="guide-checklist">
+                        <h4>Nihai karar checklist</h4>
+                        <label><input type="checkbox"> Geometri ve CRS doğrulandı</label>
+                        <label><input type="checkbox"> Sert imar koşulları kaynağıyla doğrulandı</label>
+                        <label><input type="checkbox"> En az iki seed / duyarlılık koşusu karşılaştırıldı</label>
+                        <label><input type="checkbox"> Pareto + PCP + ham tablo birlikte okundu</label>
+                        <label><input type="checkbox"> 3B ve QGIS mekânsal kontrol yapıldı</label>
+                        <label><input type="checkbox"> Kısa liste gerekçesi ve riskler kaydedildi</label>
+                        <label><input type="checkbox"> Workflow JSON ve sonuç dosyaları arşivlendi</label>
+                    </div>
+                    <details><summary>Kısa sözlük</summary><p><strong>Genotype:</strong> Tasarımı üreten karar değişkenleri. <strong>Phenotype:</strong> Bu değişkenlerin oluşturduğu 3B/mekânsal çözüm. <strong>Pareto optimal:</strong> Bir hedefi kötüleştirmeden başka hedefi iyileştiremeyen aday. <strong>Dominance:</strong> Bir adayın tüm hedeflerde en az eşit ve birinde daha iyi olması. <strong>Convergence:</strong> Popülasyonun yüksek kaliteli bölgeye yaklaşması. <strong>Diversity:</strong> Farklı çözüm ailelerinin korunması. <strong>Seed:</strong> Rastgele üretimin tekrarlanabilir başlangıcı. <strong>TOPSIS:</strong> İdeal ve anti-ideal çözüme göre göreli çok ölçütlü sıralama.</p></details>
+                    <div class="guide-callout guide-callout-primary"><strong>Son ilke</strong><p>Model sonucu karar değildir. İyi karar; model çıktısı + mevzuat + saha bilgisi + paydaş önceliği + uzman doğrulamasının belgelenmiş birleşimidir.</p></div>
+                </section>
             </article>
         </div>
     </section>
@@ -730,6 +918,6 @@
     <!-- Measurement Overlay -->
     <div id="measurement-overlay-container" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 15; width: 100%; height: 100%; overflow: hidden;"></div>
 
-    <script type="module" src="app.js?v=2.0.4"></script>
+    <script type="module" src="app.js?v=2.0.5"></script>
 </body>
 </html>

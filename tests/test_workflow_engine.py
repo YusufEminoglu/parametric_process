@@ -157,10 +157,10 @@ class WorkflowHttpTests(unittest.TestCase):
     def test_web_entry_assets_are_served(self):
         expected = {
             "/index.html": ("text/html", b"workflow_modeler.css"),
-            "/app.js?v=2.0.4": ("application/javascript", b"./workflow_modeler.js"),
-            "/style.css?v=2.0.4": ("text/css", b".loading-screen"),
+            "/app.js?v=2.0.5": ("application/javascript", b"./workflow_modeler.js"),
+            "/style.css?v=2.0.5": ("text/css", b".loading-screen"),
             "/workflow_modeler.js": ("application/javascript", b"class WorkflowModeler"),
-            "/workflow_modeler.css?v=2.0.4": ("text/css", b".workflow-modeler-view"),
+            "/workflow_modeler.css?v=2.0.5": ("text/css", b".workflow-modeler-view"),
         }
         for path, (content_type, marker) in expected.items():
             with self.subTest(path=path):

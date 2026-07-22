@@ -1,5 +1,11 @@
 # Changelog - Parametric Process
 
+## [2.0.5] - 2026-07-22
+
+- Added default one-click workflow chaining: palette selection now adds, selects, and connects a component in one action while manual ports remain available.
+- Replaced the four-card quick help with a searchable ten-section Turkish analytical guide covering data preparation, node semantics, solver calibration, Pareto/PCP/TOPSIS interpretation, decision governance, improvement loops, QGIS sync, and auditability.
+- Added a standalone Turkish user guide for project handover and reproducible decision records.
+
 ## [2.0.4] - 2026-07-22
 
 - Fixed an infinite loading screen in both 3D Cockpit and Workflow Modeler by serving all top-level web source assets from the local plugin server.
