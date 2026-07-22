@@ -1,5 +1,12 @@
 # Changelog - Parametric Process
 
+## [2.0.3] - 2026-07-22
+
+- Added a Grasshopper-style visual Workflow Modeler with draggable rule components, typed inspectors, connection validation, JSON import/export, browser-profile persistence, execution logs, 3D preview, and reviewed QGIS synchronization.
+- Added a safe DAG runtime for live QGIS inputs, zoning envelopes, shape grammar subdivision, PPUD fabric generation, NSGA-II/SPEA-2/NSGA-III/MOEA-D, district physics, TOPSIS ranking, solution selection, and GIS output.
+- Fixed first-click dock visibility, stopped-run reporting, non-functional phenotype preview, server cleanup on export failure, and stale UI version labels.
+- Isolated solver random state per worker thread, added deterministic workflow seeds and bounded server requests, and paused WebGL rendering while the workflow editor or browser tab is inactive.
+
 ## [2.0.2] - 2026-07-22
 
 - Parametric Process Studio v2.0.2 Release: Roll back prototype Urban Mobility flow to backlog while preserving IDW Spatial Kernel and Asphalt (+18.5°C) vs Park (-8.5°C) thermal physics

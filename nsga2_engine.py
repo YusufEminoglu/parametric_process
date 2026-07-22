@@ -11,6 +11,7 @@ Zero external dependencies (pure Python stdlib).
 from __future__ import annotations
 
 import math
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -18,8 +19,9 @@ from typing import Any, Dict, List, Optional, Tuple
 # Self-contained LCG random generator — replaces `random` module for Hub B311 compliance.
 class _LCG:
     """Minimal LCG (Linear Congruential Generator) with uniform, gaussian, choice."""
-    def __init__(self, seed=0):
-        self._state = (seed or int(time.time() * 1000)) & 0x7FFFFFFF
+    def __init__(self, seed=None):
+        actual_seed = seed if seed is not None else int(time.time() * 1000)
+        self._state = int(actual_seed) & 0x7FFFFFFF
 
     def random(self):
         self._state = (self._state * 1103515245 + 12345) & 0x7FFFFFFF
@@ -50,7 +52,40 @@ class _LCG:
         return mu + sigma * math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
 
 
-_rng = _LCG()
+class _ThreadLocalRng:
+    # One deterministic generator per HTTP worker thread.
+    def __init__(self):
+        self._local = threading.local()
+
+    def seed(self, seed=None):
+        self._local.generator = _LCG(seed)
+
+    def _generator(self):
+        generator = getattr(self._local, 'generator', None)
+        if generator is None:
+            generator = _LCG()
+            self._local.generator = generator
+        return generator
+
+    def __getattr__(self, name):
+        return getattr(self._generator(), name)
+
+
+_rng = _ThreadLocalRng()
+
+
+def _prepare_optimization_run(pop_size, generations, bounds=None, seed=None):
+    # Validate public controls and initialize the thread-local RNG.
+    if int(pop_size) < 2 or int(pop_size) > 500:
+        raise ValueError('Population size must be between 2 and 500')
+    if int(generations) < 1 or int(generations) > 500:
+        raise ValueError('Generations must be between 1 and 500')
+    bounds = bounds or {}
+    if float(bounds.get('min_setback', 0.0)) > float(bounds.get('max_setback', 12.0)):
+        raise ValueError('Minimum setback cannot exceed maximum setback')
+    if int(bounds.get('min_floors', 1)) > int(bounds.get('max_floors', 24)):
+        raise ValueError('Minimum floors cannot exceed maximum floors')
+    _rng.seed(seed)
 
 
 TYPOLOGIES = [
@@ -508,8 +543,10 @@ def run_nsga2_optimization(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ) -> Dict[str, Any]:
     """Runs NSGA-II multi-objective optimization and returns full history & Pareto front."""
+    _prepare_optimization_run(pop_size, generations, bounds, seed)
     if not objective_specs:
         objective_specs = [
             {"name": "gfa", "direction": "max"},
@@ -819,8 +856,10 @@ def run_nsga2_streaming(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ):
     """Generator that yields generation-by-generation results for streaming."""
+    _prepare_optimization_run(pop_size, generations, bounds, seed)
     start_time = time.time()
     
     if not objective_specs:
@@ -1201,7 +1240,9 @@ def run_spea2_streaming(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ):
+    _prepare_optimization_run(pop_size, generations, bounds, seed)
     start_time = time.time()
 
     if not objective_specs:
@@ -1293,10 +1334,11 @@ def run_spea2_optimization(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ) -> Dict[str, Any]:
     generator = run_spea2_streaming(
         parcel_area, objective_specs, pop_size, generations,
-        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params
+        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params, seed
     )
     last_data = None
     history = []
@@ -1396,8 +1438,10 @@ def run_nsga3_streaming(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ):
     """NSGA-III streaming multi-objective evolutionary algorithm using reference-point guided selection."""
+    _prepare_optimization_run(pop_size, generations, bounds, seed)
     start_time = time.time()
     if not objective_specs:
         objective_specs = [
@@ -1510,10 +1554,11 @@ def run_nsga3_optimization(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ) -> Dict[str, Any]:
     generator = run_nsga3_streaming(
         parcel_area, objective_specs, pop_size, generations,
-        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params
+        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params, seed
     )
     last_data = None
     history = []
@@ -1548,8 +1593,10 @@ def run_moead_streaming(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ):
     """MOEA/D streaming solver using Tchebycheff decomposition."""
+    _prepare_optimization_run(pop_size, generations, bounds, seed)
     start_time = time.time()
     if not objective_specs:
         objective_specs = [
@@ -1676,10 +1723,11 @@ def run_moead_optimization(
     max_height: float = 18.0,
     bounds: Dict[str, Any] | None = None,
     sim_params: Dict[str, Any] | None = None,
+    seed: int | None = None,
 ) -> Dict[str, Any]:
     generator = run_moead_streaming(
         parcel_area, objective_specs, pop_size, generations,
-        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params
+        crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params, seed
     )
     last_data = None
     history = []
@@ -2003,6 +2051,3 @@ def calculate_sensitivity_matrix(
         "objectives": obj_names,
         "sensitivity_matrix": matrix
     }
-
-
-

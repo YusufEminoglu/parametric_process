@@ -50,6 +50,12 @@ QPushButton#btnLaunch {
 }
 QPushButton#btnLaunch:hover { background: #0d9488; }
 QPushButton#btnLaunch:disabled { background: #94a3b8; }
+QPushButton#btnWorkflow {
+    background: #6d4ea0; color: white; border: none;
+    border-radius: 6px; padding: 8px 12px; font-weight: bold; min-height: 28px;
+}
+QPushButton#btnWorkflow:hover { background: #7c5bae; }
+QPushButton#btnWorkflow:disabled { background: #94a3b8; }
 """
 
 
@@ -118,14 +124,20 @@ class ParametricProcessStudioDock(QDockWidget):
         btn_row = QHBoxLayout()
         self.btn_launch = QPushButton("🚀 Launch 3D Cockpit")
         self.btn_launch.setObjectName("btnLaunch")
-        self.btn_launch.clicked.connect(self._launch_cockpit)
+        self.btn_launch.clicked.connect(lambda _checked=False: self._launch_cockpit('cockpit'))
         btn_row.addWidget(self.btn_launch)
+
+        self.btn_workflow = QPushButton('Workflow Modeler')
+        self.btn_workflow.setObjectName('btnWorkflow')
+        self.btn_workflow.setToolTip('Open the Grasshopper-style visual rule workflow editor')
+        self.btn_workflow.clicked.connect(lambda _checked=False: self._launch_cockpit('workflow'))
+        btn_row.addWidget(self.btn_workflow)
 
         self.btn_stop = QPushButton("⏹ Stop Server")
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self._stop_server)
-        btn_row.addWidget(self.btn_stop)
         layout.addLayout(btn_row)
+        layout.addWidget(self.btn_stop)
 
         self.status_label = QLabel("Ready.")
         self.status_label.setStyleSheet("color: #0f766e; font-style: italic; padding: 2px 4px;")
@@ -210,7 +222,7 @@ class ParametricProcessStudioDock(QDockWidget):
     # ------------------------------------------------------------------ #
     # Cockpit server
     # ------------------------------------------------------------------ #
-    def _launch_cockpit(self):
+    def _launch_cockpit(self, launch_mode='cockpit'):
         layer = self.layer_combo.currentLayer()
         if not isinstance(layer, QgsVectorLayer):
             self.iface.messageBar().pushWarning("Parametric Process", "Select a valid polygon layer.")
@@ -270,16 +282,19 @@ class ParametricProcessStudioDock(QDockWidget):
 
             self.server.update_geojson(geojson_str)
         except Exception as e:
+            self._stop_server()
             self.iface.messageBar().pushCritical("Parametric Process", f"Data export error: {e}")
             return
 
         self.status_label.setText(f"Server running on port {port}")
         self.status_label.setStyleSheet("color: #0f766e; font-weight: bold;")
         self.btn_launch.setEnabled(False)
+        self.btn_workflow.setEnabled(False)
         self.btn_stop.setEnabled(True)
 
         if self.chk_browser.isChecked():
-            webbrowser.open(f"http://127.0.0.1:{port}/index.html")
+            fragment = '#workflow' if launch_mode == 'workflow' else ''
+            webbrowser.open(f"http://127.0.0.1:{port}/index.html{fragment}")
 
         self.iface.messageBar().pushSuccess("Parametric Process", f"Cockpit live on port {port}")
 
@@ -290,6 +305,7 @@ class ParametricProcessStudioDock(QDockWidget):
         self.status_label.setText("Server stopped.")
         self.status_label.setStyleSheet("color: #64748b; font-style: italic;")
         self.btn_launch.setEnabled(True)
+        self.btn_workflow.setEnabled(True)
         self.btn_stop.setEnabled(False)
 
     # ------------------------------------------------------------------ #

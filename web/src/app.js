@@ -5,6 +5,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { WorkflowModeler } from './workflow_modeler.js';
 
 // Application State
 let scene, camera, renderer, controls, composer;
@@ -346,7 +347,7 @@ function init() {
     // 4. Renderer setup
     renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0xe9f7ff, 1);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -498,6 +499,7 @@ function init() {
 // Render loop
 function animate() {
     requestAnimationFrame(animate);
+    if (document.hidden || document.body.classList.contains('workflow-mode')) return;
     
     // Auto orbit camera for Cinematic Tour
     if (isCinematicTour) {
@@ -781,6 +783,7 @@ function isUiEventTarget(target) {
         target.closest('#control-dock') ||
         target.closest('.hud-bar') ||
         target.closest('.loading-screen') ||
+        target.closest('#workflow-modeler-view') ||
         target.closest('#guide-panel') ||
         target.closest('#guide-scrim')
     );
@@ -5280,6 +5283,7 @@ function handleKeyboardShortcuts(event) {
         closeGuidePanel();
         return;
     }
+    if (document.body.classList.contains('workflow-mode')) return;
 
     // Ignore shortcuts when typing in inputs
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT' || event.target.tagName === 'TEXTAREA') return;
@@ -7182,8 +7186,10 @@ const CLUSTER_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '
 // DOM Elements - Tabs and Views
 const tabBtnParametric = document.getElementById('tab-btn-parametric');
 const tabBtnWallacei = document.getElementById('tab-btn-wallacei');
+const tabBtnWorkflow = document.getElementById('tab-btn-workflow');
 const parametricView = document.getElementById('parametric-cockpit-view');
 const wallaceiView = document.getElementById('wallacei-studio-view');
+const workflowView = document.getElementById('workflow-modeler-view');
 const editorControls = document.getElementById('editor-controls');
 
 // DOM Elements - Wallacei Params
@@ -7276,25 +7282,28 @@ const btnSyncWallaceiQgis = document.getElementById('btn-sync-wallacei-qgis');
 
 // --- Tab Switching ---
 const controlDockEl = document.getElementById('control-dock');
-if (tabBtnParametric && tabBtnWallacei) {
-    tabBtnParametric.addEventListener('click', () => {
-        tabBtnParametric.classList.add('active');
-        tabBtnWallacei.classList.remove('active');
-        parametricView.classList.remove('hidden');
-        wallaceiView.classList.add('hidden');
-        if (editorControls) editorControls.classList.remove('hidden');
-        if (controlDockEl) controlDockEl.classList.remove('wide-dock');
-    });
-
-    tabBtnWallacei.addEventListener('click', () => {
-        tabBtnWallacei.classList.add('active');
-        tabBtnParametric.classList.remove('active');
-        wallaceiView.classList.remove('hidden');
-        parametricView.classList.add('hidden');
-        if (editorControls) editorControls.classList.add('hidden');
-        if (controlDockEl) controlDockEl.classList.add('wide-dock');
-    });
+function setStudioMode(mode) {
+    const isParametric = mode === 'parametric';
+    const isWallacei = mode === 'wallacei';
+    const isWorkflow = mode === 'workflow';
+    tabBtnParametric?.classList.toggle('active', isParametric);
+    tabBtnWallacei?.classList.toggle('active', isWallacei);
+    tabBtnWorkflow?.classList.toggle('active', isWorkflow);
+    parametricView?.classList.toggle('hidden', !isParametric);
+    wallaceiView?.classList.toggle('hidden', !isWallacei);
+    workflowView?.classList.toggle('hidden', !isWorkflow);
+    editorControls?.classList.toggle('hidden', !isParametric);
+    controlDockEl?.classList.toggle('wide-dock', isWallacei);
+    document.body.classList.toggle('workflow-mode', isWorkflow);
+    if (isWorkflow) {
+        window.location.hash = 'workflow';
+    } else if (window.location.hash === '#workflow') {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
 }
+tabBtnParametric?.addEventListener('click', () => setStudioMode('parametric'));
+tabBtnWallacei?.addEventListener('click', () => setStudioMode('wallacei'));
+tabBtnWorkflow?.addEventListener('click', () => setStudioMode('workflow'));
 
 // --- Slider Input Handlers ---
 if (inWallaceiPop) inWallaceiPop.addEventListener('input', e => { if (valWallaceiPop) valWallaceiPop.textContent = e.target.value; });
@@ -7443,7 +7452,7 @@ function startPollingStatus(runId) {
 
             if (data.status === 'error') {
                 clearInterval(streamingPollTimer);
-                showToast(`Optimization Error: ${data.message || 'Unknown error'}`, 'error');
+                showToast(`Optimization Error: ${data.error_message || data.message || 'Unknown error'}`, 'error');
                 btnRunWallacei.disabled = false;
                 if (btnStopWallacei) btnStopWallacei.disabled = true;
                 if (wallaceiProgress) wallaceiProgress.classList.add('hidden');
@@ -7452,17 +7461,18 @@ function startPollingStatus(runId) {
 
             const currentGen = data.current_generation || 0;
             const totalGen = data.total_generations || 1;
-            const pct = (currentGen / totalGen) * 100;
+            const displayedGen = Math.min(totalGen, currentGen + 1);
+            const pct = (displayedGen / totalGen) * 100;
 
             if (wallaceiProgressFill) wallaceiProgressFill.style.width = `${pct}%`;
-            if (wallaceiProgressText) wallaceiProgressText.textContent = `Generation ${currentGen} / ${totalGen}`;
-            if (progGenCounter) progGenCounter.textContent = `${currentGen}/${totalGen}`;
+            if (wallaceiProgressText) wallaceiProgressText.textContent = `Generation ${displayedGen} / ${totalGen}`;
+            if (progGenCounter) progGenCounter.textContent = `${displayedGen}/${totalGen}`;
 
             if (data.elapsed_seconds !== undefined) {
                 if (progElapsed) progElapsed.textContent = `${data.elapsed_seconds.toFixed(1)}s`;
-                if (currentGen > 0 && progEta) {
-                    const secPerGen = data.elapsed_seconds / currentGen;
-                    const eta = secPerGen * (totalGen - currentGen);
+                if (displayedGen > 0 && progEta) {
+                    const secPerGen = data.elapsed_seconds / displayedGen;
+                    const eta = secPerGen * (totalGen - displayedGen);
                     progEta.textContent = `${eta.toFixed(1)}s`;
                 }
             }
@@ -8282,10 +8292,12 @@ function applyPhenotypeTo3D(sol) {
     targetParcel.params.roofStyle = g.roof_style;
     targetParcel.params.scaleX = g.scale_x;
     targetParcel.params.scaleY = g.scale_y;
-
-    if (typeof updateParcelGeometry === 'function') {
-        updateParcelGeometry(targetParcel);
-    }
+    targetParcel.params.floorHeight = g.floor_height ?? targetParcel.params.floorHeight ?? 3.0;
+    targetParcel.params = sanitizeParcelParams(targetParcel.params, targetParcel.area, targetParcel.outerRing);
+    targetParcel.modified = true;
+    rebuildParcel3D(targetParcel);
+    selectParcel(targetParcel);
+    updateCitySummary();
 }
 
 // --- UI Actions ---
@@ -9031,12 +9043,32 @@ if (btnDistrictEval) {
    VISUAL CGA (VCGA) NODE GRAPH MODELER ENGINE
    ========================================================================== */
 
-let vcgaNodes = [];
-let vcgaConnections = [];
-let selectedVcgaNodeId = null;
-let vcgaConnectingPort = null;
-let vcgaNextNodeId = 1;
+async function syncWorkflowUpdates(updates) {
+    const response = await fetch('/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.status !== 'ok') {
+        throw new Error(data.message || ('HTTP ' + response.status));
+    }
+    showToast(data.message || ('Synced ' + updates.length + ' workflow result(s) to QGIS.'), 'success');
+    return data;
+}
 
-
-
+const workflowModeler = new WorkflowModeler({
+    getSelectedFeatureId: () => selectedParcel?.fid ?? null,
+    notify: showToast,
+    onOpen: () => setStudioMode('workflow'),
+    onPreview: solution => {
+        activeParetoSolution = solution;
+        displaySolutionCard(solution);
+        applyPhenotypeTo3D(solution);
+        setStudioMode('parametric');
+        showToast('Workflow solution ' + (solution.id || '') + ' loaded into the 3D cockpit.', 'success');
+    },
+    onSync: syncWorkflowUpdates,
+});
+workflowModeler.init();
 

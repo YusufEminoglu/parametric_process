@@ -19,7 +19,7 @@
             errDiv.style.fontSize = '13px';
             errDiv.style.lineHeight = '1.5';
             errDiv.style.whiteSpace = 'pre-wrap';
-            errDiv.innerHTML = `<strong>JavaScript Error Detected:</strong><br>${message}<br><br>Source: ${source}<br>Line: ${lineno}, Column: ${colno}`;
+            errDiv.textContent = `JavaScript Error Detected:\\n${message}\\n\\nSource: ${source}\\nLine: ${lineno}, Column: ${colno}`;
             document.body.appendChild(errDiv);
 
             const loading = document.getElementById('loading');
@@ -40,14 +40,15 @@
             errDiv.style.fontSize = '13px';
             errDiv.style.lineHeight = '1.5';
             errDiv.style.whiteSpace = 'pre-wrap';
-            errDiv.innerHTML = `<strong>Unhandled Promise Rejection:</strong><br>${event.reason}`;
+            errDiv.textContent = `Unhandled Promise Rejection:\\n${event.reason}`;
             document.body.appendChild(errDiv);
 
             const loading = document.getElementById('loading');
             if (loading) loading.style.display = 'none';
         };
     </script>
-    <link rel="stylesheet" href="style.css?v=1.9.0">
+    <link rel="stylesheet" href="style.css?v=2.0.3">
+    <link rel="stylesheet" href="workflow_modeler.css?v=2.0.3">
     <script type="importmap">
         {
             "imports": {
@@ -67,7 +68,7 @@
         <div class="spinner"></div>
         <h2>Parametric Process Studio</h2>
         <p id="loading-text">Loading layer features from QGIS...</p>
-        <div class="version-badge">v1.9.5 - QGIS 4 Ready</div>
+        <div class="version-badge">v2.0.3 - QGIS 4 Ready</div>
     </div>
 
     <!-- 3D WebGL Viewport Canvas -->
@@ -78,12 +79,13 @@
         <div class="nav-brand">
             <span class="brand-icon">🏢</span>
             <span class="brand-title">Parametric Process Studio</span>
-            <span class="brand-badge">v1.9.0</span>
+            <span class="brand-badge">v2.0.3</span>
         </div>
 
         <div class="mode-tabs-container">
             <button id="tab-btn-parametric" class="mode-tab active" type="button">🎛️ Parametric Cockpit</button>
             <button id="tab-btn-wallacei" class="mode-tab" type="button">🧬 Evolutionary Studio</button>
+            <button id="tab-btn-workflow" class="mode-tab" type="button">Workflow Modeler</button>
         </div>
 
         <div class="nav-actions">
@@ -93,6 +95,84 @@
             <button id="btn-guide-top" class="nav-btn" onclick="document.getElementById('btn-guide')?.click()">❓ Guide</button>
         </div>
     </header>
+
+    <section id="workflow-modeler-view" class="workflow-modeler-view hidden" aria-label="Visual workflow modeler">
+        <aside class="workflow-palette workflow-panel">
+            <div class="workflow-panel-header">
+                <p class="workflow-eyebrow">Rule Components</p>
+                <h2>Node Palette</h2>
+            </div>
+            <p class="workflow-help">Drag or click a component to add it. Connect an output dot to the next input dot.</p>
+            <div id="workflow-palette-list" class="workflow-palette-list"></div>
+        </aside>
+
+        <div class="workflow-stage">
+            <div class="workflow-toolbar workflow-panel">
+                <label class="workflow-name-field">
+                    <span>Workflow</span>
+                    <input id="workflow-name" type="text" value="Balanced Urban Optimization" maxlength="120">
+                </label>
+                <label class="workflow-template-field">
+                    <span>Template</span>
+                    <select id="workflow-template">
+                        <option value="balanced">Balanced Optimization</option>
+                        <option value="ppud">PPUD Rule Chain</option>
+                        <option value="district">District Performance</option>
+                        <option value="blank">Blank Canvas</option>
+                    </select>
+                </label>
+                <button id="workflow-new" type="button">Load Template</button>
+                <button id="workflow-save" type="button">Save</button>
+                <button id="workflow-export" type="button">Export JSON</button>
+                <button id="workflow-import" type="button">Import</button>
+                <input id="workflow-import-file" type="file" accept=".json,application/json" hidden>
+                <button id="workflow-run" class="workflow-run-button" type="button">Run Workflow</button>
+            </div>
+
+            <div id="workflow-canvas-shell" class="workflow-canvas-shell">
+                <div id="workflow-canvas" class="workflow-canvas" tabindex="0" aria-label="Node graph canvas">
+                    <svg id="workflow-edges" class="workflow-edges" aria-hidden="true">
+                        <defs>
+                            <marker id="workflow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                                <path d="M0,0 L8,4 L0,8 z"></path>
+                            </marker>
+                        </defs>
+                        <g id="workflow-edge-layer"></g>
+                    </svg>
+                    <div id="workflow-node-layer" class="workflow-node-layer"></div>
+                    <div id="workflow-empty-hint" class="workflow-empty-hint hidden">
+                        Add a QGIS Site Layer node to begin.
+                    </div>
+                </div>
+                <div class="workflow-canvas-hint">Delete removes the selected node or edge. Double-click a wire to remove it.</div>
+            </div>
+        </div>
+
+        <aside class="workflow-inspector workflow-panel">
+            <div class="workflow-panel-header">
+                <p class="workflow-eyebrow">Component Settings</p>
+                <h2 id="workflow-inspector-title">Select a node</h2>
+            </div>
+            <p id="workflow-inspector-description" class="workflow-help">Node parameters appear here.</p>
+            <div id="workflow-inspector-fields" class="workflow-inspector-fields"></div>
+            <button id="workflow-delete-node" class="workflow-danger-button hidden" type="button">Delete Component</button>
+
+            <div class="workflow-run-summary">
+                <div class="workflow-panel-header compact">
+                    <p class="workflow-eyebrow">Execution</p>
+                    <h2>Run Log</h2>
+                </div>
+                <div id="workflow-run-status" class="workflow-status idle">Ready</div>
+                <ol id="workflow-run-log" class="workflow-run-log">
+                    <li>Build or load a workflow, then press Run Workflow.</li>
+                </ol>
+                <div id="workflow-result-actions" class="workflow-result-actions hidden">
+                    <button id="workflow-preview-result" type="button">Preview Best in 3D</button>
+                    <button id="workflow-sync-result" class="workflow-run-button" type="button">Sync Result to QGIS</button>
+                </div>
+            </div>
+        </aside>
+    </section>
 
     <!-- Left Tool Drawer Palette -->
     <aside class="hud-bar glass-panel" aria-label="Tool Palette">
@@ -650,6 +730,6 @@
     <!-- Measurement Overlay -->
     <div id="measurement-overlay-container" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 15; width: 100%; height: 100%; overflow: hidden;"></div>
 
-    <script type="module" src="app.js?v=1.9.0"></script>
+    <script type="module" src="app.js?v=2.0.3"></script>
 </body>
 </html>

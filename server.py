@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """Local HTTP server for Parametric Process.
 
-Serves the Web UI static files and routes /api/optimize and /sync POST requests back to QGIS.
+Serves the Web UI static files and routes API requests back to QGIS.
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 import tempfile
@@ -16,7 +17,7 @@ import threading
 class RunState:
     def __init__(self, run_id, total_generations):
         self.run_id = run_id
-        self.status = 'running'  # running | completed | error
+        self.status = 'running'  # running | completed | stopped | error
         self.current_generation = 0
         self.total_generations = total_generations
         self.generation_data = None  # latest generation result
@@ -31,6 +32,31 @@ class ReusableThreadingHTTPServer(ThreadingHTTPServer):
 
 
 class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
+    MAX_REQUEST_BYTES = 10 * 1024 * 1024
+
+    def _send_json(self, payload, status=200):
+        encoded = json.dumps(payload).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def _read_json(self):
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+        except (TypeError, ValueError) as exc:
+            raise ValueError('Invalid Content-Length header') from exc
+        if content_length <= 0:
+            return {}
+        if content_length > self.MAX_REQUEST_BYTES:
+            raise ValueError('Request payload is too large')
+        body = self.rfile.read(content_length).decode('utf-8')
+        data = json.loads(body)
+        if not isinstance(data, dict):
+            raise ValueError('JSON request body must be an object')
+        return data
+
     def log_message(self, format, *args):
         from contextlib import suppress
         with suppress(Exception):
@@ -41,7 +67,6 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                 f.write(f"[{self.log_date_time_string()}] {self.address_string()} - {format % args}\n")
 
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -50,11 +75,16 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
         super().end_headers()
 
     def do_OPTIONS(self):
-        self.send_response(200)
+        self.send_response(204)
         self.end_headers()
 
     def do_GET(self):
         url = self.path.split('?')[0]
+
+        if url == '/api/workflow/catalog':
+            from .workflow_engine import workflow_catalog
+            self._send_json(workflow_catalog())
+            return
 
         if url.startswith("/api/optimize/status/"):
             run_id = url.split("/")[-1]
@@ -134,6 +164,46 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         url = self.path.split('?')[0]
+        try:
+            declared_length = int(self.headers.get('Content-Length', 0))
+        except (TypeError, ValueError):
+            self._send_json({'status': 'error', 'message': 'Invalid Content-Length header'}, 400)
+            return
+        if declared_length > self.MAX_REQUEST_BYTES:
+            self._send_json({'status': 'error', 'message': 'Request payload is too large'}, 413)
+            return
+
+        if url == '/api/workflow/validate':
+            try:
+                from .workflow_engine import validate_workflow
+                data = self._read_json()
+                normalized = validate_workflow(data.get('workflow', data))
+                response_data = {
+                    'status': 'ok',
+                    'execution_order': normalized['order'],
+                    'node_count': len(normalized['nodes']),
+                    'edge_count': len(normalized['edges']),
+                }
+                self._send_json(response_data)
+            except (ValueError, json.JSONDecodeError) as exc:
+                self._send_json({'status': 'error', 'message': str(exc)}, 400)
+            return
+
+        if url == '/api/workflow/run':
+            try:
+                from .workflow_engine import execute_workflow
+                data = self._read_json()
+                live_geojson = json.loads(self.server.geojson_data or '{}')
+                response_data = execute_workflow(
+                    data.get('workflow', {}),
+                    live_geojson,
+                    selected_fid=data.get('selected_fid'),
+                )
+                self._send_json(response_data)
+            except (ValueError, json.JSONDecodeError) as exc:
+                self._send_json({'status': 'error', 'message': str(exc)}, 400)
+            return
+
         if url == "/sync":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
@@ -154,12 +224,24 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             return
 
         if url == "/api/optimize/start":
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = self._read_json()
                 run_id = str(uuid.uuid4())
                 gens = int(data.get("generations", 15))
+                pop_size = int(data.get("pop_size", 30))
+                if gens < 1 or gens > 50:
+                    raise ValueError('Generations must be between 1 and 50')
+                if pop_size < 2 or pop_size > 100:
+                    raise ValueError('Population size must be between 2 and 100')
+                seed_value = data.get('seed')
+                seed = int(seed_value) if seed_value is not None else None
+
+                active_runs = self.server.active_runs
+                for old_id, old_state in list(active_runs.items()):
+                    if old_state.status != 'running' and time.time() - old_state.start_time > 600:
+                        del active_runs[old_id]
+                if sum(1 for state in active_runs.values() if state.status == 'running') >= 2:
+                    raise ValueError('At most two optimization runs may execute concurrently')
                 
                 run_state = RunState(run_id, gens)
                 if not hasattr(self.server, "active_runs"):
@@ -180,7 +262,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                             generator = run_spea2_streaming(
                                 parcel_area=float(data.get("parcel_area", 1000.0)),
                                 objective_specs=data.get("objective_specs"),
-                                pop_size=int(data.get("pop_size", 30)),
+                                pop_size=pop_size,
                                 generations=gens,
                                 crossover_rate=float(data.get("crossover_rate", 0.8)),
                                 mutation_rate=float(data.get("mutation_rate", 0.15)),
@@ -188,13 +270,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                                 max_far=float(data.get("max_far", 2.5)),
                                 max_height=float(data.get("max_height", 18.0)),
                                 bounds=data.get("bounds"),
-                                sim_params=data.get("sim_params")
+                                sim_params=data.get("sim_params"),
+                                seed=seed,
                             )
                         elif algo == "nsga3":
                             generator = run_nsga3_streaming(
                                 parcel_area=float(data.get("parcel_area", 1000.0)),
                                 objective_specs=data.get("objective_specs"),
-                                pop_size=int(data.get("pop_size", 30)),
+                                pop_size=pop_size,
                                 generations=gens,
                                 crossover_rate=float(data.get("crossover_rate", 0.8)),
                                 mutation_rate=float(data.get("mutation_rate", 0.15)),
@@ -202,13 +285,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                                 max_far=float(data.get("max_far", 2.5)),
                                 max_height=float(data.get("max_height", 18.0)),
                                 bounds=data.get("bounds"),
-                                sim_params=data.get("sim_params")
+                                sim_params=data.get("sim_params"),
+                                seed=seed,
                             )
                         elif algo == "moead":
                             generator = run_moead_streaming(
                                 parcel_area=float(data.get("parcel_area", 1000.0)),
                                 objective_specs=data.get("objective_specs"),
-                                pop_size=int(data.get("pop_size", 30)),
+                                pop_size=pop_size,
                                 generations=gens,
                                 crossover_rate=float(data.get("crossover_rate", 0.8)),
                                 mutation_rate=float(data.get("mutation_rate", 0.15)),
@@ -216,13 +300,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                                 max_far=float(data.get("max_far", 2.5)),
                                 max_height=float(data.get("max_height", 18.0)),
                                 bounds=data.get("bounds"),
-                                sim_params=data.get("sim_params")
+                                sim_params=data.get("sim_params"),
+                                seed=seed,
                             )
                         elif algo == "multiparcel":
                             generator = run_multiparcel_nsga2_streaming(
                                 parcels_data=data.get("parcels_data", [{"id": "1", "area": float(data.get("parcel_area", 1000.0))}]),
                                 objective_specs=data.get("objective_specs"),
-                                pop_size=int(data.get("pop_size", 30)),
+                                pop_size=pop_size,
                                 generations=gens,
                                 crossover_rate=float(data.get("crossover_rate", 0.8)),
                                 mutation_rate=float(data.get("mutation_rate", 0.15)),
@@ -236,7 +321,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                             generator = run_nsga2_streaming(
                                 parcel_area=float(data.get("parcel_area", 1000.0)),
                                 objective_specs=data.get("objective_specs"),
-                                pop_size=int(data.get("pop_size", 30)),
+                                pop_size=pop_size,
                                 generations=gens,
                                 crossover_rate=float(data.get("crossover_rate", 0.8)),
                                 mutation_rate=float(data.get("mutation_rate", 0.15)),
@@ -244,7 +329,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                                 max_far=float(data.get("max_far", 2.5)),
                                 max_height=float(data.get("max_height", 18.0)),
                                 bounds=data.get("bounds"),
-                                sim_params=data.get("sim_params")
+                                sim_params=data.get("sim_params"),
+                                seed=seed,
                             )
                         for gen_result in generator:
                             if run_state.stop_requested:
@@ -254,7 +340,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                             
                         if not run_state.stop_requested:
                             run_state.status = 'completed'
-                            if "k_means_clusters" in run_state.generation_data:
+                            if run_state.generation_data and "k_means_clusters" in run_state.generation_data:
                                 run_state.final_result = {
                                     "k_means_clusters": run_state.generation_data.get("k_means_clusters"),
                                     "sensitivity": run_state.generation_data.get("sensitivity"),
@@ -262,8 +348,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                                     "pareto_solutions": run_state.generation_data.get("pareto_solutions")
                                 }
                         else:
-                            run_state.status = 'error'
-                            run_state.error_message = 'Stopped by user'
+                            run_state.status = 'stopped'
                     except Exception as e:
                         run_state.status = 'error'
                         run_state.error_message = str(e)
@@ -517,13 +602,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                 data = json.loads(body)
                 solutions = data.get("solutions", [])
                 site_area = float(data.get("site_area", 10000.0))
-                title = data.get("title", "Parametric Urban Master Plan Report")
+                title = data.get('title', 'Parametric Urban Master Plan Report')
+                safe_title = html.escape(str(title))
 
                 html_report = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{title}</title>
+    <title>{safe_title}</title>
     <style>
         body {{ font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; color: #1e293b; background: #f8fafc; }}
         h1 {{ color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 10px; }}
@@ -538,8 +624,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
     </style>
 </head>
 <body>
-    <h1>🏢 {title}</h1>
-    <p>Generated by <strong>PlanX Parametric Process v1.9.0</strong> | Site Area: <strong>{site_area:,.1f} m²</strong></p>
+    <h1>🏢 {safe_title}</h1>
+    <p>Generated by <strong>PlanX Parametric Process v2.0.3</strong> | Site Area: <strong>{site_area:,.1f} m²</strong></p>
 
     <div class="kpi-grid">
         <div class="kpi-card"><div>Total Solutions</div><div class="kpi-val">{len(solutions)}</div></div>
@@ -571,7 +657,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                     html_report += f"""
             <tr>
                 <td><strong>#{idx}</strong></td>
-                <td>{geno.get('typology', 'Perimeter')}</td>
+                <td>{html.escape(str(geno.get('typology', 'Perimeter')))}</td>
                 <td>{geno.get('floors', 4)}</td>
                 <td>{geno.get('setback', 3.0):.1f}</td>
                 <td>{met.get('gfa', 0.0):,.1f}</td>
@@ -646,6 +732,9 @@ class ParametricProcessServer:
             self.httpd.geojson_data = geojson_str
 
     def stop(self):
+        for run_state in self.active_runs.values():
+            if run_state.status == 'running':
+                run_state.stop_requested = True
         if self.httpd:
             self.httpd.shutdown()
             self.httpd.server_close()

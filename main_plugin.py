@@ -47,6 +47,7 @@ class ParametricProcessPlugin:
             self.iface.removeToolBarIcon(self.action)
             self.action = None
         if self.dock is not None:
+            self.dock._stop_server()
             self.iface.removeDockWidget(self.dock)
             self.dock.deleteLater()
             self.dock = None
@@ -60,7 +61,12 @@ class ParametricProcessPlugin:
                 from .studio_dock import ParametricProcessStudioDock
                 self.dock = ParametricProcessStudioDock(self.iface)
                 self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
+                self.dock.show()
+                self.dock.raise_()
+                return
             except Exception as exc:
                 self.iface.messageBar().pushWarning("Parametric Process", f"Studio panel unavailable: {exc}")
                 return
         self.dock.setVisible(not self.dock.isVisible())
+        if self.dock.isVisible():
+            self.dock.raise_()
