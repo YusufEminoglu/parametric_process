@@ -1,5 +1,10 @@
 # Changelog - Parametric Process
 
+## [2.0.6] - 2026-07-22
+
+- Fixed Workflow Modeler runs failing in the browser when NSGA boundary solutions exposed an infinite crowding distance; non-finite solver sentinels now serialize as JSON `null`.
+- Hardened every local API response with strict JSON encoding so `NaN` or `Infinity` can never reach browser clients.
+
 ## [2.0.5] - 2026-07-22
 
 - Added default one-click workflow chaining: palette selection now adds, selects, and connects a component in one action while manual ports remain available.

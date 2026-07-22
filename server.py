@@ -7,12 +7,37 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import os
 import tempfile
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import threading
+
+
+def _json_compatible(value):
+    """Return a recursively strict-JSON-safe representation of *value*."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_compatible(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_compatible(item) for item in value]
+    return value
+
+
+def _json_bytes(payload):
+    """Encode standards-compliant JSON; NaN and Infinity can never leak."""
+    return json.dumps(_json_compatible(payload), allow_nan=False).encode('utf-8')
+
+
+def _reject_json_constant(value):
+    raise ValueError(f"Non-finite JSON number '{value}' is not supported")
+
+
+def _strict_json_loads(raw):
+    return json.loads(raw, parse_constant=_reject_json_constant)
 
 class RunState:
     def __init__(self, run_id, total_generations):
@@ -35,7 +60,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
     MAX_REQUEST_BYTES = 10 * 1024 * 1024
 
     def _send_json(self, payload, status=200):
-        encoded = json.dumps(payload).encode('utf-8')
+        encoded = _json_bytes(payload)
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(encoded)))
@@ -52,7 +77,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
         if content_length > self.MAX_REQUEST_BYTES:
             raise ValueError('Request payload is too large')
         body = self.rfile.read(content_length).decode('utf-8')
-        data = json.loads(body)
+        data = _strict_json_loads(body)
         if not isinstance(data, dict):
             raise ValueError('JSON request body must be an object')
         return data
@@ -111,7 +136,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(resp).encode('utf-8'))
+            self.wfile.write(_json_bytes(resp))
             return
 
         if url == "/data.geojson":
@@ -197,7 +222,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             try:
                 from .workflow_engine import execute_workflow
                 data = self._read_json()
-                live_geojson = json.loads(self.server.geojson_data or '{}')
+                live_geojson = _strict_json_loads(self.server.geojson_data or '{}')
                 response_data = execute_workflow(
                     data.get('workflow', {}),
                     live_geojson,
@@ -212,7 +237,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 if self.server.sync_callback:
                     success, msg = self.server.sync_callback(data)
                     response_data = {"status": "ok" if success else "error", "message": msg}
@@ -224,7 +249,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/optimize/start":
@@ -367,7 +392,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url.startswith("/api/optimize/stop/"):
@@ -382,14 +407,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/topsis/rank":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 from .nsga2_engine import topsis_rank_solutions
                 solutions = data.get("solutions", [])
                 weights = data.get("weights")
@@ -402,14 +427,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/export/cityjson":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 from .nsga2_engine import export_to_cityjson
                 solutions = data.get("solutions", [])
                 cityjson_obj = export_to_cityjson(solutions)
@@ -420,14 +445,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/district/evaluate":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 from .district_engine import evaluate_district_coupling
                 buildings = data.get("buildings", [])
                 site_area = float(data.get("site_area", 5000.0))
@@ -439,14 +464,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/optimize":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 from .nsga2_engine import (
                     run_nsga2_optimization,
                     run_spea2_optimization,
@@ -540,14 +565,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/ppud/run":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 from .ppud_pipeline import run_ppud_pipeline
 
                 # Extract block ring from GeoJSON features or direct ring
@@ -596,14 +621,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         if url == "/api/export/report":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             try:
-                data = json.loads(body)
+                data = _strict_json_loads(body)
                 solutions = data.get("solutions", [])
                 site_area = float(data.get("site_area", 10000.0))
                 title = data.get('title', 'Parametric Urban Master Plan Report')
@@ -629,7 +654,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
 </head>
 <body>
     <h1>🏢 {safe_title}</h1>
-    <p>Generated by <strong>PlanX Parametric Process v2.0.5</strong> | Site Area: <strong>{site_area:,.1f} m²</strong></p>
+    <p>Generated by <strong>PlanX Parametric Process v2.0.6</strong> | Site Area: <strong>{site_area:,.1f} m²</strong></p>
 
     <div class="kpi-grid">
         <div class="kpi-card"><div>Total Solutions</div><div class="kpi-val">{len(solutions)}</div></div>
@@ -688,7 +713,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.wfile.write(_json_bytes(response_data))
             return
 
         self.send_error(404, "Endpoint Not Found")

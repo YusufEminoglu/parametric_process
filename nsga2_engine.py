@@ -398,7 +398,14 @@ class ProcessIndividual:
             "metrics": self.metrics,
             "objectives": self.objectives,
             "rank": self.rank,
-            "crowding_distance": round(self.crowding_distance, 4),
+            # Boundary members intentionally use +inf during Pareto selection.
+            # JSON has no non-finite number type, so expose that sentinel as
+            # null while retaining +inf on the live individual for sorting.
+            "crowding_distance": (
+                round(self.crowding_distance, 4)
+                if math.isfinite(self.crowding_distance)
+                else None
+            ),
         }
 
 

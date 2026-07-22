@@ -2,7 +2,7 @@ import json
 import unittest
 import urllib.request
 
-from parametric_process.server import ParametricProcessServer
+from parametric_process.server import ParametricProcessServer, _json_bytes
 from parametric_process.workflow_engine import (
     WorkflowValidationError,
     execute_workflow,
@@ -38,6 +38,13 @@ def graph_from_types(*node_types, overrides=None):
         for index in range(len(nodes) - 1)
     ]
     return {"name": "Test workflow", "nodes": nodes, "edges": edges}
+
+
+def strict_json_loads(raw):
+    def reject_constant(value):
+        raise ValueError(f"Non-standard JSON constant: {value}")
+
+    return json.loads(raw, parse_constant=reject_constant)
 
 
 class WorkflowValidationTests(unittest.TestCase):
@@ -89,6 +96,7 @@ class WorkflowExecutionTests(unittest.TestCase):
 
     def test_balanced_graph_produces_qgis_updates(self):
         response = execute_workflow(self.balanced_graph(), SAMPLE_GEOJSON)
+        json.dumps(response, allow_nan=False)
         result = response["result"]
         self.assertEqual(response["status"], "ok")
         self.assertGreater(len(result["pareto_solutions"]), 0)
@@ -104,7 +112,12 @@ class WorkflowExecutionTests(unittest.TestCase):
         for algorithm in ("nsga2", "spea2", "nsga3", "moead"):
             with self.subTest(algorithm=algorithm):
                 result = execute_workflow(self.balanced_graph(algorithm), SAMPLE_GEOJSON)["result"]
+                json.dumps(result, allow_nan=False)
                 self.assertGreater(len(result["pareto_solutions"]), 0)
+
+    def test_non_finite_json_values_are_sanitized(self):
+        payload = strict_json_loads(_json_bytes({"positive": float("inf"), "nan": float("nan")}))
+        self.assertEqual(payload, {"positive": None, "nan": None})
 
     def test_ppud_rule_chain_executes(self):
         graph = graph_from_types(
@@ -154,13 +167,29 @@ class WorkflowHttpTests(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertIn("district_metrics", result["result"])
 
+    def test_balanced_workflow_response_is_strict_browser_json(self):
+        graph = WorkflowExecutionTests().balanced_graph()
+        request = urllib.request.Request(
+            f"{self.base_url}/api/workflow/run",
+            data=json.dumps({"workflow": graph}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            raw = response.read().decode("utf-8")
+        self.assertNotIn("Infinity", raw)
+        self.assertNotIn("NaN", raw)
+        result = strict_json_loads(raw)
+        self.assertEqual(result["status"], "ok")
+        self.assertGreater(len(result["result"]["pareto_solutions"]), 0)
+
     def test_web_entry_assets_are_served(self):
         expected = {
             "/index.html": ("text/html", b"workflow_modeler.css"),
-            "/app.js?v=2.0.5": ("application/javascript", b"./workflow_modeler.js"),
-            "/style.css?v=2.0.5": ("text/css", b".loading-screen"),
+            "/app.js?v=2.0.6": ("application/javascript", b"./workflow_modeler.js"),
+            "/style.css?v=2.0.6": ("text/css", b".loading-screen"),
             "/workflow_modeler.js": ("application/javascript", b"class WorkflowModeler"),
-            "/workflow_modeler.css?v=2.0.5": ("text/css", b".workflow-modeler-view"),
+            "/workflow_modeler.css?v=2.0.6": ("text/css", b".workflow-modeler-view"),
         }
         for path, (content_type, marker) in expected.items():
             with self.subTest(path=path):
