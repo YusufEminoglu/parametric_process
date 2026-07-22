@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.4] - 2026-07-22
+
+- Fixed an infinite loading screen in both 3D Cockpit and Workflow Modeler by serving all top-level web source assets from the local plugin server.
+
 ## [2.0.3] - 2026-07-22
 
 - Added a Grasshopper-style visual Workflow Modeler with draggable rule components, typed inspectors, connection validation, JSON import/export, browser-profile persistence, execution logs, 3D preview, and reviewed QGIS synchronization.

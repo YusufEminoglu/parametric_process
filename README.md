@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://qgis.org"><img src="https://img.shields.io/badge/QGIS-3.28%2B%20%7C%204.x-589632.svg?logo=qgis&logoColor=white" alt="QGIS"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg" alt="License"></a>
-  <a href="metadata.txt"><img src="https://img.shields.io/badge/Version-2.0.3-0f766e.svg?style=flat" alt="Version"></a>
+  <a href="metadata.txt"><img src="https://img.shields.io/badge/Version-2.0.4-0f766e.svg?style=flat" alt="Version"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-Pure%20Stdlib-3776AB.svg?logo=python&logoColor=white" alt="Python"></a>
   <a href="https://github.com/YusufEminoglu/parametric_process"><img src="https://img.shields.io/badge/Engine-NSGA--II%20%2F%20SPEA--2%20%2F%20NSGA--III%20%2F%20MOEA--D-10b981.svg" alt="Engine"></a>
 </p>
