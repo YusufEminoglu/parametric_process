@@ -8541,88 +8541,10 @@ function updateCfdParticles() {
     }
 }
 
-// ==========================================
-// URBAN MOBILITY FLOW (CARS, BUSES & CYCLISTS)
-// ==========================================
-
-let trafficGroup = null;
-let isTrafficActive = false;
-let vehiclesData = [];
-
-function initUrbanTraffic() {
-    if (trafficGroup) {
-        scene.remove(trafficGroup);
-        trafficGroup = null;
-    }
-    
-    trafficGroup = new THREE.Group();
-    vehiclesData = [];
-    
-    const carGeom = new THREE.BoxGeometry(3.6, 1.3, 1.8);
-    const busGeom = new THREE.BoxGeometry(8.5, 2.8, 2.4);
-    const cycleGeom = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 6);
-    
-    const matCarYellow = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3, metalness: 0.6 });
-    const matCarRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.6 });
-    const matCarBlue = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.6 });
-    const matBus = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4, metalness: 0.2 });
-    const matCycle = new THREE.MeshStandardMaterial({ color: 0x9333ea, roughness: 0.5 });
-    
-    const mats = [matCarYellow, matCarRed, matCarBlue, matBus, matCycle];
-    const numVehicles = 45;
-    
-    for (let i = 0; i < numVehicles; i++) {
-        const type = i % 5 === 0 ? 'bus' : (i % 6 === 0 ? 'cyclist' : 'car');
-        const geom = type === 'bus' ? busGeom : (type === 'cyclist' ? cycleGeom : carGeom);
-        const mat = mats[i % mats.length];
-        
-        const mesh = new THREE.Mesh(geom, mat);
-        mesh.castShadow = true;
-        
-        const radius = 55 + (i % 4) * 32;
-        const angle = (i / numVehicles) * Math.PI * 2;
-        const speed = (type === 'cyclist' ? 0.008 : (type === 'bus' ? 0.012 : 0.018)) * (0.8 + Math.random() * 0.4);
-        const yOffset = type === 'cyclist' ? 0.6 : (type === 'bus' ? 1.4 : 0.65);
-        
-        mesh.position.set(Math.cos(angle) * radius, yOffset, Math.sin(angle) * radius);
-        trafficGroup.add(mesh);
-        
-        vehiclesData.push({
-            mesh,
-            radius,
-            angle,
-            speed,
-            dir: (i % 2 === 0 ? 1 : -1),
-            type
-        });
-    }
-    
-    scene.add(trafficGroup);
-}
-
-function updateUrbanTraffic() {
-    if (!isTrafficActive || !trafficGroup) return;
-    
-    for (let i = 0; i < vehiclesData.length; i++) {
-        const v = vehiclesData[i];
-        v.angle += v.speed * v.dir;
-        
-        const px = Math.cos(v.angle) * v.radius;
-        const pz = Math.sin(v.angle) * v.radius;
-        
-        v.mesh.position.x = px;
-        v.mesh.position.z = pz;
-        
-        const heading = v.angle + (v.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
-        v.mesh.rotation.y = heading;
-    }
-}
-
-// Hook CFD & Traffic updates into main animate loop
+// Hook CFD update into main animate loop
 const prevAnimate = animate;
 animate = function() {
     updateCfdParticles();
-    updateUrbanTraffic();
     prevAnimate();
 };
 
@@ -8638,22 +8560,6 @@ if (btnToggleCfd) {
             scene.remove(cfdParticlesMesh);
             cfdParticlesMesh = null;
             showToast("Aerodynamic Wind Vector Flows hidden.", "info");
-        }
-    });
-}
-
-const btnToggleTraffic = document.getElementById('btn-toggle-traffic');
-if (btnToggleTraffic) {
-    btnToggleTraffic.addEventListener('click', () => {
-        isTrafficActive = !isTrafficActive;
-        btnToggleTraffic.classList.toggle('active', isTrafficActive);
-        if (isTrafficActive) {
-            initUrbanTraffic();
-            showToast("🚗 Animated Urban Mobility (Cars, Buses & Cyclists) activated.", "info");
-        } else if (trafficGroup) {
-            scene.remove(trafficGroup);
-            trafficGroup = null;
-            showToast("Urban Mobility Flow hidden.", "info");
         }
     });
 }

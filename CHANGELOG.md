@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.2] - 2026-07-22
+
+- Parametric Process Studio v2.0.2 Release: Roll back prototype Urban Mobility flow to backlog while preserving IDW Spatial Kernel and Asphalt (+18.5°C) vs Park (-8.5°C) thermal physics
+
 ## [2.0.1] - 2026-07-22
 
 - Parametric Process Studio v2.0.1 Release: Animated Urban Mobility Traffic flow (cars, buses, cyclists) and distinct Asphalt (+18.5°C) vs Park/Tree (-8.5°C) surface thermal physics
