@@ -19,6 +19,11 @@
 
 ---
 
+## 📖 Documentation
+
+**[Comprehensive Academic Reference Manual](https://yusufeminoglu.github.io/parametric_process/)** — complete documentation of every feature, parameter, and workflow. Hosted on GitHub Pages.
+
+
 ## 🌟 Overview
 
 **Parametric Process** is an elite, standalone generative urban design and multi-objective evolutionary optimization lab natively built for **QGIS**. It brings **Grasshopper WallaceiX-grade evolutionary analytics**, 3-Stage Sequential PPUD Pipeline (Plot Layout → Building Configuration → Incremental Fabric), interactive 3D WebGL cockpit simulation, multi-domain microclimate physics, and bidirectional GIS vector layer synchronization directly into your spatial planning workspace.
