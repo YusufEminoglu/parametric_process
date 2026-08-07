@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.7] - 2026-08-07
+
+- Add comprehensive academic reference manual: 6 algorithms, 30 equations, 32 refs
+
 ## [2.0.6] - 2026-07-22
 
 - Fixed Workflow Modeler runs failing in the browser when NSGA boundary solutions exposed an infinite crowding distance; non-finite solver sentinels now serialize as JSON `null`.
