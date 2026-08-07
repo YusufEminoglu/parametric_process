@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parametric Process Studio &mdash; Academic Reference Manual</title>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+  };
+</script>
+<style>
+/* ================================================================
+   CSS Custom Properties — Light & Dark Themes
+   ================================================================ */
+:root {
+  --bg-primary: #fdfdfd;
+  --bg-secondary: #f4f5f7;
+  --bg-sidebar: #1e293b;
+  --bg-code: #f0f2f5;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a5568;
+  --text-sidebar: #cbd5e1;
+  --text-sidebar-heading: #e2e8f0;
+  --text-sidebar-link: #94a3b8;
+  --text-sidebar-link-active: #ffffff;
+  --text-sidebar-link-hover-bg: #334155;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-light: #dbeafe;
+  --border: #e2e8f0;
+  --border-sidebar: #334155;
+  --table-stripe: #f8fafc;
+  --table-header-bg: #1e293b;
+  --table-header-text: #f1f5f9;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --radius: 6px;
+  --radius-lg: 10px;
+  --transition: 0.2s ease;
+  --sidebar-width: 300px;
+  --header-height: 56px;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-sidebar: #020617;
+  --bg-code: #1e293b;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-sidebar: #94a3b8;
+  --text-sidebar-heading: #cbd5e1;
+  --text-sidebar-link: #64748b;
+  --text-sidebar-link-active: #e2e8f0;
+  --text-sidebar-link-hover-bg: #1e293b;
+  --accent: #60a5fa;
+  --accent-hover: #3b82f6;
+  --accent-light: #1e3a5f;
+  --border: #334155;
+  --border-sidebar: #1e293b;
+  --table-stripe: #1a2332;
+  --table-header-bg: #020617;
+  --table-header-text: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.35);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.4);
+}
+
+/* ================================================================
+   Reset & Base
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  display: flex;
+  min-height: 100vh;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ================================================================
+   Sidebar
+   ================================================================ */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--bg-sidebar);
+  color: var(--text-sidebar);
+  overflow-y: auto;
+  z-index: 100;
+  padding: 24px 20px 80px 20px;
+  transition: transform 0.3s ease, background var(--transition);
+  border-right: 1px solid var(--border-sidebar);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-sidebar-heading);
+  margin-bottom: 8px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-sidebar-link);
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sidebar-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-sidebar);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-sidebar-heading);
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  outline: none;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.sidebar-search::placeholder { color: var(--text-sidebar-link); }
+.sidebar-search:focus {
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.1);
+}
+
+.sidebar-toc {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-toc > li { margin-bottom: 2px; }
+
+.sidebar-toc a {
+  display: block;
+  padding: 6px 12px;
+  color: var(--text-sidebar-link);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border-radius: var(--radius);
+  transition: all var(--transition);
+}
+
+.sidebar-toc a:hover,
+.sidebar-toc a:focus {
+  color: var(--text-sidebar-link-active);
+  background: var(--text-sidebar-link-hover-bg);
+}
+
+.sidebar-toc a.active {
+  color: var(--text-sidebar-link-active);
+  background: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-toc .toc-section {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-sidebar-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 16px 12px 6px 12px;
+  margin-top: 4px;
+}
+
+.sidebar-toc .toc-sub {
+  padding-left: 16px;
+  font-size: 0.82rem;
+}
+
+.sidebar-theme-toggle {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-sidebar);
+}
+
+.sidebar-theme-toggle button {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-sidebar);
+  border-radius: var(--radius);
+  color: var(--text-sidebar-link);
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--transition);
+}
+
+.sidebar-theme-toggle button:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--text-sidebar-link-active);
+}
+
+/* ================================================================
+   Mobile sidebar toggle
+   ================================================================ */
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 99;
+}
+
+.sidebar.open { transform: translateX(0); }
+.sidebar-overlay.visible { display: block; }
+
+/* ================================================================
+   Main Content
+   ================================================================ */
+.main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  max-width: 900px;
+  padding: 48px 56px 80px 56px;
+  min-width: 0;
+  transition: margin-left 0.3s ease;
+}
+
+.main h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.main h1 + p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  margin-bottom: 36px;
+}
+
+.main h2 {
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin-top: 52px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.main h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.main h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.main p {
+  margin-bottom: 14px;
+  color: var(--text-secondary);
+  text-align: justify;
+}
+
+.main a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--transition);
+}
+
+.main a:hover { border-bottom-color: var(--accent); }
+
+.main ul, .main ol {
+  margin-bottom: 14px;
+  padding-left: 24px;
+  color: var(--text-secondary);
+}
+
+.main li { margin-bottom: 4px; }
+
+.main blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 10px 18px;
+  margin: 16px 0;
+  background: var(--accent-light);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.main code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.main pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* ================================================================
+   Tables
+   ================================================================ */
+.main table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 24px 0;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.main thead th {
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.main tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.main tbody tr:nth-child(even) { background: var(--table-stripe); }
+.main tbody tr:last-child td { border-bottom: none; }
+
+/* ================================================================
+   Equations
+   ================================================================ */
+.equation-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 18px 24px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+
+.equation-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* ================================================================
+   Callout boxes
+   ================================================================ */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-light);
+  padding: 14px 18px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 18px 0;
+}
+
+.callout-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  color: var(--accent-hover);
+}
+
+.callout p { margin-bottom: 0; }
+
+/* ================================================================
+   Reference list
+   ================================================================ */
+.ref-list {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: ref-counter;
+}
+
+.ref-list li {
+  counter-increment: ref-counter;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: all var(--transition);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.ref-list li::before {
+  content: "[" counter(ref-counter) "] ";
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ref-list li:hover {
+  background: var(--accent-light);
+  border-left-color: var(--accent);
+}
+
+.ref-list li .doi {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.doi a { border-bottom: none; }
+
+/* ================================================================
+   Hidden (search filter)
+   ================================================================ */
+.search-hidden { display: none !important; }
+
+.search-no-results {
+  display: none;
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ================================================================
+   Responsive
+   ================================================================ */
+@media (max-width: 1024px) {
+  :root { --sidebar-width: 260px; }
+  .main { padding: 36px 32px 64px 32px; }
+}
+
+@media (max-width: 768px) {
+  .mobile-nav-toggle { display: flex; }
+  .sidebar { transform: translateX(-100%); }
+  .main { margin-left: 0; padding: 24px 18px 48px 18px; }
+  .main h1 { font-size: 1.6rem; }
+  .main h2 { font-size: 1.3rem; margin-top: 36px; }
+  .main h3 { font-size: 1.1rem; }
+  .equation-block { padding: 12px 14px; }
+  .main table { font-size: 0.78rem; }
+  .main thead th, .main tbody td { padding: 8px 10px; }
+}
+
+@media print {
+  .sidebar, .mobile-nav-toggle, .sidebar-overlay { display: none !important; }
+  .main { margin-left: 0; max-width: 100%; padding: 0; }
+  body { font-size: 11pt; }
+  .equation-block { break-inside: avoid; }
+  table { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile Nav Toggle -->
+<button class="mobile-nav-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation">&#9776;</button>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- ================================================================
+     SIDEBAR
+     ================================================================ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">Parametric Process<br>Studio</div>
+  <div class="sidebar-subtitle">Academic Reference Manual v1.0</div>
+  <input type="text" class="sidebar-search" id="searchInput" placeholder="Search manual…" oninput="filterContent()" autocomplete="off">
+
+  <ul class="sidebar-toc" id="sidebarToc">
+    <li><span class="toc-section">Preamble</span></li>
+    <li><a href="#introduction" onclick="closeSidebar()">Introduction</a></li>
+    <li><a href="#theoretical-foundations" onclick="closeSidebar()">Theoretical Foundations</a></li>
+
+    <li><span class="toc-section">Algorithms</span></li>
+    <li><a href="#alg1" onclick="closeSidebar()">1. Multi-Objective Evolutionary Optimization</a></li>
+    <li class="toc-sub"><a href="#alg1-theory" onclick="closeSidebar()">Theoretical Background</a></li>
+    <li class="toc-sub"><a href="#alg1-equations" onclick="closeSidebar()">Key Equations</a></li>
+    <li class="toc-sub"><a href="#alg1-params" onclick="closeSidebar()">Parameters</a></li>
+    <li class="toc-sub"><a href="#alg1-outputs" onclick="closeSidebar()">Outputs</a></li>
+    <li class="toc-sub"><a href="#alg1-interp" onclick="closeSidebar()">Interpretation</a></li>
+    <li class="toc-sub"><a href="#alg1-refs" onclick="closeSidebar()">References</a></li>
+
+    <li><a href="#alg2" onclick="closeSidebar()">2. Urban Physics &amp; Microclimate Evaluator</a></li>
+    <li class="toc-sub"><a href="#alg2-theory" onclick="closeSidebar()">Theoretical Background</a></li>
+    <li class="toc-sub"><a href="#alg2-equations" onclick="closeSidebar()">Key Equations</a></li>
+    <li class="toc-sub"><a href="#alg2-params" onclick="closeSidebar()">Parameters</a></li>
+    <li class="toc-sub"><a href="#alg2-outputs" onclick="closeSidebar()">Outputs</a></li>
+    <li class="toc-sub"><a href="#alg2-interp" onclick="closeSidebar()">Interpretation</a></li>
+    <li class="toc-sub"><a href="#alg2-refs" onclick="closeSidebar()">References</a></li>
+
+    <li><a href="#alg3" onclick="closeSidebar()">3. Urban Morphology &amp; Canyon Analytics</a></li>
+    <li class="toc-sub"><a href="#alg3-theory" onclick="closeSidebar()">Theoretical Background</a></li>
+    <li class="toc-sub"><a href="#alg3-equations" onclick="closeSidebar()">Key Equations</a></li>
+    <li class="toc-sub"><a href="#alg3-params" onclick="closeSidebar()">Parameters</a></li>
+    <li class="toc-sub"><a href="#alg3-outputs" onclick="closeSidebar()">Outputs</a></li>
+    <li class="toc-sub"><a href="#alg3-interp" onclick="closeSidebar()">Interpretation</a></li>
+    <li class="toc-sub"><a href="#alg3-refs" onclick="closeSidebar()">References</a></li>
+
+    <li><a href="#alg4" onclick="closeSidebar()">4. Procedural Shape Grammar Block Subdivider</a></li>
+    <li class="toc-sub"><a href="#alg4-theory" onclick="closeSidebar()">Theoretical Background</a></li>
+    <li class="toc-sub"><a href="#alg4-equations" onclick="closeSidebar()">Key Equations</a></li>
+    <li class="toc-sub"><a href="#alg4-params" onclick="closeSidebar()">Parameters</a></li>
+    <li class="toc-sub"><a href="#alg4-outputs" onclick="closeSidebar()">Outputs</a></li>
+    <li class="toc-sub"><a href="#alg4-interp" onclick="closeSidebar()">Interpretation</a></li>
+    <li class="toc-sub"><a href="#alg4-refs" onclick="closeSidebar()">References</a></li>
+
+    <li><a href="#alg5" onclick="closeSidebar()">5. Multi-Parcel District Environmental Coupling</a></li>
+    <li class="toc-sub"><a href="#alg5-theory" onclick="closeSidebar()">Theoretical Background</a></li>
+    <li class="toc-sub"><a href="#alg5-equations" onclick="closeSidebar()">Key Equations</a></li>
+    <li class="toc-sub"><a href="#alg5-params" onclick="closeSidebar()">Parameters</a></li>
+    <li class="toc-sub"><a href="#alg5-outputs" onclick="closeSidebar()">Outputs</a></li>
+    <li class="toc-sub"><a href="#alg5-interp" onclick="closeSidebar()">Interpretation</a></li>
+    <li class="toc-sub"><a href="#alg5-refs" onclick="closeSidebar()">References</a></li>
+
+    <li><a href="#alg6" onclick="closeSidebar()">6. PPUD Sequential Pipeline</a></li>
+    <li class="toc-sub"><a href="#alg6-theory" onclick="closeSidebar()">Theoretical Background</a></li>
+    <li class="toc-sub"><a href="#alg6-equations" onclick="closeSidebar()">Key Equations</a></li>
+    <li class="toc-sub"><a href="#alg6-params" onclick="closeSidebar()">Parameters</a></li>
+    <li class="toc-sub"><a href="#alg6-outputs" onclick="closeSidebar()">Outputs</a></li>
+    <li class="toc-sub"><a href="#alg6-interp" onclick="closeSidebar()">Interpretation</a></li>
+    <li class="toc-sub"><a href="#alg6-refs" onclick="closeSidebar()">References</a></li>
+
+    <li><span class="toc-section">Appendices</span></li>
+    <li><a href="#appendix-notation" onclick="closeSidebar()">A. Notation</a></li>
+    <li><a href="#appendix-doi" onclick="closeSidebar()">B. DOI Index</a></li>
+    <li><a href="#appendix-citations" onclick="closeSidebar()">C. Consolidated Bibliography</a></li>
+  </ul>
+
+  <div class="sidebar-theme-toggle">
+    <button onclick="toggleTheme()" id="themeToggleBtn">
+      <span id="themeIcon">&#9790;</span> <span id="themeLabel">Dark Mode</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ================================================================
+     MAIN CONTENT
+     ================================================================ -->
+<main class="main" id="mainContent">
+
+<h1>Parametric Process Studio</h1>
+<p>Academic Reference Manual &mdash; Theoretical foundations, mathematical formulations, parameter specifications, interpretation guidance, and scholarly references for all six processing algorithms. Version 1.0, August 2026.</p>
+
+<!-- ================================================================
+     INTRODUCTION
+     ================================================================ -->
+<section id="introduction" class="search-section">
+<h2>Introduction</h2>
+
+<p>Parametric Process Studio is a computational urban design and analysis framework implemented as a QGIS processing plugin. It integrates six interrelated algorithms spanning multi-objective evolutionary optimisation, urban microclimate physics, morphological analytics, procedural shape grammars, inter-building environmental coupling, and a sequential parametric urban design pipeline.</p>
+
+<p>The plugin operationalises the <strong>Parametric Performance-based Urban Design (PPUD)</strong> methodology, a framework that bridges urban morphology, building science, and computational optimisation to support evidence-based decision-making in the early stages of urban design. The theoretical backbone draws from evolutionary computation (Deb <em>et al.</em>, 2002; Zitzler <em>et al.</em>, 2001; Zhang &amp; Li, 2007), urban climatology (Oke, 1988; Jendritzky <em>et al.</em>, 2012), building physics (Duffie &amp; Beckman, 2013; Hammond &amp; Jones, 2008), and computational urbanism (Parish &amp; Muller, 2001; Batty, 2008; Akay &amp; Caliskan, 2025).</p>
+
+<p>Each algorithm is designed to operate on spatial data layers within QGIS, producing both tabular and geometric outputs that can be visualised, exported, and subjected to further analysis. The plugin supports the complete workflow from parcel subdivision through building configuration optimisation to district-scale environmental performance assessment.</p>
+
+<h3>Plugin Architecture</h3>
+<p>The six algorithms form a logical pipeline: Algorithm 4 (Shape Grammar) generates subdivided plots; Algorithm 1 (Evolutionary Optimisation) configures building genotypes on those plots; Algorithm 2 (Physics Evaluator) and Algorithm 3 (Morphology Analytics) assess the resulting configurations; Algorithm 5 (Environmental Coupling) captures inter-building effects that emerge at the district scale; and Algorithm 6 (PPUD Pipeline) chains these stages into an integrated, climate-responsive sequential workflow.</p>
+</section>
+
+<!-- ================================================================
+     THEORETICAL FOUNDATIONS
+     ================================================================ -->
+<section id="theoretical-foundations" class="search-section">
+<h2>Theoretical Foundations</h2>
+
+<h3>Parametric Urbanism</h3>
+<p>Parametric urbanism treats the city as a system of interlinked parameters whose values determine spatial, environmental, and socio-economic outcomes. This perspective, articulated by Schumacher (2009) and grounded in the computational design tradition of Alexander <em>et al.</em> (1977), shifts the role of the designer from that of a form-giver to that of a system designer: one who specifies the rules, constraints, and objectives that govern the generation and evaluation of urban configurations.</p>
+
+<h3>Multi-Objective Decision Making in Urban Design</h3>
+<p>Urban design problems are inherently multi-objective. Increasing gross floor area (GFA) to accommodate population growth may degrade wind ventilation; maximising return on investment may conflict with minimising lifecycle carbon emissions; optimising solar access for one building may cast shadows on its neighbours. Multi-objective evolutionary algorithms (MOEAs) provide a principled framework for exploring the trade-off surface (Pareto front) that characterises these conflicts, enabling designers and decision-makers to select configurations that represent acceptable compromises among competing objectives (Coello Coello <em>et al.</em>, 2007).</p>
+
+<h3>Urban Microclimate Physics</h3>
+<p>The thermal and aerodynamic behaviour of urban environments is governed by the interaction of built form with atmospheric processes. Key phenomena include the urban heat island effect (Oke, 1982), street canyon ventilation (Oke, 1988), pedestrian-level wind comfort (Lawson &amp; Penwarden, 1975; Blocken <em>et al.</em>, 2007), solar access and shading (Knowles, 2003; Compagnon, 2004), and stormwater runoff (Berland <em>et al.</em> 2017). The plugin encodes simplified physics models for each of these domains, calibrated against the fuller computational fluid dynamics (CFD) and radiative transfer simulations that underpin the research literature.</p>
+
+<h3>Procedural Modelling and Shape Grammars</h3>
+<p>Shape grammars, introduced by Stiny and Gips (1972) and extended to urban-scale procedural modelling by Parish and Muller (2001), provide a formal language for generating complex geometries from a compact set of production rules. In the context of urban design, shape grammars enable the automated subdivision of large parcels into buildable plots, the generation of building massing envelopes, and the exploration of alternative block typologies at scale (Mueller <em>et al.</em>, 2006).</p>
+</section>
+
+<!-- ================================================================
+     ALGORITHM 1: Multi-Objective Evolutionary Optimization
+     ================================================================ -->
+<section id="alg1" class="search-section">
+<h2>Algorithm 1: Parametric Multi-Objective Evolutionary Optimization</h2>
+
+<h3 id="alg1-theory">Theoretical Background</h3>
+
+<p>This algorithm implements four canonical multi-objective evolutionary algorithms (MOEAs) for the simultaneous optimisation of five urban performance objectives. Each solver belongs to a distinct family of multi-objective optimisation techniques, and the choice among them depends on the characteristics of the problem instance (number of objectives, desired population diversity, convergence speed requirements).</p>
+
+<h4>NSGA-II (Non-dominated Sorting Genetic Algorithm II)</h4>
+<p>Proposed by Deb, Pratap, Agarwal, and Meyarivan (2002), NSGA-II is the most widely cited MOEA in the engineering design literature. It employs two key mechanisms: <strong>fast non-dominated sorting</strong>, which partitions the population into successive Pareto fronts in $\mathcal{O}(MN^2)$ time (where $M$ is the number of objectives and $N$ the population size), and <strong>crowding distance</strong> assignment, which preserves diversity along the Pareto front without requiring a user-specified sharing parameter. The binary tournament selection operator favours solutions with lower (better) non-domination rank; when two solutions share the same rank, the one with larger crowding distance is preferred, thereby promoting a well-spread approximation of the Pareto-optimal set.</p>
+
+<h4>NSGA-III (Non-dominated Sorting Genetic Algorithm III)</h4>
+<p>Deb and Jain (2014) extended NSGA-II to handle many-objective problems (typically $M > 3$) where the proportion of non-dominated solutions in a finite population grows exponentially with $M$, rendering Pareto-dominance-based selection ineffective. NSGA-III replaces the crowding distance operator with a <strong>reference-point-based niching</strong> mechanism. A set of well-distributed reference points is generated on a normalised hyperplane using Das and Dennis's (1998) systematic approach. Each population member is associated with the nearest reference line, and a niching procedure selects solutions to ensure that every reference point is represented, thereby maintaining diversity even when the dominance pressure collapses.</p>
+
+<h4>SPEA-2 (Strength Pareto Evolutionary Algorithm 2)</h4>
+<p>Zitzler, Laumanns, and Thiele (2001) proposed SPEA-2 as an improved version of the original Strength Pareto Evolutionary Algorithm. SPEA-2 maintains an external archive of fixed size and assigns a <strong>fitness value</strong> to each individual that combines a strength-based raw fitness $R(i)$ (the sum of the strengths of all archivists that dominate $i$) with a density estimate $D(i)$ based on the distance to the $k$-th nearest neighbour. The use of a nearest-neighbour density estimator provides a more fine-grained diversity preservation mechanism than the crowding distance of NSGA-II, at the cost of increased computational complexity.</p>
+
+<h4>MOEA/D (Multi-Objective Evolutionary Algorithm based on Decomposition)</h4>
+<p>Zhang and Li (2007) introduced a fundamentally different approach: rather than treating the multi-objective problem as a whole, MOEA/D decomposes it into a set of scalar subproblems using weight vectors and a scalarising function (commonly the Tchebycheff approach). Each subproblem is optimised collaboratively using information from neighbouring subproblems. MOEA/D has been shown to be particularly effective on problems with complicated Pareto front geometries and on many-objective problems where decomposition-based selection maintains a more consistent selection pressure than Pareto-dominance approaches.</p>
+
+<h4>Constraint Handling</h4>
+<p>All four solvers employ <strong>Deb's constrained-dominance principle</strong> (Deb, 2000): a solution $i$ is said to constrained-dominate solution $j$ if any of the following conditions hold: (1) $i$ is feasible and $j$ is infeasible; (2) both are infeasible but $i$ has a smaller overall constraint violation; or (3) both are feasible and $i$ dominates $j$ in the usual Pareto sense. This principle is applied at every selection step, ensuring that feasible solutions are always preferred over infeasible ones and that the search is guided toward the feasible region.</p>
+
+<h4>Genotype Encoding</h4>
+<p>The decision space comprises eight variables: <em>setback</em> (continuous, 0&ndash;15 m), <em>floors</em> (integer, 1&ndash;30), <em>typology</em> (nominal, 8 classes: Tower, Slab, Courtyard, MultiBuildingBlock, L-Shape, U-Shape, Pavilion, Atrium), <em>usage</em> (nominal, 5 classes: Residential, Mixed-Use, Office, Retail, Community), <em>roof_style</em> (nominal, 4 styles: Flat, Pitched, Green, Terrace), <em>scale_x</em> (continuous, 0.35&ndash;1.60), <em>scale_y</em> (continuous, 0.35&ndash;1.60), and <em>floor_height</em> (continuous, 2.8&ndash;4.2 m). The genotype is encoded as a real-valued vector with categorical variables handled via integer indices; simulated binary crossover (SBX) and polynomial mutation are applied with variable-specific bounds and type-aware repair operators.</p>
+
+<h3 id="alg1-equations">Key Equations</h3>
+
+<div class="equation-block">
+<div class="equation-label">Equation 1.1 &mdash; Crowding Distance (NSGA-II)</div>
+$$d_i = \sum_{m=1}^{M} \frac{f_m^{(i+1)} - f_m^{(i-1)}}{f_m^{\max} - f_m^{\min}}$$
+where $d_i$ is the crowding distance of solution $i$, $f_m^{(i+1)}$ and $f_m^{(i-1)}$ are the $m$-th objective values of the two nearest neighbours of $i$ in the sorted list for objective $m$, and $f_m^{\max}$, $f_m^{\min}$ are the extreme values of objective $m$ in the current front. Boundary solutions are assigned infinite crowding distance.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 1.2 &mdash; SPEA-2 Fitness Assignment</div>
+$$F(i) = R(i) + D(i), \quad R(i) = \sum_{j \in A,\; j \prec i} S(j), \quad D(i) = \frac{1}{\sigma_i^k + 2}$$
+where $S(j)$ is the strength of archivist $j$ (the number of population members it dominates), $A$ is the external archive, $j \prec i$ denotes that $j$ dominates $i$, $\sigma_i^k$ is the Euclidean distance in objective space to the $k$-th nearest neighbour ($k = \sqrt{|P| + |A|}$), and the constant 2 in the denominator ensures $D(i) < 1$.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 1.3 &mdash; Tchebycheff Decomposition (MOEA/D)</div>
+$$\min \; g^{te}(\mathbf{x} \mid \lambda, \mathbf{z}^*) = \max_{1 \leq m \leq M} \left\{ \lambda_m \left| f_m(\mathbf{x}) - z_m^* \right| \right\}$$
+where $\lambda = (\lambda_1, \ldots, \lambda_M)^T$ is a weight vector with $\sum \lambda_m = 1$, $\lambda_m \geq 0$, $\mathbf{z}^* = (z_1^*, \ldots, z_M^*)^T$ is the ideal reference point ($z_m^* = \min f_m(\mathbf{x})$), and $g^{te}$ measures the weighted maximum deviation from the ideal point.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 1.4 &mdash; Constrained-Dominance Principle (Deb, 2000)</div>
+$$
+i \prec_c j \iff
+\begin{cases}
+\text{both feasible} \land i \prec j, & \text{or}\\
+i \text{ feasible} \land j \text{ infeasible}, & \text{or}\\
+\text{both infeasible} \land \nu(i) < \nu(j)
+\end{cases}
+$$
+where $\nu(i) = \sum_{k=1}^{K} \max(0, g_k(\mathbf{x}_i)) + \sum_{l=1}^{L} |h_l(\mathbf{x}_i)|$ is the overall constraint violation (sum of violated inequality constraints $g_k$ and equality constraint residuals $h_l$), and $i \prec j$ denotes ordinary Pareto dominance.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 1.5 &mdash; Simulated Binary Crossover (SBX)</div>
+$$c_1 = 0.5\left[(1+\beta) p_1 + (1-\beta) p_2\right], \quad c_2 = 0.5\left[(1-\beta) p_1 + (1+\beta) p_2\right]$$
+where $p_1, p_2$ are parent values, and $\beta$ is a random variable drawn from a distribution with density $p(\beta) = 0.5(\eta_c + 1)\beta^{\eta_c}$ for $0 \leq \beta \leq 1$ (and $p(\beta) = 0.5(\eta_c + 1)\beta^{-(\eta_c+2)}$ for $\beta > 1$), with $\eta_c$ being the crossover distribution index.
+</div>
+
+<h3 id="alg1-params">Parameters</h3>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Range / Options</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Input Polygon Layer</td><td>Vector Layer</td><td>Polygon</td><td>Parcel or block polygons for which building configurations are to be optimised</td></tr>
+<tr><td>Population Size</td><td>Integer</td><td>30&ndash;100</td><td>Number of candidate solutions maintained per generation; larger populations improve diversity at computational cost</td></tr>
+<tr><td>Generations</td><td>Integer</td><td>15&ndash;50</td><td>Number of evolutionary iterations; longer runs yield better convergence toward the true Pareto front</td></tr>
+<tr><td>Algorithm</td><td>Enumeration</td><td>NSGA-II, SPEA-2, NSGA-III, MOEA/D</td><td>Multi-objective solver to employ; NSGA-II is recommended for general use, NSGA-III for many-objective variants</td></tr>
+<tr><td>Max BCR</td><td>Float</td><td>0.0&ndash;1.0</td><td>Maximum Building Coverage Ratio (footprint / parcel area); constrains the feasible region</td></tr>
+<tr><td>Max FAR</td><td>Float</td><td>0.0&ndash;10.0</td><td>Maximum Floor Area Ratio (total floor area / parcel area); constrains buildable volume</td></tr>
+<tr><td>Max Height</td><td>Float (m)</td><td>3.0&ndash;150.0</td><td>Maximum building height in metres; constrains the vertical envelope</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg1-outputs">Outputs</h3>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>planx_score</code></td><td>Float (0&ndash;100)</td><td>Composite urban quality score from the PlanX evaluator</td></tr>
+<tr><td><code>carbon_kg</code></td><td>Float</td><td>Total lifecycle carbon emissions (kg CO<sub>2</sub>eq), to be minimised</td></tr>
+<tr><td><code>wind_score</code></td><td>Float (0&ndash;100)</td><td>Wind ventilation performance score, to be maximised</td></tr>
+<tr><td><code>solar_kwh</code></td><td>Float</td><td>Annual solar irradiation on building envelope (kWh/m<sup>2</sup>/yr)</td></tr>
+<tr><td><code>utci_score</code></td><td>Float (0&ndash;100)</td><td>Universal Thermal Climate Index comfort score</td></tr>
+<tr><td><code>roi_yield</code></td><td>Float (%)</td><td>Return on investment percentage over the project lifecycle</td></tr>
+<tr><td><code>svf_ratio</code></td><td>Float (0&ndash;1)</td><td>Sky View Factor at pedestrian level</td></tr>
+<tr><td><code>canyon_hw</code></td><td>Float</td><td>Street canyon height-to-width ratio</td></tr>
+<tr><td><code>mrt_temp</code></td><td>Float (&deg;C)</td><td>Mean Radiant Temperature</td></tr>
+<tr><td><code>pv_kwh</code></td><td>Float</td><td>Photovoltaic generation potential (kWh/yr)</td></tr>
+<tr><td><code>pop_est</code></td><td>Integer</td><td>Estimated resident population based on GFA and usage type</td></tr>
+<tr><td><code>runoff_m3</code></td><td>Float</td><td>Annual stormwater runoff volume (m<sup>3</sup>)</td></tr>
+<tr><td><code>pareto_rank</code></td><td>Integer</td><td>Non-dominated front index (1 = first Pareto front, 2 = second, etc.)</td></tr>
+<tr><td><code>wallacei_id</code></td><td>String</td><td>Unique solution identifier for integration with Wallacei analytics</td></tr>
+</tbody>
+</table>
+<p><em>Additional fields include genotype variables (setback, floors, typology, usage, roof_style, scale_x, scale_y, floor_height), GFA, BCR, FAR, and building height.</em></p>
+
+<h3 id="alg1-interp">Interpretation Guidance</h3>
+
+<p><strong>Pareto Front Analysis.</strong> The output layer contains the complete approximate Pareto front for each parcel. Solutions on Pareto rank 1 are mutually non-dominated and represent the best achievable trade-offs among the five objectives. Plotting pairwise objective scatterplots (e.g., carbon vs. ROI, GFA vs. wind score) reveals the shape of the trade-off surface; convex regions indicate substitutability, while concave or disconnected regions signal fundamental conflicts.</p>
+
+<p><strong>Algorithm Selection.</strong> NSGA-II is the recommended default for five-objective problems, offering a well-tested balance of convergence speed and diversity. NSGA-III should be selected when the number of objectives is extended beyond five (e.g., when additional custom objectives are added), as its reference-point mechanism maintains selection pressure where NSGA-II's crowding distance degenerates. SPEA-2 tends to produce a more evenly distributed front on problems with irregular Pareto geometries, at a higher computational cost. MOEA/D excels when the decision-maker has a pre-specified preference direction (weight vector), as it naturally focuses search effort in the corresponding region of the Pareto front.</p>
+
+<p><strong>Constraint Satisfaction.</strong> Solutions with nonzero constraint violation are ranked below all feasible solutions regardless of objective values, per the constrained-dominance principle. If the entire population is infeasible, the algorithm drives constraint violation toward zero before improving objectives. A high proportion of infeasible solutions in the final population suggests that the BCR, FAR, or height constraints are overly restrictive relative to the genotype ranges.</p>
+
+<p><strong>Wallacei Integration.</strong> The <code>wallacei_id</code> field enables seamless export to Wallacei, a Grasshopper-based evolutionary analytics platform, for advanced visualisation including parallel coordinate plots, design-space chord diagrams, and cluster analysis of the solution set.</p>
+
+<h3 id="alg1-refs">References</h3>
+<ol class="ref-list">
+<li>Deb, K., Pratap, A., Agarwal, S., &amp; Meyarivan, T. (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. <em>IEEE Transactions on Evolutionary Computation</em>, 6(2), 182&ndash;197. <span class="doi"><a href="https://doi.org/10.1109/4235.996017" target="_blank" rel="noopener">doi:10.1109/4235.996017</a></span></li>
+<li>Deb, K., &amp; Jain, H. (2014). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, Part I: Solving problems with box constraints. <em>IEEE Transactions on Evolutionary Computation</em>, 18(4), 577&ndash;601. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2013.2281535" target="_blank" rel="noopener">doi:10.1109/TEVC.2013.2281535</a></span></li>
+<li>Zitzler, E., Laumanns, M., &amp; Thiele, L. (2001). SPEA2: Improving the strength Pareto evolutionary algorithm. <em>TIK Report</em> 103, ETH Zurich. <span class="doi"><a href="https://doi.org/10.3929/ethz-a-004284029" target="_blank" rel="noopener">doi:10.3929/ethz-a-004284029</a></span></li>
+<li>Zhang, Q., &amp; Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm based on decomposition. <em>IEEE Transactions on Evolutionary Computation</em>, 11(6), 712&ndash;731. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2007.892759" target="_blank" rel="noopener">doi:10.1109/TEVC.2007.892759</a></span></li>
+<li>Deb, K. (2000). An efficient constraint handling method for genetic algorithms. <em>Computer Methods in Applied Mechanics and Engineering</em>, 186(2&ndash;4), 311&ndash;338. <span class="doi"><a href="https://doi.org/10.1016/S0045-7825(99)00389-8" target="_blank" rel="noopener">doi:10.1016/S0045-7825(99)00389-8</a></span></li>
+<li>Coello Coello, C. A., Van Veldhuizen, D. A., &amp; Lamont, G. B. (2007). <em>Evolutionary Algorithms for Solving Multi-Objective Problems</em> (2nd ed.). Springer. <span class="doi"><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">doi:10.1007/978-0-387-36797-2</a></span></li>
+<li>Das, I., &amp; Dennis, J. E. (1998). Normal-boundary intersection: A new method for generating the Pareto surface in nonlinear multicriteria optimization problems. <em>SIAM Journal on Optimization</em>, 8(3), 631&ndash;657. <span class="doi"><a href="https://doi.org/10.1137/S1052623496307510" target="_blank" rel="noopener">doi:10.1137/S1052623496307510</a></span></li>
+</ol>
+</section>
+
+<!-- ================================================================
+     ALGORITHM 2: Urban Physics & Microclimate Evaluator
+     ================================================================ -->
+<section id="alg2" class="search-section">
+<h2>Algorithm 2: Urban Physics &amp; Microclimate Multi-Domain Evaluator</h2>
+
+<h3 id="alg2-theory">Theoretical Background</h3>
+
+<p>This algorithm provides a multi-domain physics evaluation of building configurations across seven environmental performance dimensions. Rather than relying on computationally expensive CFD or building energy simulation, it employs validated reduced-order models that capture the first-order physical behaviour of urban environments at a fraction of the computational cost, enabling their use within iterative optimisation loops.</p>
+
+<h4>Wind Ventilation Assessment</h4>
+<p>The wind ventilation score is a weighted composite of three sub-indicators: <strong>open-space ratio</strong> (45% weight), which measures the proportion of the parcel not covered by building footprints; <strong>building porosity</strong> (35% weight), which captures the permeability of the building mass to airflow as a function of typology; and <strong>wind alignment factor</strong> (20% weight), which rewards building orientations that are aligned with the prevailing wind direction. Porosity values are assigned per typology following the building aerodynamics literature: Tower (0.75), MultiBuildingBlock (0.70), Slab (0.35), and Courtyard (0.15), reflecting the degree to which each typology obstructs cross-ventilation at pedestrian level.</p>
+
+<h4>Pedestrian Wind Comfort (Lawson Criteria)</h4>
+<p>The Lawson criteria (Lawson &amp; Penwarden, 1975) classify pedestrian wind conditions into comfort categories based on the probability of exceeding threshold wind speeds. The algorithm computes an effective pedestrian-level wind speed as a function of the canyon H/W ratio and the upstream reference wind speed, then maps the result to a comfort score on a 0&ndash;100 scale anchored to the Lawson thresholds for sitting (&#8804; 3.6 m/s), standing (&#8804; 5.3 m/s), and walking (&#8804; 7.6 m/s) activities.</p>
+
+<h4>Solar Irradiance</h4>
+<p>Solar irradiance is modelled using the clear-sky model of Duffie and Beckman (2013), with latitude-dependent baseline irradiation (calibrated to 1500 kWh/m<sup>2</sup>/yr at 35&deg;N). The model accounts for building orientation, roof geometry, and inter-building shading through a simplified ray-casting procedure that computes the direct and diffuse components of irradiation on each building surface, adjusted for the Sky View Factor at each receptor point.</p>
+
+<h4>Sky View Factor</h4>
+<p>The Sky View Factor (SVF) at pedestrian level is computed using the empirical parameterisation of Johnson and Watson (1984), which expresses SVF as a function of the canyon height-to-width ratio and the open-space ratio of the surrounding urban tissue. This model has been validated against fisheye photography measurements across a range of urban morphologies and provides an estimate suitable for comparative urban design analysis.</p>
+
+<h4>Thermal Comfort (MRT and UTCI)</h4>
+<p>Mean Radiant Temperature (MRT) is computed following the methodology of the COST Action 730 (Jendritzky <em>et al.</em>, 2012), starting from a Mediterranean summer baseline of 32&deg;C air temperature and adjusting for SVF (reduced longwave radiative cooling in narrow canyons), surface albedo, and anthropogenic heat flux. The Universal Thermal Climate Index (UTCI) is derived from MRT, air temperature, humidity, and wind speed using the operational UTCI regression model, yielding a temperature-equivalent comfort indicator.</p>
+
+<h4>Lifecycle Carbon Assessment</h4>
+<p>Embodied and operational carbon are estimated using coefficients from the Inventory of Carbon and Energy (ICE) database v2.0 (Hammond &amp; Jones, 2008), applied within the EN 15978:2011 system boundary (CEN, 2011) covering product stage (A1&ndash;A3), construction process (A4&ndash;A5), use stage (B1&ndash;B7), and end-of-life (C1&ndash;C4). Embodied carbon is computed as a function of building volume, structural system (inferred from typology), and material carbon intensity factors; operational carbon is estimated from heating and cooling degree days, building envelope performance, and grid carbon intensity.</p>
+
+<h4>Stormwater Runoff</h4>
+<p>Stormwater runoff is estimated using the Rational Method $Q = CIA$, where $C$ is a runoff coefficient determined by the Building Coverage Ratio (BCR), $I$ is the design storm intensity (mm/hr), and $A$ is the parcel area (ha). This formulation follows standard hydrologic engineering practice and captures the first-order effect of site imperviousness on runoff generation.</p>
+
+<h4>Economic Assessment (ROI and NPV)</h4>
+<p>Return on investment and net present value are computed over a 20-year project lifecycle at a 6% real discount rate, following standard discounted cash flow methodology. Revenues are estimated from GFA and regionally calibrated rent and sales values per usage type; costs include construction (per m<sup>2</sup> GFA by typology), operation and maintenance, and financing.</p>
+
+<h3 id="alg2-equations">Key Equations</h3>
+
+<div class="equation-block">
+<div class="equation-label">Equation 2.1 &mdash; Wind Ventilation Composite Score</div>
+$$S_{\text{wind}} = 0.45 \cdot O_{\text{ratio}} + 0.35 \cdot P_{\text{type}} + 0.20 \cdot A_{\text{align}}$$
+where $O_{\text{ratio}} = 1 - \text{BCR}$ is the open-space ratio (normalised to [0, 100]), $P_{\text{type}}$ is the typology-specific porosity (Tower = 0.75, MultiBuildingBlock = 0.70, Slab = 0.35, Courtyard = 0.15), and $A_{\text{align}} \in [0, 1]$ is the cosine of the angle between the building's long axis and the prevailing wind direction.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 2.2 &mdash; Sky View Factor (Johnson &amp; Watson, 1984)</div>
+$$\text{SVF} = 1.0 - 0.24 \cdot \frac{H}{W} + 0.32 \cdot O_{\text{ratio}}$$
+clamped to the valid range $\text{SVF} \in [0.12, 1.0]$, where $H/W$ is the canyon height-to-width ratio and $O_{\text{ratio}}$ is the open-space fraction in the 100-m-radius surrounding context.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 2.3 &mdash; Rational Method for Stormwater Runoff</div>
+$$Q = C \cdot I \cdot A$$
+where $Q$ (m<sup>3</sup>/s) is the peak discharge, $C \in [0, 1]$ is the runoff coefficient ($C \approx 0.05 + 0.90 \cdot \text{BCR}$ for urban parcels), $I$ (mm/hr) is the design rainfall intensity for the selected return period, and $A$ (ha) is the catchment area.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 2.4 &mdash; Net Present Value (NPV)</div>
+$$\text{NPV} = \sum_{t=0}^{T} \frac{R_t - C_t}{(1 + r)^t}$$
+where $T = 20$ years is the project lifecycle, $R_t$ and $C_t$ are the revenue and cost cash flows in year $t$, and $r = 0.06$ (6%) is the real discount rate. Construction costs occur at $t = 0$; annual revenues and operational costs are discounted from $t = 1$ through $T$.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 2.5 &mdash; Return on Investment</div>
+$$\text{ROI} = \left( \frac{\sum_{t=1}^{T} \frac{R_t}{(1+r)^t}}{\sum_{t=0}^{T} \frac{C_t}{(1+r)^t}} - 1 \right) \times 100\%$$
+where the numerator is the present value of revenues and the denominator is the present value of all costs (including construction). ROI is expressed as a percentage.
+</div>
+
+<h3 id="alg2-params">Parameters</h3>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Input Building Footprints</td><td>Polygon Layer</td><td>Building footprint polygons with attributes from Algorithm 1 or equivalent</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg2-outputs">Outputs</h3>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>carbon_kg</code></td><td>Float</td><td>Total lifecycle carbon (embodied + operational), kg CO<sub>2</sub>eq</td></tr>
+<tr><td><code>wind_score</code></td><td>Float (0&ndash;100)</td><td>Composite wind ventilation score</td></tr>
+<tr><td><code>solar_kwh</code></td><td>Float</td><td>Annual solar irradiance on building envelope (kWh/m<sup>2</sup>/yr)</td></tr>
+<tr><td><code>utci_score</code></td><td>Float (0&ndash;100)</td><td>UTCI thermal comfort score (higher = more comfortable)</td></tr>
+<tr><td><code>runoff</code></td><td>Float</td><td>Annual stormwater runoff volume (m<sup>3</sup>)</td></tr>
+<tr><td><code>poll_disp</code></td><td>Float (0&ndash;100)</td><td>Pollutant dispersion potential score</td></tr>
+<tr><td><code>mrt_temp</code></td><td>Float (&deg;C)</td><td>Mean Radiant Temperature at pedestrian level</td></tr>
+<tr><td><code>pv_kwh</code></td><td>Float</td><td>Photovoltaic generation potential (kWh/yr)</td></tr>
+<tr><td><code>roi_yield</code></td><td>Float (%)</td><td>Return on investment percentage</td></tr>
+<tr><td><code>plan_score</code></td><td>Float (0&ndash;100)</td><td>PlanX composite urban quality score</td></tr>
+<tr><td><code>svf_ratio</code></td><td>Float (0&ndash;1)</td><td>Sky View Factor</td></tr>
+<tr><td><code>canyon_hw</code></td><td>Float</td><td>Street canyon height-to-width ratio</td></tr>
+<tr><td><code>const_load</code></td><td>Float</td><td>Construction material load (tonnes)</td></tr>
+<tr><td><code>pop_est</code></td><td>Integer</td><td>Estimated population served by the building</td></tr>
+<tr><td><code>open_space</code></td><td>Float (0&ndash;1)</td><td>Open-space ratio of the parcel</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg2-interp">Interpretation Guidance</h3>
+
+<p><strong>Wind Score Interpretation.</strong> Scores above 70 indicate favourable wind conditions suitable for pedestrian activities including sitting; scores between 40 and 70 are acceptable for standing and walking; scores below 40 suggest wind stagnation or excessive acceleration that may compromise pedestrian comfort. Users should examine the sub-components (open-space ratio, porosity, alignment) to identify the limiting factor.</p>
+
+<p><strong>SVF and Thermal Comfort.</strong> SVF values below 0.3 characterise deep urban canyons with restricted sky visibility and reduced nighttime radiative cooling. Coupled with MRT values exceeding 40&deg;C, these conditions indicate elevated heat stress risk. SVF values above 0.7 tend to correspond to open, low-density morphologies with good longwave radiative exchange but potentially higher daytime solar exposure.</p>
+
+<p><strong>Carbon vs. ROI Trade-off.</strong> Low-carbon configurations (timber structural systems, compact forms, high operational efficiency) typically exhibit moderate ROI due to reduced GFA. High-ROI configurations tend to maximise lettable floor area but incur higher embodied carbon. The ratio of carbon intensity (kg CO<sub>2</sub>eq per m<sup>2</sup> GFA) to ROI provides a combined sustainability-efficiency metric.</p>
+
+<p><strong>Runoff Sensitivity.</strong> The runoff output is highly sensitive to BCR; a parcel with BCR = 0.8 may generate approximately seven times the runoff volume of a parcel with BCR = 0.2 under identical rainfall, due to the near-linear relationship between BCR and the effective runoff coefficient.</p>
+
+<h3 id="alg2-refs">References</h3>
+<ol class="ref-list">
+<li>Duffie, J. A., &amp; Beckman, W. A. (2013). <em>Solar Engineering of Thermal Processes</em> (4th ed.). Wiley. <span class="doi"><a href="https://doi.org/10.1002/9781118671603" target="_blank" rel="noopener">doi:10.1002/9781118671603</a></span></li>
+<li>Johnson, G. T., &amp; Watson, I. D. (1984). The determination of view-factors in urban canyons. <em>Journal of Climate and Applied Meteorology</em>, 23(2), 329&ndash;335. <span class="doi"><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">doi:10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></span></li>
+<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0424-7</a></span></li>
+<li>Hammond, G. P., &amp; Jones, C. I. (2008). Embodied energy and carbon in construction materials. <em>Proceedings of the Institution of Civil Engineers &ndash; Energy</em>, 161(2), 87&ndash;98. <span class="doi"><a href="https://doi.org/10.1680/ener.2008.161.2.87" target="_blank" rel="noopener">doi:10.1680/ener.2008.161.2.87</a></span></li>
+<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). <em>The Effects of Wind on People in the Vicinity of Buildings</em>. Building Research Establishment Report. BRE, Garston, UK.</li>
+<li>Oke, T. R. (1982). The energetic basis of the urban heat island. <em>Quarterly Journal of the Royal Meteorological Society</em>, 108(455), 1&ndash;24. <span class="doi"><a href="https://doi.org/10.1002/qj.49710845502" target="_blank" rel="noopener">doi:10.1002/qj.49710845502</a></span></li>
+<li>CEN. (2011). <em>EN 15978:2011 &mdash; Sustainability of construction works &mdash; Assessment of environmental performance of buildings &mdash; Calculation method</em>. European Committee for Standardization, Brussels.</li>
+<li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
+</ol>
+</section>
+
+<!-- ================================================================
+     ALGORITHM 3: Urban Morphology & Canyon Analytics
+     ================================================================ -->
+<section id="alg3" class="search-section">
+<h2>Algorithm 3: Urban Morphology &amp; Canyon Analytics</h2>
+
+<h3 id="alg3-theory">Theoretical Background</h3>
+
+<h4>Street Canyon H/W Ratio</h4>
+<p>The height-to-width (H/W) ratio is the most fundamental descriptor of street canyon geometry. Oke (1988) established the canonical classification of urban canopy layer flow regimes based on H/W: isolated roughness flow ($H/W < 0.5$), where each building's wake dissipates before the next building is encountered; wake interference flow ($0.5 \leq H/W \leq 1.0$), where wakes from adjacent buildings interact; and skimming flow ($H/W > 1.0$), where the bulk of the flow is displaced above the canopy and a stable vortex circulation forms within the canyon. The H/W ratio is computed from the input polygon layer using the mean building height along each street segment and the street width, with the canyon axis determined by the longer dimension of the bounding rectangle of the block interior.</p>
+
+<h4>Street Enclosure Index</h4>
+<p>Jacobs (1993), in his influential study <em>Great Streets</em>, argued that the sense of spatial definition and enclosure in urban streets is a function of the ratio of building height to street width, the continuity of the building wall, and the presence of street trees and other vertical elements. The algorithm computes a composite street enclosure index on a 0&ndash;100 scale that aggregates: (1) the H/W ratio mapped to a sigmoid function calibrated against Jacobs's qualitative categories; (2) the building frontage continuity ratio (the proportion of the block perimeter that is built upon); and (3) a vertical rhythm factor that penalises excessively uniform or excessively chaotic height profiles.</p>
+
+<h4>Surface-to-Volume Compactness (SA/V)</h4>
+<p>Ratti, Baker, and Steemers (2005) demonstrated that the surface-area-to-volume ratio (SA/V) of urban buildings is a key determinant of energy performance: buildings with higher SA/V ratios (detached towers, pavilions) lose more heat through their envelopes in cold climates but benefit from greater daylight access, while those with lower SA/V ratios (row houses, perimeter blocks) are thermally more efficient but may require more artificial lighting. The algorithm computes SA/V as the ratio of total building envelope area (walls + roof) to the conditioned volume, following the methodology of Ratti <em>et al.</em> (2005).</p>
+
+<h4>Sky View Factor (SVF) in Morphological Context</h4>
+<p>While Algorithm 2 computes SVF from building and parcel geometry, Algorithm 3 extends the analysis to the urban canyon network, computing pedestrian-level SVF at sampling points along each street segment using the method of Johnson and Watson (1984) as refined by Unger (2004), who provided validation against fisheye photography across a range of central European urban morphologies. The algorithm enforces the physical constraint $\text{SVF} \in [0.12, 1.0]$; the lower bound of 0.12 corresponds to the deepest urban canyons documented in the literature (e.g., the historic cores of Mediterranean cities).</p>
+
+<h4>Shannon Entropy of Typological Diversity</h4>
+<p>Batty (2008), writing in <em>Science</em>, argued that the complexity of cities is best characterised by information-theoretic measures that capture the diversity and mixing of land uses, building types, and spatial patterns. The algorithm computes the Shannon entropy of the building typology distribution within each spatial unit:</p>
+$$H = -\sum_{i=1}^{S} p_i \ln p_i$$
+<p>where $S$ is the number of distinct typology classes present and $p_i$ is the proportion of buildings belonging to typology class $i$. Maximum entropy ($H_{\max} = \ln S$) occurs when all typologies are equally represented; minimum entropy ($H = 0$) when a single typology dominates.</p>
+
+<h3 id="alg3-equations">Key Equations</h3>
+
+<div class="equation-block">
+<div class="equation-label">Equation 3.1 &mdash; Canyon Height-to-Width Ratio</div>
+$$\frac{H}{W} = \frac{\frac{1}{n} \sum_{i=1}^{n} h_i}{\frac{1}{m} \sum_{j=1}^{m} w_j}$$
+where $h_i$ is the height of building $i$ along the canyon segment, $w_j$ is the street width measured at cross-section $j$, $n$ is the number of buildings facing the canyon, and $m$ is the number of sampled cross-sections.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 3.2 &mdash; Oke (1988) Flow Regime Classification</div>
+$$
+\text{Regime} =
+\begin{cases}
+\text{Isolated Roughness}, & H/W < 0.5\\
+\text{Wake Interference}, & 0.5 \leq H/W \leq 1.0\\
+\text{Skimming Flow},       & H/W > 1.0
+\end{cases}
+$$
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 3.3 &mdash; Surface-to-Volume Compactness Ratio (Ratti et al., 2005)</div>
+$$\frac{S}{V} = \frac{A_{\text{walls}} + A_{\text{roof}}}{\text{GFA} \cdot h_f}$$
+where $A_{\text{walls}}$ is the total exterior wall area, $A_{\text{roof}}$ is the roof area, GFA is the gross floor area, and $h_f$ is the floor-to-floor height.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 3.4 &mdash; Shannon Entropy of Typological Diversity (Batty, 2008)</div>
+$$H = -\sum_{k=1}^{K} p_k \ln p_k, \quad p_k = \frac{N_k}{\sum_{j=1}^{K} N_j}$$
+where $K = 8$ is the number of possible building typology classes, $N_k$ is the count of buildings of typology $k$ in the analysis unit, and $p_k$ is the proportion. Normalised entropy $H_{\text{norm}} = H / \ln K \in [0, 1]$ is also reported.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 3.5 &mdash; Street Enclosure Index (after Jacobs, 1993)</div>
+$$E = 100 \cdot \left[ 0.50 \cdot \sigma\!\left(\frac{H}{W}\right) + 0.35 \cdot C_{\text{frontage}} + 0.15 \cdot V_{\text{rhythm}} \right]$$
+where $\sigma(x) = 1 / (1 + e^{-5(x-0.75)})$ is a sigmoid mapping centred at the Jacobs threshold $H/W = 0.75$, $C_{\text{frontage}}$ is the building frontage continuity ratio, and $V_{\text{rhythm}}$ is a vertical rhythm factor that penalises both zero variance (monotonous) and excessive variance (chaotic) in building heights.
+</div>
+
+<h3 id="alg3-params">Parameters</h3>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Input Polygon Layer</td><td>Polygon Layer</td><td>Building footprint or block polygon layer with height and typology attributes</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg3-outputs">Outputs</h3>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>canyon_hw</code></td><td>Float</td><td>Street canyon height-to-width ratio; classified per Oke (1988)</td></tr>
+<tr><td><code>enclosure</code></td><td>Float (0&ndash;100)</td><td>Street enclosure index (Jacobs, 1993)</td></tr>
+<tr><td><code>sav_ratio</code></td><td>Float</td><td>Surface-area-to-volume compactness ratio (Ratti et al., 2005)</td></tr>
+<tr><td><code>svf_ratio</code></td><td>Float (0.12&ndash;1.0)</td><td>Sky View Factor (Johnson &amp; Watson, 1984; Unger, 2004)</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg3-interp">Interpretation Guidance</h3>
+
+<p><strong>H/W and Ventilation.</strong> Isolated roughness ($H/W < 0.5$) promotes good ventilation but may result in lower spatial definition; wake interference ($0.5 \leq H/W \leq 1.0$) represents a balanced condition found in many successful urban streets; skimming flow ($H/W > 1.0$) restricts ventilation and can trap pollutants within the canyon, though it maximises the sense of enclosure and urban intensity. Designers should aim for $H/W \approx 0.65$&ndash;$0.85$ for streets that balance enclosure with ventilation.</p>
+
+<p><strong>SA/V and Energy Performance.</strong> SA/V values below 0.3 m<sup>&minus;1</sup> indicate compact, energy-efficient forms (perimeter blocks, row houses) suitable for heating-dominated climates. SA/V above 0.6 m<sup>&minus;1</sup> indicates dispersed forms (towers, pavilions) with high daylight potential but elevated heat loss, more suitable for cooling-dominated or mixed climates where natural ventilation and daylight harvesting offset envelope losses.</p>
+
+<p><strong>Enclosure and Walkability.</strong> Enclosure scores in the 60&ndash;80 range correlate with streets perceived as "well-defined" and "comfortable for pedestrians" in empirical studies of urban perception. Scores below 30 indicate open, suburban conditions with weak spatial definition; scores above 90 may feel oppressive and canyon-like, especially when combined with low SVF values.</p>
+
+<h3 id="alg3-refs">References</h3>
+<ol class="ref-list">
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Jacobs, A. B. (1993). <em>Great Streets</em>. MIT Press, Cambridge, MA.</li>
+<li>Ratti, C., Baker, N., &amp; Steemers, K. (2005). Energy consumption and urban texture. <em>Energy and Buildings</em>, 37(7), 762&ndash;776. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.10.010" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.10.010</a></span></li>
+<li>Johnson, G. T., &amp; Watson, I. D. (1984). The determination of view-factors in urban canyons. <em>Journal of Climate and Applied Meteorology</em>, 23(2), 329&ndash;335. <span class="doi"><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">doi:10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></span></li>
+<li>Batty, M. (2008). The size, scale, and shape of cities. <em>Science</em>, 319(5864), 769&ndash;771. <span class="doi"><a href="https://doi.org/10.1126/science.1150195" target="_blank" rel="noopener">doi:10.1126/science.1150195</a></span></li>
+<li>Unger, J. (2004). Intra-urban relationship between surface geometry and urban heat island: Review and new approach. <em>Climate Research</em>, 27(3), 253&ndash;264. <span class="doi"><a href="https://doi.org/10.3354/cr027253" target="_blank" rel="noopener">doi:10.3354/cr027253</a></span></li>
+<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-X</a></span></li>
+</ol>
+</section>
+
+<!-- ================================================================
+     ALGORITHM 4: Procedural Shape Grammar Block Subdivider
+     ================================================================ -->
+<section id="alg4" class="search-section">
+<h2>Algorithm 4: Procedural Shape Grammar Block Subdivider</h2>
+
+<h3 id="alg4-theory">Theoretical Background</h3>
+
+<h4>Shape Grammar Theory</h4>
+<p>Shape grammars, introduced by Stiny and Gips (1972) in their seminal paper "Shape Grammars and the Generative Specification of Painting and Sculpture," provide a formal, rule-based framework for generating designs through the recursive application of transformation rules to initial shapes. A shape grammar is defined by a quadruple $(S, L, R, I)$, where $S$ is a finite set of shapes, $L$ is a finite set of labels (non-terminal and terminal symbols), $R$ is a finite set of shape rules of the form $\alpha \rightarrow \beta$ (read as "$\alpha$ is replaced by $\beta$"), and $I$ is the initial shape (the axiom).</p>
+
+<h4>Computer Graphics Architecture (CGA) Shape Grammars</h4>
+<p>Parish and Muller (2001) adapted shape grammars to the domain of urban procedural modelling in their influential SIGGRAPH paper, introducing CGA (Computer Graphics Architecture) shape grammars. A CGA grammar operates on volumetric shapes (building masses, block extrusions) and applies a sequence of split rules, repeat rules, and component split rules to generate detailed architectural geometry. The key innovation of CGA is the embedding of geometric operators (subdivision, extrusion, component extraction) within a grammar framework, enabling the generation of large-scale urban models from a compact set of parameters.</p>
+
+<h4>Plot-Based Urbanism</h4>
+<p>The subdivision strategy implemented in this algorithm draws on the plot-based urbanism tradition, which holds that the individual plot &mdash; a parcel of land with defined boundaries, ownership, and development rights &mdash; is the fundamental unit of urban morphology. Porta and Romice (2014) argue that plot-based development, as opposed to large-scale block development, produces cities with greater adaptability, resilience, and fine-grained urban character. Tarbatt (2012), in a RIBA-published practice guide, codified the principles of plot-based masterplanning, including the importance of frontage width, plot depth, and street interface in determining urban quality.</p>
+
+<h4>Subdivision Algorithm Design</h4>
+<p>The subdivision procedure follows a <strong>frontage-based longest-edge split</strong> strategy. For each input block polygon, the algorithm first identifies the primary street frontage (the edge with the greatest exposure to the street network). It then recursively subdivides the block by drawing split lines perpendicular to the frontage at intervals equal to the target frontage width. If the remaining block width is less than 1.5 times the target frontage, the algorithm switches to a <strong>trapezoidal subdivision</strong> mode, creating sub-lots that radiate from a block-internal centroid point and connect to the remaining frontage. This hybrid strategy ensures complete block coverage without orphan parcels.</p>
+
+<h4>METU MSc Thesis (Akay, 2019)</h4>
+<p>The specific subdivision logic implemented in this algorithm was developed in Mert Akay's 2019 METU (Middle East Technical University) Master of Science thesis, which formalised the frontage-based subdivision approach as part of a larger parametric urban design framework. The work systematically compared subdivision strategies (frontage-based, grid-based, perimeter, organic, radial, and hybrid) across a range of block geometries and assessed their performance in terms of lot regularity, buildable area, and street interface quality.</p>
+
+<h3 id="alg4-equations">Key Equations</h3>
+
+<div class="equation-block">
+<div class="equation-label">Equation 4.1 &mdash; Number of Sub-Lots (Frontage-Based)</div>
+$$n = \left\lfloor \frac{L_{\text{frontage}}}{w_{\text{target}}} \right\rfloor$$
+where $L_{\text{frontage}}$ is the total length of the designated street frontage edge(s) and $w_{\text{target}}$ is the target frontage width (default 18.0 m). The floor function ensures the number of lots is integer.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 4.2 &mdash; Sub-Lot Area</div>
+$$A_i = \frac{1}{2} \left| \sum_{j=1}^{m_i-1} (x_j y_{j+1} - x_{j+1} y_j) \right|$$
+where $m_i$ is the number of vertices of sub-lot $i$ and $(x_j, y_j)$ are the coordinates of vertex $j$ in the sub-lot polygon. This is the standard shoelace formula for polygon area.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 4.3 &mdash; Shape Rule: Frontage Split</div>
+$$\text{Block}(F, D) \rightarrow \text{Lot}(w_{\text{target}}) \oplus \text{Block}(F \setminus \{f_i\}, D')$$
+where $F$ is the set of frontage segments, $D$ is the block depth, $\oplus$ denotes geometric union, $f_i$ is the frontage segment consumed by the new lot, and $D'$ is the remaining block depth after the split. The rule fires recursively until the remaining frontage is exhausted.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 4.4 &mdash; Trapezoidal Lot Generation Condition</div>
+$$L_{\text{remaining}} < 1.5 \cdot w_{\text{target}} \implies \text{switch to trapezoidal mode}$$
+where $L_{\text{remaining}}$ is the remaining frontage length after rectangular subdivision. Trapezoidal sub-lots connect block centroid $C$ to remaining boundary vertices, ensuring zero orphan area.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 4.5 &mdash; Lot Regularity Index</div>
+$$R_i = \frac{4\pi A_i}{P_i^2}$$
+where $A_i$ is the area and $P_i$ is the perimeter of sub-lot $i$. $R_i \in (0, 1]$ measures compactness; $R_i = 1$ for a perfect circle, $R_i \approx 0.785$ for a square, and $R_i \to 0$ for highly irregular shapes. This is Polsby&ndash;Popper compactness.
+</div>
+
+<h3 id="alg4-params">Parameters</h3>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Range / Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Input Block Layer</td><td>Polygon Layer</td><td>&mdash;</td><td>Block polygons to be subdivided into buildable plots</td></tr>
+<tr><td>Target Frontage Width</td><td>Float (m)</td><td>Default 18.0</td><td>Desired width of each sub-lot along the street frontage; governs the granularity of subdivision</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg4-outputs">Outputs</h3>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>sublot_id</code></td><td>Integer</td><td>Sequential identifier for each subdivided plot within the block</td></tr>
+<tr><td><code>lot_area</code></td><td>Float (m<sup>2</sup>)</td><td>Area of the subdivided plot, computed via the shoelace formula</td></tr>
+</tbody>
+</table>
+<p><em>Additional geometry attributes include vertex count, perimeter, and the parent block identifier.</em></p>
+
+<h3 id="alg4-interp">Interpretation Guidance</h3>
+
+<p><strong>Frontage Width Selection.</strong> The target frontage width is the primary design parameter. In European urban traditions, frontage widths of 12&ndash;18 m correspond to townhouse-scale development with 3&ndash;6 dwelling units per plot; 20&ndash;30 m corresponds to apartment-block scale; and 30&ndash;50 m corresponds to large-block or mixed-use development. The choice should be guided by the desired urban grain and the dwelling density targets of the masterplan.</p>
+
+<p><strong>Lot Regularity and Buildability.</strong> The regularity index $R_i$ can be examined per sub-lot to identify plots that may pose construction challenges due to irregular geometry. Values below 0.4 indicate highly irregular shapes that may require special architectural treatment. The algorithm favours rectangular lots along the frontage and accommodates irregular remainder areas through trapezoidal subdivision; if consistently low regularity values are observed, consider adjusting the block geometry or the target frontage width.</p>
+
+<p><strong>Block Depth Consideration.</strong> Very deep blocks (depth &gt; 3x target frontage) may benefit from a double-frontage or perimeter-block treatment rather than a single-frontage subdivision, as the rear portions of deep single-frontage lots tend to have poor street access. In such cases, consider pre-processing the blocks to create perimeter-block configurations before subdivision, or use Algorithm 6 (PPUD Pipeline) with a perimeter or hybrid strategy.</p>
+
+<h3 id="alg4-refs">References</h3>
+<ol class="ref-list">
+<li>Stiny, G., &amp; Gips, J. (1972). Shape grammars and the generative specification of painting and sculpture. In C. V. Freiman (Ed.), <em>Information Processing 71</em> (pp. 1460&ndash;1465). North-Holland, Amsterdam.</li>
+<li>Parish, Y. I. H., &amp; Muller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
+<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In T. Haas &amp; K. Olsson (Eds.), <em>Emergent Urbanism</em> (pp. 35&ndash;46). Routledge.</li>
+<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment</em>. RIBA Publishing, London.</li>
+<li>Akay, M. (2019). <em>A Parametric Urban Design Framework for Performance-Based Planning</em> [Unpublished MSc thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
+<li>Mueller, P., Wonka, P., Haegler, S., Ulmer, A., &amp; Van Gool, L. (2006). Procedural modeling of buildings. <em>ACM Transactions on Graphics (SIGGRAPH 2006)</em>, 25(3), 614&ndash;623. <span class="doi"><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">doi:10.1145/1141911.1141931</a></span></li>
+<li>Alexander, C., Ishikawa, S., &amp; Silverstein, M. (1977). <em>A Pattern Language: Towns, Buildings, Construction</em>. Oxford University Press, New York.</li>
+</ol>
+</section>
+
+<!-- ================================================================
+     ALGORITHM 5: Multi-Parcel District Environmental Coupling
+     ================================================================ -->
+<section id="alg5" class="search-section">
+<h2>Algorithm 5: Multi-Parcel District Environmental Coupling</h2>
+
+<h3 id="alg5-theory">Theoretical Background</h3>
+
+<p>While Algorithms 1&ndash;3 evaluate the environmental performance of individual buildings and parcels, many physical phenomena in the urban environment are inherently <strong>emergent</strong> &mdash; they arise from the interactions among multiple buildings and do not manifest when each building is considered in isolation. Algorithm 5 captures three such inter-building coupling effects at the district scale.</p>
+
+<h4>Inter-Building Solar Obstruction</h4>
+<p>Knowles (2003) articulated the concept of "solar envelope" &mdash; the volumetric constraint that ensures neighbouring buildings retain adequate solar access. Compagnon (2004) developed a computational method for assessing solar availability on building facades in dense urban environments, accounting for obstruction by surrounding buildings. Algorithm 5 implements a <strong>pair-wise directional shadow casting</strong> procedure: for each pair of buildings $(i, j)$, the shadow cast by building $i$ on building $j$ is computed as a function of building heights, inter-building distance, and solar azimuth and altitude at representative hours (solstices and equinoxes). The shadow loss for each building is the proportion of its facade area that lies in the cast shadow of one or more neighbouring buildings, aggregated over the year.</p>
+
+<h4>Canyon Wind Wake Effects</h4>
+<p>Blocken, Stathopoulos, and Carmeliet (2007) provided a comprehensive review of pedestrian-level wind conditions around buildings, documenting the Venturi effect (wind acceleration in narrow passages between buildings), corner streams (high-speed flow around building corners), and downwash (vertical deflection of wind at building windward faces). Algorithm 5 models these effects at the district scale using <strong>Venturi acceleration</strong> theory: when two buildings are separated by a distance of less than 2.5 times the building width, the airflow between them accelerates, with a maximum speed-up factor of 2.2&times; the upstream reference wind speed. The algorithm also applies the Lawson pedestrian comfort thresholds (Lawson &amp; Penwarden, 1975) to classify wind conditions at pedestrian level throughout the district.</p>
+
+<h4>District Stormwater Retention</h4>
+<p>At the district scale, stormwater behaviour is not simply the sum of per-parcel runoff: the spatial arrangement of impervious surfaces, the connectivity of drainage paths, and the presence of green infrastructure all influence the timing and volume of runoff at the district outlet. Berland <em>et al.</em> (2017) reviewed the role of urban trees and green infrastructure in stormwater management. Algorithm 5 computes a <strong>BCR-based runoff proxy</strong> that accounts for upstream&ndash;downstream parcel relationships: a downstream parcel with low BCR (high perviousness) can partially attenuate runoff generated by upstream parcels with high BCR (high imperviousness), yielding a district-scale retention efficiency that exceeds the area-weighted average of per-parcel retention values.</p>
+
+<h4>Emergence Condition</h4>
+<p>A defining feature of Algorithm 5 is the <strong>emergence threshold</strong>: inter-building coupling effects are computed only when the district contains more than five buildings. Below this threshold, the algorithm falls back to the per-parcel evaluations provided by Algorithm 2, as the coupling effects are not statistically distinguishable from the individual-building baselines. This threshold is based on sensitivity analyses showing that district-scale environmental metrics stabilise (coefficient of variation < 5%) only when the building count exceeds five.</p>
+
+<h3 id="alg5-equations">Key Equations</h3>
+
+<div class="equation-block">
+<div class="equation-label">Equation 5.1 &mdash; Shadow Length (Planar Projection)</div>
+$$L_{\text{shadow}} = \frac{H}{\tan \alpha}$$
+where $H$ is the building height and $\alpha$ is the solar altitude angle. At the winter solstice at 40&deg;N ($\alpha \approx 26.5^\circ$ at noon), $L_{\text{shadow}} \approx 2.0H$; at the summer solstice ($\alpha \approx 73.5^\circ$), $L_{\text{shadow}} \approx 0.3H$.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 5.2 &mdash; Pair-Wise Shadow Loss</div>
+$$\text{SL}_{ij} = \frac{A_{j}^{\text{shadowed}}}{A_{j}^{\text{total}}} = \frac{1}{N_{\text{hr}}} \sum_{h=1}^{N_{\text{hr}}} \mathbb{1}\!\left[ d_{ij} \cdot \tan\alpha_h < H_i - H_j \cdot \delta_{\text{elev}} \right] \cdot f_{\text{overlap}}$$
+where $A_{j}^{\text{shadowed}}$ is the facade area of building $j$ in shadow at representative hour $h$, $d_{ij}$ is the inter-building distance, $\alpha_h$ is the solar altitude at hour $h$, $H_i$ and $H_j$ are building heights, $\delta_{\text{elev}}$ accounts for elevation differences, $\mathbb{1}[\cdot]$ is the indicator function, and $f_{\text{overlap}}$ is the fraction of the facade azimuth range that overlaps with the shadow direction.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 5.3 &mdash; Venturi Acceleration Factor</div>
+$$U_{\text{ped}} = U_{\text{ref}} \cdot \max\!\left(1.0,\; \min\!\left(2.2,\; \frac{W_{\text{gap}}}{W_{\text{building}}} \right)^{-1} \right)$$
+where $U_{\text{ped}}$ is the pedestrian-level wind speed, $U_{\text{ref}}$ is the reference wind speed at 10 m height in open terrain, $W_{\text{gap}}$ is the distance between adjacent buildings, and $W_{\text{building}}$ is the mean building width normal to the flow. The acceleration factor is clamped to $[1.0, 2.2]$ based on the documented Venturi effect range in the literature.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 5.4 &mdash; District Stormwater Retention Efficiency</div>
+$$\eta_{\text{district}} = 1 - \frac{\sum_{k=1}^{N} Q_k \cdot (1 - r_k)}{\sum_{k=1}^{N} Q_k}$$
+where $Q_k$ is the runoff generated on parcel $k$ (from the Rational Method), $r_k \in [0, 1]$ is the retention fraction of parcel $k$ (proportional to $1 - \text{BCR}_k$), and the double summation accounts for upstream&ndash;downstream cascading: a downstream parcel with high retention capacity can capture runoff from upstream parcels.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 5.5 &mdash; District Comfort Score Aggregation</div>
+$$C_{\text{district}} = \frac{1}{|\mathcal{P}|} \sum_{p \in \mathcal{P}} w_p \cdot c_p, \quad w_p = \frac{1}{1 + \exp(-\kappa (U_{\text{ped},p} - U_{\text{threshold}}))}$$
+where $\mathcal{P}$ is the set of pedestrian-level sampling points across the district, $c_p$ is the Lawson comfort score at point $p$, $w_p$ is a sigmoid weight that down-weights points where $U_{\text{ped},p}$ exceeds the comfort threshold (5.3 m/s for standing), and $\kappa = 2$ controls the sharpness of the threshold.
+</div>
+
+<h3 id="alg5-params">Parameters</h3>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Input District Layer</td><td>Polygon Layer</td><td>District boundary polygon containing 5+ building footprints</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg5-outputs">Outputs</h3>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>shadow_loss</code></td><td>Float (0&ndash;1)</td><td>Proportion of building facade area lost to inter-building shadowing (annual average)</td></tr>
+<tr><td><code>canyon_wind</code></td><td>Float (m/s)</td><td>Pedestrian-level wind speed after canyon and Venturi adjustments</td></tr>
+<tr><td><code>comfort_score</code></td><td>Float (0&ndash;100)</td><td>District-aggregated pedestrian wind comfort score (Lawson criteria)</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg5-interp">Interpretation Guidance</h3>
+
+<p><strong>Shadow Loss Thresholds.</strong> Shadow loss values below 0.15 indicate that inter-building obstruction is not a significant constraint on solar access at the district scale. Values in the 0.15&ndash;0.30 range suggest moderate obstruction that may require attention to building orientation and spacing. Values above 0.30 indicate substantial mutual shadowing; such districts may benefit from height variation strategies (stepping down toward the south in northern hemisphere sites) or increased inter-building spacing.</p>
+
+<p><strong>Venturi Wind and Comfort.</strong> Pedestrian wind speeds exceeding the Lawson thresholds for sustained periods indicate locations where wind amelioration measures (street trees, canopies, building setbacks, podium massing) should be considered. The algorithm identifies specific inter-building gaps where $U_{\text{ped}} / U_{\text{ref}} > 1.5$, which are candidates for wind mitigation. The comfort score integrates over all sampling points; a score below 50 indicates that more than half of the pedestrian realm exceeds comfort thresholds.</p>
+
+<p><strong>Emergence and Sample Size.</strong> The emergence condition ($N_{\text{buildings}} > 5$) is critical: below this threshold, inter-building effects are too noisy to be reliably distinguished from the per-building baselines. Users evaluating small clusters (2&ndash;5 buildings) should rely on Algorithm 2 (per-building physics) and interpret Algorithm 5 outputs with caution if the threshold is not met. The algorithm will emit a warning in the QGIS log when the building count is marginal.</p>
+
+<h3 id="alg5-refs">References</h3>
+<ol class="ref-list">
+<li>Knowles, R. L. (2003). The solar envelope: Its meaning for energy and buildings. <em>Solar Energy</em>, 74(3), 201&ndash;211. <span class="doi"><a href="https://doi.org/10.1016/S0038-092X(03)00042-2" target="_blank" rel="noopener">doi:10.1016/S0038-092X(03)00042-2</a></span></li>
+<li>Compagnon, R. (2004). Solar and daylight availability in the urban fabric. <em>Energy and Buildings</em>, 36(4), 321&ndash;328. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.01.025" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.01.025</a></span></li>
+<li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
+<li>Berland, A., Shiflett, S. A., Shuster, W. D., Garmestani, A. S., Goddard, H. C., Herrmann, D. L., &amp; Hopton, M. E. (2017). The role of trees in urban stormwater management. <em>Landscape and Urban Planning</em>, 162, 167&ndash;177. <span class="doi"><a href="https://doi.org/10.1016/j.landurbplan.2017.01.005" target="_blank" rel="noopener">doi:10.1016/j.landurbplan.2017.01.005</a></span></li>
+<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). <em>The Effects of Wind on People in the Vicinity of Buildings</em>. Building Research Establishment Report. BRE, Garston, UK.</li>
+<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-X</a></span></li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
+</ol>
+</section>
+
+<!-- ================================================================
+     ALGORITHM 6: PPUD Sequential Pipeline
+     ================================================================ -->
+<section id="alg6" class="search-section">
+<h2>Algorithm 6: PPUD Sequential Pipeline</h2>
+
+<h3 id="alg6-theory">Theoretical Background</h3>
+
+<h4>The PPUD Framework</h4>
+<p>The Parametric Performance-based Urban Design (PPUD) methodology was formalised by Akay (2019) in his METU MSc thesis and subsequently published by Akay and Caliskan (2025) in <em>Urban Design International</em>. The PPUD framework integrates three traditionally separate streams of urban design theory and practice: (1) <strong>parametric urban morphology</strong>, which addresses the spatial configuration of plots, blocks, and streets; (2) <strong>performance-based design</strong>, which evaluates urban configurations against environmental, economic, and social performance criteria; and (3) <strong>sequential (incremental) development</strong>, which recognises that real cities are built incrementally over decades, with each phase responding to and modifying the conditions created by preceding phases.</p>
+
+<p>Algorithm 6 operationalises the full PPUD pipeline as a three-stage sequential process, each stage corresponding to a distinct temporal phase of urban development. Critically, the pipeline includes a <strong>climate feedback loop</strong>: after each incremental step, the environmental performance of the emerging urban fabric is re-evaluated, and the genotype of buildings in subsequent steps is adaptively adjusted to compensate for adverse effects (e.g., increased shadowing, reduced ventilation) introduced by earlier development phases.</p>
+
+<h4>Stage 1: Plot Layout Generation</h4>
+<p>The first stage applies one of six subdivision strategies to the input block layer, generating a plot layout that defines the spatial units for subsequent building configuration. The six strategies are:</p>
+<ul>
+<li><strong>Frontage:</strong> Plots are arrayed along the primary street frontage at the target width, as in Algorithm 4.</li>
+<li><strong>Grid:</strong> Plots are arranged in a regular orthogonal grid aligned to the block edges, producing uniform lot sizes.</li>
+<li><strong>Perimeter:</strong> Plots are arranged around the block perimeter, leaving a central courtyard or communal open space. This strategy is characteristic of European perimeter-block typologies.</li>
+<li><strong>Organic:</strong> Plots are generated using a centroidal Voronoi tessellation seeded by a random point pattern, producing irregular lot geometries reminiscent of organically grown urban fabrics.</li>
+<li><strong>Radial:</strong> Plots radiate from a central point or axis, suitable for focal urban spaces, squares, or landmark sites.</li>
+<li><strong>Hybrid:</strong> Combines frontage-based subdivision along primary streets with organic or grid-based subdivision in the block interior, producing a varied plot structure.</li>
+</ul>
+
+<h4>Stage 2: Building Configuration</h4>
+<p>For each plot generated in Stage 1, a lightweight optimisation procedure configures the building genotype (setback, floors, typology, usage, roof style, scale factors, floor height) subject to the zoning envelope defined by the maximum BCR, FAR, and building height parameters. Unlike Algorithm 1's full multi-objective evolutionary optimisation, Stage 2 employs a simplified single-pass evaluation that selects the genotype maximising the PlanX urban quality score while satisfying all zoning constraints. This lightweight approach enables rapid configuration of dozens or hundreds of plots within a single pipeline execution.</p>
+
+<h4>Stage 3: Incremental Block Fabric</h4>
+<p>Stage 3 simulates sequential development phases. The plots are partitioned into $N_{\text{steps}}$ groups (3&ndash;10, specified by the user) representing sequential development phases. In each step, the building genotypes for the current phase's plots are evaluated using Algorithm 2 (Urban Physics Evaluator). If <strong>climate feedback</strong> is enabled, the environmental metrics from the current step (shadow patterns, wind field modifications, runoff contributions) are fed back into the genotype configuration of the subsequent step's plots, which are adaptively adjusted. For example, if Step 1 buildings create substantial shadow on Step 2 plots, the Step 2 genotypes may be modified to increase floor height or reduce setback to compensate for reduced solar access.</p>
+
+<h4>Five Block Typologies</h4>
+<p>The pipeline supports five canonical block typologies, each associated with a characteristic subdivision strategy, building typology mix, and performance profile:</p>
+<ul>
+<li><strong>PerimeterBlock:</strong> Continuous building wall along the block perimeter with a central courtyard; high enclosure, moderate SA/V, good street definition.</li>
+<li><strong>LinearBlock:</strong> Parallel rows of buildings (slabs); good solar orientation potential, moderate ventilation.</li>
+<li><strong>PavilionBlock:</strong> Freestanding towers or pavilions arranged in a regular grid; high SA/V, good daylight, lower spatial enclosure.</li>
+<li><strong>OrganicBlock:</strong> Irregular plot and building geometries following organic growth patterns; high typological entropy, variable performance.</li>
+<li><strong>HybridBlock:</strong> Mix of perimeter and pavilion typologies; balances enclosure with porosity and daylight access.</li>
+</ul>
+
+<h3 id="alg6-equations">Key Equations</h3>
+
+<div class="equation-block">
+<div class="equation-label">Equation 6.1 &mdash; Zoning Envelope Constraint</div>
+$$\mathbf{x} \in \mathcal{F} \iff \begin{cases}
+\text{BCR}(\mathbf{x}) \leq \text{BCR}_{\max}\\
+\text{FAR}(\mathbf{x}) \leq \text{FAR}_{\max}\\
+H(\mathbf{x}) \leq H_{\max}
+\end{cases}$$
+where $\mathbf{x}$ is the genotype vector, $\text{BCR}(\mathbf{x}) = A_{\text{footprint}} / A_{\text{parcel}}$, $\text{FAR}(\mathbf{x}) = \text{GFA}(\mathbf{x}) / A_{\text{parcel}}$, and $H(\mathbf{x}) = \text{floors}(\mathbf{x}) \cdot \text{floor\_height}(\mathbf{x})$. The feasible set $\mathcal{F}$ is the subset of the genotype space satisfying all three constraints.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 6.2 &mdash; Climate Feedback Adaptive Adjustment</div>
+$$\mathbf{x}_{p}^{(t+1)} = \mathbf{x}_{p}^{(t)} + \eta \cdot \nabla_{\mathbf{x}} \hat{S}(\mathbf{x}_{p}^{(t)} \mid \mathcal{B}^{(1:t)})$$
+where $\mathbf{x}_{p}^{(t)}$ is the genotype of plot $p$ at incremental step $t$, $\mathcal{B}^{(1:t)}$ is the set of buildings configured in steps $1$ through $t$, $\hat{S}$ is the estimated environmental performance score as a function of the genotype conditioned on the existing built context, $\nabla_{\mathbf{x}}$ is a finite-difference gradient approximation, and $\eta$ is the adaptation step size (default 0.1).
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 6.3 &mdash; Incremental Step Partitioning</div>
+$$\mathcal{P}_s = \left\{ p_k \in \mathcal{P} \;\middle|\; \frac{s-1}{S} < \frac{k}{N} \leq \frac{s}{S} \right\}, \quad s = 1, \ldots, S$$
+where $\mathcal{P}$ is the ordered set of $N$ plots (ordered by proximity to the primary street), $S$ is the number of incremental steps, and $\mathcal{P}_s$ is the subset of plots developed in step $s$. Plots are assigned sequentially from the primary frontage toward the block interior.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 6.4 &mdash; Form-Based Code Diagram Height Derivation</div>
+$$H_{\max}^{\text{FBC}}(p) = \min\!\left(H_{\max},\; H_{\text{envelope}} \cdot \frac{A_{\text{frontage}}(p)}{\bar{A}_{\text{frontage}}}\right)$$
+where $H_{\max}^{\text{FBC}}(p)$ is the maximum permitted building height for plot $p$ in the Form-Based Code diagram, $H_{\text{envelope}}$ is the global zoning height limit, $A_{\text{frontage}}(p)$ is the street frontage length of plot $p$, and $\bar{A}_{\text{frontage}}$ is the mean frontage length across all plots. This formula ensures that larger-frontage plots receive proportionally greater height allowances, consistent with form-based code practice.
+</div>
+
+<div class="equation-block">
+<div class="equation-label">Equation 6.5 &mdash; Block Typology Performance Profile</div>
+$$\mathbf{P}(\tau) = \frac{1}{|\mathcal{P}_\tau|} \sum_{p \in \mathcal{P}_\tau} \left[ \text{wind}_p,\; \text{solar}_p,\; \text{svf}_p,\; \text{carbon}_p,\; \text{roi}_p \right]^T$$
+where $\tau$ is the block typology, $\mathcal{P}_\tau$ is the set of plots assigned to typology $\tau$, and $\mathbf{P}(\tau) \in \mathbb{R}^5$ is the five-dimensional mean performance vector for that typology. Comparing $\mathbf{P}(\tau)$ across typologies enables evidence-based selection of the most appropriate block type for a given site and performance priorities.
+</div>
+
+<h3 id="alg6-params">Parameters</h3>
+<table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Range / Options</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>Input Block Layer</td><td>Polygon Layer</td><td>&mdash;</td><td>Block polygons to be subdivided and configured</td></tr>
+<tr><td>Block Typology</td><td>Enumeration</td><td>PerimeterBlock, LinearBlock, PavilionBlock, OrganicBlock, HybridBlock</td><td>Canonical block typology determining plot layout and building typology mix</td></tr>
+<tr><td>Subdivision Strategy</td><td>Enumeration</td><td>Frontage, Grid, Perimeter, Organic, Radial, Hybrid</td><td>Plot layout generation strategy for Stage 1</td></tr>
+<tr><td>Max BCR</td><td>Float</td><td>0.0&ndash;1.0</td><td>Maximum Building Coverage Ratio for the zoning envelope</td></tr>
+<tr><td>Max FAR</td><td>Float</td><td>0.0&ndash;10.0</td><td>Maximum Floor Area Ratio for the zoning envelope</td></tr>
+<tr><td>Max Height</td><td>Float (m)</td><td>3.0&ndash;150.0</td><td>Maximum building height in metres</td></tr>
+<tr><td>Incremental Steps</td><td>Integer</td><td>3&ndash;10</td><td>Number of sequential development phases; higher values produce finer-grained incremental patterns</td></tr>
+<tr><td>Climate Feedback</td><td>Boolean</td><td>Enabled / Disabled</td><td>Whether to adaptively adjust genotypes in later phases based on environmental conditions created by earlier phases</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg6-outputs">Outputs</h3>
+<table>
+<thead><tr><th>Layer / Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td colspan="3"><strong>Layer 1: PPUD Subdivided Plots</strong></td></tr>
+<tr><td>All genotype fields</td><td>(various)</td><td>Full 8-variable genotype for each plot (setback, floors, typology, usage, roof_style, scale_x, scale_y, floor_height)</td></tr>
+<tr><td><code>wind_score</code></td><td>Float (0&ndash;100)</td><td>Wind ventilation performance score</td></tr>
+<tr><td><code>solar_kwh</code></td><td>Float</td><td>Annual solar irradiance (kWh/m<sup>2</sup>/yr)</td></tr>
+<tr><td><code>svf_ratio</code></td><td>Float</td><td>Sky View Factor</td></tr>
+<tr><td><code>canyon_hw</code></td><td>Float</td><td>Canyon height-to-width ratio</td></tr>
+<tr><td><code>carbon_kg</code></td><td>Float</td><td>Lifecycle carbon emissions</td></tr>
+<tr><td><code>roi_yield</code></td><td>Float (%)</td><td>Return on investment</td></tr>
+<tr><td><code>utci_score</code></td><td>Float (0&ndash;100)</td><td>Thermal comfort score</td></tr>
+<tr><td><code>runoff_m3</code></td><td>Float</td><td>Stormwater runoff volume</td></tr>
+<tr><td><code>mrt_temp</code></td><td>Float (&deg;C)</td><td>Mean Radiant Temperature</td></tr>
+<tr><td><code>pv_kwh</code></td><td>Float</td><td>PV generation potential</td></tr>
+<tr><td><code>planx_score</code></td><td>Float (0&ndash;100)</td><td>PlanX composite urban quality score</td></tr>
+<tr><td><code>pop_est</code></td><td>Integer</td><td>Estimated population</td></tr>
+<tr><td><code>enclosure</code></td><td>Float (0&ndash;100)</td><td>Street enclosure index</td></tr>
+<tr><td><code>sav_ratio</code></td><td>Float</td><td>Surface-to-volume compactness</td></tr>
+<tr><td><code>fabric_step</code></td><td>Integer</td><td>Incremental development phase (1 to S) in which the plot was developed</td></tr>
+<tr><td colspan="3"><strong>Layer 2: Form-Based Code Diagram</strong></td></tr>
+<tr><td><code>build_to_line</code></td><td>String</td><td>Build-to-line specification for the plot frontage</td></tr>
+<tr><td><code>max_floors</code></td><td>Integer</td><td>Maximum permitted number of floors</td></tr>
+<tr><td><code>max_height_m</code></td><td>Float (m)</td><td>Maximum permitted building height in metres</td></tr>
+<tr><td><code>setback_m</code></td><td>Float (m)</td><td>Required setback distance from plot boundaries</td></tr>
+<tr><td><code>block_type</code></td><td>String</td><td>Block typology classification</td></tr>
+</tbody>
+</table>
+
+<h3 id="alg6-interp">Interpretation Guidance</h3>
+
+<p><strong>Pipeline Outputs vs. Standalone Algorithms.</strong> The PPUD pipeline produces integrated outputs that reflect the sequential, climate-responsive nature of the development process. Comparing the outputs of Algorithm 6 (sequential, with climate feedback) against those of Algorithm 1 (single-shot optimisation per plot) reveals the value of sequential planning: plots developed in later phases, with climate feedback enabled, should exhibit systematically higher environmental performance scores, as their genotypes have been adapted to the shadow, wind, and microclimate conditions created by earlier phases. If this pattern is not observed, the climate feedback adaptation may be insufficient (consider increasing incremental steps to allow more fine-grained adaptation).</p>
+
+<p><strong>Form-Based Code Diagrams.</strong> The second output layer provides a regulatory diagram suitable for translation into form-based zoning code parameters. The <code>build_to_line</code> specification indicates whether the building facade must be built to the frontage line (typical of urban main streets), set back a specified distance (typical of residential streets), or is unconstrained. The <code>max_floors</code> and <code>max_height_m</code> values provide the numeric zoning limits per plot, and the <code>block_type</code> field associates each plot with its canonical typology for use in design guidelines.</p>
+
+<p><strong>Typology Comparison.</strong> The mean performance vector $\mathbf{P}(\tau)$ computed across plots of each block typology provides a quantitative basis for typology selection. For example, PerimeterBlock may exhibit the highest enclosure and lowest SA/V (best thermal performance), while PavilionBlock may show the highest solar and ventilation scores. The choice among typologies should be guided by the performance priorities of the specific project: thermal efficiency vs. daylight access vs. street enclosure vs. typological diversity.</p>
+
+<p><strong>Incremental Phasing.</strong> The <code>fabric_step</code> field in the plots layer enables visualisation of the development phasing over time. This is valuable for phasing plans, infrastructure staging, and cash-flow modelling in large-scale development projects. The sequential ordering from primary frontage to block interior reflects the typical logic of urban development, where street-facing plots are developed first, and interior plots follow as the block matures.</p>
+
+<h3 id="alg6-refs">References</h3>
+<ol class="ref-list">
+<li>Akay, M., &amp; Caliskan, O. (2025). Parametric performance-based urban design: A sequential pipeline integrating morphology, microclimate, and evolutionary optimisation. <em>Urban Design International</em>, 30, 45&ndash;62. <span class="doi"><a href="https://doi.org/10.1038/s42949-025-00167-6" target="_blank" rel="noopener">doi:10.1038/s42949-025-00167-6</a></span></li>
+<li>Akay, M. (2019). <em>A Parametric Urban Design Framework for Performance-Based Planning</em> [Unpublished MSc thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
+<li>Parish, Y. I. H., &amp; Muller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
+<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In T. Haas &amp; K. Olsson (Eds.), <em>Emergent Urbanism</em> (pp. 35&ndash;46). Routledge.</li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Schumacher, P. (2009). Parametricism: A new global style for architecture and urban design. <em>Architectural Design</em>, 79(4), 14&ndash;23. <span class="doi"><a href="https://doi.org/10.1002/ad.912" target="_blank" rel="noopener">doi:10.1002/ad.912</a></span></li>
+<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment</em>. RIBA Publishing, London.</li>
+<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0424-7</a></span></li>
+</ol>
+</section>
+
+<!-- ================================================================
+     APPENDIX A: NOTATION
+     ================================================================ -->
+<section id="appendix-notation" class="search-section">
+<h2>Appendix A: Notation</h2>
+
+<table>
+<thead><tr><th>Symbol</th><th>Meaning</th><th>Units / Domain</th></tr></thead>
+<tbody>
+<tr><td>$H/W$</td><td>Canyon height-to-width ratio</td><td>Dimensionless</td></tr>
+<tr><td>SVF</td><td>Sky View Factor</td><td>[0.12, 1.0]</td></tr>
+<tr><td>$S/V$</td><td>Surface-area-to-volume ratio</td><td>m<sup>&minus;1</sup></td></tr>
+<tr><td>BCR</td><td>Building Coverage Ratio</td><td>[0, 1]</td></tr>
+<tr><td>FAR</td><td>Floor Area Ratio</td><td>Dimensionless</td></tr>
+<tr><td>GFA</td><td>Gross Floor Area</td><td>m<sup>2</sup></td></tr>
+<tr><td>$\mathbf{x}$</td><td>Genotype (decision variable vector)</td><td>$\mathbb{R}^8$</td></tr>
+<tr><td>$f_m(\mathbf{x})$</td><td>$m$-th objective function</td><td>Varies</td></tr>
+<tr><td>$M$</td><td>Number of objectives</td><td>5</td></tr>
+<tr><td>$N$</td><td>Population size</td><td>30&ndash;100</td></tr>
+<tr><td>$d_i$</td><td>Crowding distance of solution $i$</td><td>Dimensionless</td></tr>
+<tr><td>$F(i)$</td><td>SPEA-2 fitness of solution $i$</td><td>Dimensionless</td></tr>
+<tr><td>$\lambda$</td><td>Weight vector (MOEA/D)</td><td>$\Delta^{M-1}$</td></tr>
+<tr><td>$\mathbf{z}^*$</td><td>Ideal reference point</td><td>$\mathbb{R}^M$</td></tr>
+<tr><td>$\nu(i)$</td><td>Constraint violation of solution $i$</td><td>Dimensionless</td></tr>
+<tr><td>$Q$</td><td>Peak stormwater discharge</td><td>m<sup>3</sup>/s</td></tr>
+<tr><td>$C$</td><td>Runoff coefficient</td><td>[0, 1]</td></tr>
+<tr><td>$I$</td><td>Design rainfall intensity</td><td>mm/hr</td></tr>
+<tr><td>$r$</td><td>Real discount rate</td><td>0.06 (6%)</td></tr>
+<tr><td>$T$</td><td>Project lifecycle (NPV)</td><td>20 years</td></tr>
+<tr><td>$H$</td><td>Shannon entropy of typology distribution</td><td>Nats (or bits)</td></tr>
+<tr><td>$p_k$</td><td>Proportion of typology class $k$</td><td>[0, 1]</td></tr>
+<tr><td>$w_{\text{target}}$</td><td>Target frontage width</td><td>m (default 18.0)</td></tr>
+<tr><td>$L_{\text{shadow}}$</td><td>Shadow length (planar projection)</td><td>m</td></tr>
+<tr><td>$\alpha$</td><td>Solar altitude angle</td><td>Degrees</td></tr>
+<tr><td>$U_{\text{ped}}$</td><td>Pedestrian-level wind speed</td><td>m/s</td></tr>
+<tr><td>$U_{\text{ref}}$</td><td>Reference wind speed (10 m, open terrain)</td><td>m/s</td></tr>
+<tr><td>$\eta_{\text{district}}$</td><td>District stormwater retention efficiency</td><td>[0, 1]</td></tr>
+<tr><td>$\mathcal{F}$</td><td>Feasible set (zoning envelope)</td><td>Subset of genotype space</td></tr>
+<tr><td>$\tau$</td><td>Block typology index</td><td>{Perimeter, Linear, Pavilion, Organic, Hybrid}</td></tr>
+<tr><td>$S$</td><td>Number of incremental development steps</td><td>3&ndash;10</td></tr>
+<tr><td>$\mathbf{P}(\tau)$</td><td>Performance profile vector of typology $\tau$</td><td>$\mathbb{R}^5$</td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- ================================================================
+     APPENDIX B: DOI INDEX
+     ================================================================ -->
+<section id="appendix-doi" class="search-section">
+<h2>Appendix B: DOI Index</h2>
+
+<table>
+<thead><tr><th>DOI</th><th>Primary Citation</th><th>Algorithm(s)</th></tr></thead>
+<tbody>
+<tr><td><a href="https://doi.org/10.1109/4235.996017" target="_blank" rel="noopener">10.1109/4235.996017</a></td><td>Deb et al. (2002) &mdash; NSGA-II</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.1109/TEVC.2013.2281535" target="_blank" rel="noopener">10.1109/TEVC.2013.2281535</a></td><td>Deb &amp; Jain (2014) &mdash; NSGA-III</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.1109/TEVC.2007.892759" target="_blank" rel="noopener">10.1109/TEVC.2007.892759</a></td><td>Zhang &amp; Li (2007) &mdash; MOEA/D</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.3929/ethz-a-004284029" target="_blank" rel="noopener">10.3929/ethz-a-004284029</a></td><td>Zitzler et al. (2001) &mdash; SPEA-2</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.1016/S0045-7825(99)00389-8" target="_blank" rel="noopener">10.1016/S0045-7825(99)00389-8</a></td><td>Deb (2000) &mdash; Constrained dominance</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">10.1007/978-0-387-36797-2</a></td><td>Coello Coello et al. (2007) &mdash; MOEA textbook</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.1137/S1052623496307510" target="_blank" rel="noopener">10.1137/S1052623496307510</a></td><td>Das &amp; Dennis (1998) &mdash; Reference points</td><td>1</td></tr>
+<tr><td><a href="https://doi.org/10.1002/9781118671603" target="_blank" rel="noopener">10.1002/9781118671603</a></td><td>Duffie &amp; Beckman (2013) &mdash; Solar engineering</td><td>2</td></tr>
+<tr><td><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">10.1007/s00484-011-0424-7</a></td><td>Jendritzky et al. (2012) &mdash; UTCI</td><td>2, 6</td></tr>
+<tr><td><a href="https://doi.org/10.1680/ener.2008.161.2.87" target="_blank" rel="noopener">10.1680/ener.2008.161.2.87</a></td><td>Hammond &amp; Jones (2008) &mdash; ICE database</td><td>2</td></tr>
+<tr><td><a href="https://doi.org/10.1002/qj.49710845502" target="_blank" rel="noopener">10.1002/qj.49710845502</a></td><td>Oke (1982) &mdash; Urban heat island</td><td>2</td></tr>
+<tr><td><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">10.1016/j.atmosenv.2006.08.019</a></td><td>Blocken et al. (2007) &mdash; CFD pedestrian wind</td><td>2, 5</td></tr>
+<tr><td><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">10.1016/0378-7788(88)90009-6</a></td><td>Oke (1988) &mdash; Street canyon climate</td><td>3, 5, 6</td></tr>
+<tr><td><a href="https://doi.org/10.1016/j.enbuild.2004.10.010" target="_blank" rel="noopener">10.1016/j.enbuild.2004.10.010</a></td><td>Ratti et al. (2005) &mdash; Urban texture energy</td><td>3</td></tr>
+<tr><td><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></td><td>Johnson &amp; Watson (1984) &mdash; SVF</td><td>2, 3</td></tr>
+<tr><td><a href="https://doi.org/10.1126/science.1150195" target="_blank" rel="noopener">10.1126/science.1150195</a></td><td>Batty (2008) &mdash; Science of cities</td><td>3</td></tr>
+<tr><td><a href="https://doi.org/10.3354/cr027253" target="_blank" rel="noopener">10.3354/cr027253</a></td><td>Unger (2004) &mdash; Urban geometry &amp; UHI</td><td>3</td></tr>
+<tr><td><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">10.1016/S1352-2310(02)00857-X</a></td><td>Vardoulakis et al. (2003) &mdash; Street canyon air quality</td><td>3, 5</td></tr>
+<tr><td><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">10.1145/383259.383292</a></td><td>Parish &amp; Muller (2001) &mdash; Procedural cities</td><td>4, 6</td></tr>
+<tr><td><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">10.1145/1141911.1141931</a></td><td>Mueller et al. (2006) &mdash; Procedural buildings</td><td>4</td></tr>
+<tr><td><a href="https://doi.org/10.1016/S0038-092X(03)00042-2" target="_blank" rel="noopener">10.1016/S0038-092X(03)00042-2</a></td><td>Knowles (2003) &mdash; Solar envelope</td><td>5</td></tr>
+<tr><td><a href="https://doi.org/10.1016/j.enbuild.2004.01.025" target="_blank" rel="noopener">10.1016/j.enbuild.2004.01.025</a></td><td>Compagnon (2004) &mdash; Solar in urban fabric</td><td>5</td></tr>
+<tr><td><a href="https://doi.org/10.1016/j.landurbplan.2017.01.005" target="_blank" rel="noopener">10.1016/j.landurbplan.2017.01.005</a></td><td>Berland et al. (2017) &mdash; Trees &amp; stormwater</td><td>5</td></tr>
+<tr><td><a href="https://doi.org/10.1038/s42949-025-00167-6" target="_blank" rel="noopener">10.1038/s42949-025-00167-6</a></td><td>Akay &amp; Caliskan (2025) &mdash; PPUD</td><td>6</td></tr>
+<tr><td><a href="https://doi.org/10.1002/ad.912" target="_blank" rel="noopener">10.1002/ad.912</a></td><td>Schumacher (2009) &mdash; Parametricism</td><td>6 (Foundations)</td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- ================================================================
+     APPENDIX C: CONSOLIDATED BIBLIOGRAPHY
+     ================================================================ -->
+<section id="appendix-citations" class="search-section">
+<h2>Appendix C: Consolidated Bibliography</h2>
+
+<ol class="ref-list">
+<li>Alexander, C., Ishikawa, S., &amp; Silverstein, M. (1977). <em>A Pattern Language: Towns, Buildings, Construction</em>. Oxford University Press, New York.</li>
+<li>Akay, M. (2019). <em>A Parametric Urban Design Framework for Performance-Based Planning</em> [Unpublished MSc thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
+<li>Akay, M., &amp; Caliskan, O. (2025). Parametric performance-based urban design: A sequential pipeline integrating morphology, microclimate, and evolutionary optimisation. <em>Urban Design International</em>, 30, 45&ndash;62. <span class="doi"><a href="https://doi.org/10.1038/s42949-025-00167-6" target="_blank" rel="noopener">doi:10.1038/s42949-025-00167-6</a></span></li>
+<li>Batty, M. (2008). The size, scale, and shape of cities. <em>Science</em>, 319(5864), 769&ndash;771. <span class="doi"><a href="https://doi.org/10.1126/science.1150195" target="_blank" rel="noopener">doi:10.1126/science.1150195</a></span></li>
+<li>Berland, A., Shiflett, S. A., Shuster, W. D., Garmestani, A. S., Goddard, H. C., Herrmann, D. L., &amp; Hopton, M. E. (2017). The role of trees in urban stormwater management. <em>Landscape and Urban Planning</em>, 162, 167&ndash;177. <span class="doi"><a href="https://doi.org/10.1016/j.landurbplan.2017.01.005" target="_blank" rel="noopener">doi:10.1016/j.landurbplan.2017.01.005</a></span></li>
+<li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
+<li>CEN. (2011). <em>EN 15978:2011 &mdash; Sustainability of construction works &mdash; Assessment of environmental performance of buildings &mdash; Calculation method</em>. European Committee for Standardization, Brussels.</li>
+<li>Coello Coello, C. A., Van Veldhuizen, D. A., &amp; Lamont, G. B. (2007). <em>Evolutionary Algorithms for Solving Multi-Objective Problems</em> (2nd ed.). Springer. <span class="doi"><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">doi:10.1007/978-0-387-36797-2</a></span></li>
+<li>Compagnon, R. (2004). Solar and daylight availability in the urban fabric. <em>Energy and Buildings</em>, 36(4), 321&ndash;328. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.01.025" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.01.025</a></span></li>
+<li>Das, I., &amp; Dennis, J. E. (1998). Normal-boundary intersection: A new method for generating the Pareto surface in nonlinear multicriteria optimization problems. <em>SIAM Journal on Optimization</em>, 8(3), 631&ndash;657. <span class="doi"><a href="https://doi.org/10.1137/S1052623496307510" target="_blank" rel="noopener">doi:10.1137/S1052623496307510</a></span></li>
+<li>Deb, K. (2000). An efficient constraint handling method for genetic algorithms. <em>Computer Methods in Applied Mechanics and Engineering</em>, 186(2&ndash;4), 311&ndash;338. <span class="doi"><a href="https://doi.org/10.1016/S0045-7825(99)00389-8" target="_blank" rel="noopener">doi:10.1016/S0045-7825(99)00389-8</a></span></li>
+<li>Deb, K., &amp; Jain, H. (2014). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, Part I: Solving problems with box constraints. <em>IEEE Transactions on Evolutionary Computation</em>, 18(4), 577&ndash;601. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2013.2281535" target="_blank" rel="noopener">doi:10.1109/TEVC.2013.2281535</a></span></li>
+<li>Deb, K., Pratap, A., Agarwal, S., &amp; Meyarivan, T. (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. <em>IEEE Transactions on Evolutionary Computation</em>, 6(2), 182&ndash;197. <span class="doi"><a href="https://doi.org/10.1109/4235.996017" target="_blank" rel="noopener">doi:10.1109/4235.996017</a></span></li>
+<li>Duffie, J. A., &amp; Beckman, W. A. (2013). <em>Solar Engineering of Thermal Processes</em> (4th ed.). Wiley. <span class="doi"><a href="https://doi.org/10.1002/9781118671603" target="_blank" rel="noopener">doi:10.1002/9781118671603</a></span></li>
+<li>Hammond, G. P., &amp; Jones, C. I. (2008). Embodied energy and carbon in construction materials. <em>Proceedings of the Institution of Civil Engineers &ndash; Energy</em>, 161(2), 87&ndash;98. <span class="doi"><a href="https://doi.org/10.1680/ener.2008.161.2.87" target="_blank" rel="noopener">doi:10.1680/ener.2008.161.2.87</a></span></li>
+<li>Jacobs, A. B. (1993). <em>Great Streets</em>. MIT Press, Cambridge, MA.</li>
+<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0424-7</a></span></li>
+<li>Johnson, G. T., &amp; Watson, I. D. (1984). The determination of view-factors in urban canyons. <em>Journal of Climate and Applied Meteorology</em>, 23(2), 329&ndash;335. <span class="doi"><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">doi:10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></span></li>
+<li>Knowles, R. L. (2003). The solar envelope: Its meaning for energy and buildings. <em>Solar Energy</em>, 74(3), 201&ndash;211. <span class="doi"><a href="https://doi.org/10.1016/S0038-092X(03)00042-2" target="_blank" rel="noopener">doi:10.1016/S0038-092X(03)00042-2</a></span></li>
+<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). <em>The Effects of Wind on People in the Vicinity of Buildings</em>. Building Research Establishment Report. BRE, Garston, UK.</li>
+<li>Mueller, P., Wonka, P., Haegler, S., Ulmer, A., &amp; Van Gool, L. (2006). Procedural modeling of buildings. <em>ACM Transactions on Graphics (SIGGRAPH 2006)</em>, 25(3), 614&ndash;623. <span class="doi"><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">doi:10.1145/1141911.1141931</a></span></li>
+<li>Oke, T. R. (1982). The energetic basis of the urban heat island. <em>Quarterly Journal of the Royal Meteorological Society</em>, 108(455), 1&ndash;24. <span class="doi"><a href="https://doi.org/10.1002/qj.49710845502" target="_blank" rel="noopener">doi:10.1002/qj.49710845502</a></span></li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Parish, Y. I. H., &amp; Muller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
+<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In T. Haas &amp; K. Olsson (Eds.), <em>Emergent Urbanism</em> (pp. 35&ndash;46). Routledge.</li>
+<li>Ratti, C., Baker, N., &amp; Steemers, K. (2005). Energy consumption and urban texture. <em>Energy and Buildings</em>, 37(7), 762&ndash;776. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.10.010" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.10.010</a></span></li>
+<li>Schumacher, P. (2009). Parametricism: A new global style for architecture and urban design. <em>Architectural Design</em>, 79(4), 14&ndash;23. <span class="doi"><a href="https://doi.org/10.1002/ad.912" target="_blank" rel="noopener">doi:10.1002/ad.912</a></span></li>
+<li>Stiny, G., &amp; Gips, J. (1972). Shape grammars and the generative specification of painting and sculpture. In C. V. Freiman (Ed.), <em>Information Processing 71</em> (pp. 1460&ndash;1465). North-Holland, Amsterdam.</li>
+<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment</em>. RIBA Publishing, London.</li>
+<li>Unger, J. (2004). Intra-urban relationship between surface geometry and urban heat island: Review and new approach. <em>Climate Research</em>, 27(3), 253&ndash;264. <span class="doi"><a href="https://doi.org/10.3354/cr027253" target="_blank" rel="noopener">doi:10.3354/cr027253</a></span></li>
+<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-X</a></span></li>
+<li>Zhang, Q., &amp; Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm based on decomposition. <em>IEEE Transactions on Evolutionary Computation</em>, 11(6), 712&ndash;731. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2007.892759" target="_blank" rel="noopener">doi:10.1109/TEVC.2007.892759</a></span></li>
+<li>Zitzler, E., Laumanns, M., &amp; Thiele, L. (2001). SPEA2: Improving the strength Pareto evolutionary algorithm. <em>TIK Report</em> 103, ETH Zurich. <span class="doi"><a href="https://doi.org/10.3929/ethz-a-004284029" target="_blank" rel="noopener">doi:10.3929/ethz-a-004284029</a></span></li>
+</ol>
+</section>
+
+</main>
+
+<!-- ================================================================
+     JAVASCRIPT: Search, Theme, Sidebar, Active Link
+     ================================================================ -->
+<script>
+/* ---- Theme Toggle ---- */
+(function() {
+  var saved = localStorage.getItem('ppud-theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+
+function toggleTheme() {
+  var html = document.documentElement;
+  var btn = document.getElementById('themeToggleBtn');
+  var icon = document.getElementById('themeIcon');
+  var label = document.getElementById('themeLabel');
+  if (html.getAttribute('data-theme') === 'dark') {
+    html.setAttribute('data-theme', 'light');
+    localStorage.setItem('ppud-theme', 'light');
+    icon.innerHTML = '&#9790;';
+    label.textContent = 'Dark Mode';
+  } else {
+    html.setAttribute('data-theme', 'dark');
+    localStorage.setItem('ppud-theme', 'dark');
+    icon.innerHTML = '&#9728;';
+    label.textContent = 'Light Mode';
+  }
+}
+
+// Sync toggle button label on page load
+(function() {
+  var icon = document.getElementById('themeIcon');
+  var label = document.getElementById('themeLabel');
+  if (document.documentElement.getAttribute('data-theme') === 'dark') {
+    if (icon) icon.innerHTML = '&#9728;';
+    if (label) label.textContent = 'Light Mode';
+  }
+})();
+
+/* ---- Sidebar Toggle (mobile) ---- */
+function toggleSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.querySelector('.sidebar-overlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('visible');
+}
+
+function closeSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.querySelector('.sidebar-overlay');
+  if (sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+  }
+}
+
+/* ---- Search Filter ---- */
+function filterContent() {
+  var query = document.getElementById('searchInput').value.trim().toLowerCase();
+  var sections = document.querySelectorAll('.search-section');
+  var tocLinks = document.querySelectorAll('#sidebarToc a');
+  var anyVisible = false;
+
+  sections.forEach(function(sec) {
+    if (!query) {
+      sec.classList.remove('search-hidden');
+      anyVisible = true;
+    } else {
+      var text = sec.textContent.toLowerCase();
+      if (text.indexOf(query) !== -1) {
+        sec.classList.remove('search-hidden');
+        anyVisible = true;
+      } else {
+        sec.classList.add('search-hidden');
+      }
+    }
+  });
+
+  // Also filter sidebar TOC links
+  tocLinks.forEach(function(link) {
+    if (!query) {
+      link.parentElement.classList.remove('search-hidden');
+    } else {
+      var targetId = link.getAttribute('href').substring(1);
+      var target = document.getElementById(targetId);
+      if (target && !target.classList.contains('search-hidden')) {
+        link.parentElement.classList.remove('search-hidden');
+      } else {
+        link.parentElement.classList.add('search-hidden');
+      }
+    }
+  });
+
+  // Show/hide "no results" message
+  var noResults = document.getElementById('searchNoResults');
+  if (!anyVisible && query) {
+    if (!noResults) {
+      noResults = document.createElement('p');
+      noResults.id = 'searchNoResults';
+      noResults.className = 'search-no-results';
+      noResults.textContent = 'No sections match your search query.';
+      document.getElementById('mainContent').appendChild(noResults);
+    }
+    noResults.style.display = 'block';
+  } else if (noResults) {
+    noResults.style.display = 'none';
+  }
+}
+
+/* ---- Active TOC link on scroll ---- */
+(function() {
+  var tocLinks = document.querySelectorAll('#sidebarToc a[href^="#"]');
+  var sections = [];
+  tocLinks.forEach(function(link) {
+    var id = link.getAttribute('href').substring(1);
+    var el = document.getElementById(id);
+    if (el) sections.push({ id: id, el: el, link: link });
+  });
+
+  var ticking = false;
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      requestAnimationFrame(function() {
+        var scrollY = window.scrollY || window.pageYOffset;
+        var current = null;
+        for (var i = sections.length - 1; i >= 0; i--) {
+          if (sections[i].el.offsetTop - 100 <= scrollY) {
+            current = sections[i];
+            break;
+          }
+        }
+        tocLinks.forEach(function(l) { l.classList.remove('active'); });
+        if (current) current.link.classList.add('active');
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
