@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.8] - 2026-08-07
+
+- Add floating Save as PDF button to reference manual
+
 ## [2.0.7] - 2026-08-07
 
 - Add comprehensive academic reference manual: 6 algorithms, 30 equations, 32 refs
