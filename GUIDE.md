@@ -132,5 +132,5 @@ Generates standalone, publication-ready HTML reports containing KPI summary card
 1. Deb, K., et al. (2002). "A fast and elitist multiobjective genetic algorithm: NSGA-II." *IEEE Transactions on Evolutionary Computation*, 6(2), 182-197.
 2. Deb, K., & Jain, H. (2014). "An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, part I: solving problems with box constraints." *IEEE Transactions on Evolutionary Computation*, 18(4), 577-601.
 3. Zhang, Q., & Li, H. (2007). "MOEA/D: A multiobjective evolutionary algorithm based on decomposition." *IEEE Transactions on Evolutionary Computation*, 11(6), 712-731.
-4. Hwang, C. L., & Yoon, K. (1981). *Multiple Attribute Decision Making: Methods and Applications*. Springer-Verlag.
+4. Hwang, C. L., & Yoon, K. (1981). *Multiple attribute decision making: Methods and applications — a state-of-the-art survey* (Lecture Notes in Economics and Mathematical Systems, Vol. 186). Springer-Verlag.
 5. CityJSON Specification v1.1. Open Geospatial Consortium (OGC).

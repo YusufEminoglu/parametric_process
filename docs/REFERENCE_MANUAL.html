@@ -625,12 +625,124 @@ body {
 
 <p>Parametric Process Studio is a computational urban design and analysis framework implemented as a QGIS processing plugin. It integrates six interrelated algorithms spanning multi-objective evolutionary optimisation, urban microclimate physics, morphological analytics, procedural shape grammars, inter-building environmental coupling, and a sequential parametric urban design pipeline.</p>
 
-<p>The plugin operationalises the <strong>Parametric Performance-based Urban Design (PPUD)</strong> methodology, a framework that bridges urban morphology, building science, and computational optimisation to support evidence-based decision-making in the early stages of urban design. The theoretical backbone draws from evolutionary computation (Deb <em>et al.</em>, 2002; Zitzler <em>et al.</em>, 2001; Zhang &amp; Li, 2007), urban climatology (Oke, 1988; Jendritzky <em>et al.</em>, 2012), building physics (Duffie &amp; Beckman, 2013; Hammond &amp; Jones, 2008), and computational urbanism (Parish &amp; Muller, 2001; Batty, 2008; Akay &amp; Caliskan, 2025).</p>
+<p>The plugin operationalises the <strong>Parametric Performance-based Urban Design (PPUD)</strong> methodology, a framework that bridges urban morphology, building science, and computational optimisation to support evidence-based decision-making in the early stages of urban design. The theoretical backbone draws from evolutionary computation (Deb <em>et al.</em>, 2002; Zitzler <em>et al.</em>, 2001; Zhang &amp; Li, 2007), urban climatology (Oke, 1988; Jendritzky <em>et al.</em>, 2012), building physics (Duffie &amp; Beckman, 2013; Hammond &amp; Jones, 2008), and computational urbanism (Parish &amp; Müller, 2001; Batty, 2008; Akay &amp; Çalışkan, 2025).</p>
 
 <p>Each algorithm is designed to operate on spatial data layers within QGIS, producing both tabular and geometric outputs that can be visualised, exported, and subjected to further analysis. The plugin supports the complete workflow from parcel subdivision through building configuration optimisation to district-scale environmental performance assessment.</p>
 
 <h3>Plugin Architecture</h3>
 <p>The six algorithms form a logical pipeline: Algorithm 4 (Shape Grammar) generates subdivided plots; Algorithm 1 (Evolutionary Optimisation) configures building genotypes on those plots; Algorithm 2 (Physics Evaluator) and Algorithm 3 (Morphology Analytics) assess the resulting configurations; Algorithm 5 (Environmental Coupling) captures inter-building effects that emerge at the district scale; and Algorithm 6 (PPUD Pipeline) chains these stages into an integrated, climate-responsive sequential workflow.</p>
+</section>
+
+<!-- ================================================================
+     INTERACTIVE SIMULATIONS
+     ================================================================ -->
+<section id="simulations" class="search-section">
+<h2>Interactive Simulations</h2>
+<p>The four figures below animate the core mechanisms the plugin implements — the sequential PPUD pipeline, the NSGA-II Pareto-front convergence, the street-canyon flow regimes that drive the microclimate engine, and the shape-grammar subdivision that generates block typologies. The 3D viewer renders the massing typologies in real time.</p>
+
+<style>
+  .sim-caption { color: var(--text-secondary); font-size: .88rem; max-width: 720px; margin: 4px 0 12px; }
+  .sim-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin: 10px 0 26px; }
+  .sim-canvas { width: 100%; height: auto; display: block; border-radius: var(--radius); background: #fff; }
+  .sim-controls { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+  .sim-controls button { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 6px 16px; font-size: .82rem; font-weight: 600; cursor: pointer; }
+  .sim-controls button:hover { background: var(--accent-hover); }
+  .sim-controls .sim-gen { font-family: var(--font-mono); font-size: .8rem; color: var(--text-secondary); }
+  .sim-pipeline { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .sim-stage { flex: 1 1 160px; min-width: 150px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .sim-stage .st-num { font-family: var(--font-mono); font-size: .7rem; font-weight: 700; color: var(--accent); letter-spacing: .08em; }
+  .sim-stage .st-name { font-size: .9rem; font-weight: 700; color: var(--text-primary); margin: 4px 0 2px; }
+  .sim-stage .st-desc { font-size: .74rem; color: var(--text-secondary); line-height: 1.5; }
+  .sim-arrow { display: flex; align-items: center; padding: 0 8px; color: var(--accent); font-size: 1.3rem; }
+  .sim-arrow svg { overflow: visible; }
+  .sim-arrow .flow { stroke-dasharray: 5 5; animation: simflow 1s linear infinite; }
+  @keyframes simflow { to { stroke-dashoffset: -10; } }
+  .sim-canyon { display: flex; gap: 14px; flex-wrap: wrap; }
+  .sim-canyon .canyon-panel { flex: 1 1 200px; min-width: 190px; }
+  .sim-canyon .canyon-panel svg { width: 100%; height: auto; }
+  .sim-canyon .canyon-label { font-size: .74rem; color: var(--text-secondary); text-align: center; margin-top: 6px; }
+  .sim-3d-wrap { position: relative; }
+  #typoCanvas { width: 100%; height: 380px; display: block; border-radius: var(--radius); cursor: grab; }
+  .sim-fallback { background: #fff7ed; border: 1px solid #fde68a; color: #92400e; padding: 16px; border-radius: var(--radius); font-size: .84rem; }
+</style>
+
+<h3 id="sim-pipeline">1. PPUD Sequential Pipeline</h3>
+<p class="sim-caption">The Parametric Plot-based Urban Design pipeline runs three stages in sequence: it subdivides the block into plots, configures a building massing on each plot, then grows the fabric incrementally with climate feedback between stages.</p>
+<div class="sim-box">
+<div class="sim-pipeline">
+  <div class="sim-stage"><div class="st-num">STAGE 1</div><div class="st-name">Plot Layout</div><div class="st-desc">Block → subdivided plots via frontage / grid / perimeter / organic strategies</div></div>
+  <div class="sim-arrow"><svg width="34" height="18"><line class="flow" x1="2" y1="9" x2="30" y2="9" stroke="currentColor" stroke-width="2.5"/><path d="M30 9 l-6 -4 v8 z" fill="currentColor"/></svg></div>
+  <div class="sim-stage"><div class="st-num">STAGE 2</div><div class="st-name">Building Configuration</div><div class="st-desc">Typology + floors + setback + usage chosen per plot (the genotype)</div></div>
+  <div class="sim-arrow"><svg width="34" height="18"><line class="flow" x1="2" y1="9" x2="30" y2="9" stroke="currentColor" stroke-width="2.5"/><path d="M30 9 l-6 -4 v8 z" fill="currentColor"/></svg></div>
+  <div class="sim-stage"><div class="st-num">STAGE 3</div><div class="st-name">Incremental Fabric</div><div class="st-desc">Sequential phasing with climate feedback refining each step</div></div>
+</div>
+</div>
+
+<h3 id="sim-pareto">2. NSGA-II Pareto-Front Evolution</h3>
+<p class="sim-caption">Each dot is a candidate design. Over successive generations the population is pulled toward the red trade-off curve (the Pareto front). Green dots are non-dominated (on the front), amber dots are close, grey dots are dominated. Press <strong>Play</strong> to watch convergence.</p>
+<div class="sim-box">
+<div class="sim-controls">
+  <button id="paretoPlay" type="button">▶ Play</button>
+  <button id="paretoReset" type="button">↺ Reset</button>
+  <span id="paretoGen" class="sim-gen">Generation 0 / 20</span>
+</div>
+<canvas id="paretoCanvas" width="640" height="340" class="sim-canvas" aria-label="Animated NSGA-II Pareto front convergence"></canvas>
+</div>
+
+<h3 id="sim-canyon">3. Street-Canyon Flow Regimes (Oke, 1988)</h3>
+<p class="sim-caption">The height-to-width ratio (H/W) of a street canyon determines how wind moves through it. The microclimate engine classifies each canyon into one of three regimes and applies the matching ventilation penalty.</p>
+<div class="sim-box">
+<div class="sim-canyon">
+  <div class="canyon-panel">
+    <svg viewBox="0 0 200 120" role="img" aria-label="Isolated roughness flow"><rect x="15" y="60" width="30" height="50" fill="#334155"/><rect x="155" y="60" width="30" height="50" fill="#334155"/><rect x="0" y="110" width="200" height="3" fill="#94a3b8"/><path d="M20 45 q30 20 55 25" stroke="#2563eb" fill="none" stroke-width="2"/><path d="M40 40 q30 20 55 20" stroke="#2563eb" fill="none" stroke-width="1.5" opacity=".6"/><path d="M55 35 q30 20 50 18" stroke="#2563eb" fill="none" stroke-width="1.5" opacity=".4"/><circle cx="45" cy="62" r="12" fill="none" stroke="#2563eb" stroke-width="1" opacity=".5"/><circle cx="165" cy="62" r="12" fill="none" stroke="#2563eb" stroke-width="1" opacity=".5"/></svg>
+    <div class="canyon-label">Isolated roughness flow · H/W &lt; 0.5</div>
+  </div>
+  <div class="canyon-panel">
+    <svg viewBox="0 0 200 120" role="img" aria-label="Wake interference flow"><rect x="30" y="55" width="45" height="55" fill="#334155"/><rect x="125" y="55" width="45" height="55" fill="#334155"/><rect x="0" y="110" width="200" height="3" fill="#94a3b8"/><path d="M15 45 q40 25 85 30 q45 5 85 -10" stroke="#2563eb" fill="none" stroke-width="2"/><circle cx="85" cy="62" r="16" fill="none" stroke="#2563eb" stroke-width="1" opacity=".55"/><circle cx="140" cy="60" r="16" fill="none" stroke="#2563eb" stroke-width="1" opacity=".55"/></svg>
+    <div class="canyon-label">Wake interference flow · 0.5 ≤ H/W ≤ 1.0</div>
+  </div>
+  <div class="canyon-panel">
+    <svg viewBox="0 0 200 120" role="img" aria-label="Skimming flow"><rect x="30" y="40" width="50" height="70" fill="#334155"/><rect x="120" y="40" width="50" height="70" fill="#334155"/><rect x="0" y="110" width="200" height="3" fill="#94a3b8"/><path d="M10 45 q35 10 75 8 q45 -2 90 -6" stroke="#2563eb" fill="none" stroke-width="2"/><ellipse cx="100" cy="85" rx="38" ry="22" fill="none" stroke="#2563eb" stroke-width="1" opacity=".6"/></svg>
+    <div class="canyon-label">Skimming flow · H/W &gt; 1.0</div>
+  </div>
+</div>
+</div>
+
+<h3 id="sim-grammar">4. Shape-Grammar Subdivision</h3>
+<p class="sim-caption">A shape grammar recursively applies production rules: a parent block is split into plots, then each plot receives a building envelope. The subdivision lines below draw themselves to show the rule application.</p>
+<div class="sim-box">
+<svg viewBox="0 0 320 180" role="img" aria-label="Animated shape grammar subdivision" style="width:100%;height:auto;">
+  <rect x="30" y="20" width="260" height="140" fill="#eef2ff" stroke="#2563eb" stroke-width="2" rx="3"/>
+  <g stroke="#0ea5e9" stroke-width="1.6" fill="none">
+    <line class="grammar-line" x1="160" y1="20" x2="160" y2="160"/>
+    <line class="grammar-line" x1="30" y1="90" x2="160" y2="90"/>
+    <line class="grammar-line" x1="160" y1="90" x2="290" y2="90"/>
+    <line class="grammar-line" x1="95" y1="20" x2="95" y2="90"/>
+    <line class="grammar-line" x1="225" y1="20" x2="225" y2="90"/>
+    <line class="grammar-line" x1="95" y1="90" x2="95" y2="160"/>
+    <line class="grammar-line" x1="225" y1="90" x2="225" y2="160"/>
+  </g>
+  <g fill="#10b981" opacity="0.75">
+    <rect x="40" y="30" width="48" height="52"/><rect x="102" y="30" width="48" height="52"/>
+    <rect x="170" y="30" width="48" height="52"/><rect x="232" y="30" width="48" height="52"/>
+    <rect x="40" y="100" width="48" height="52"/><rect x="102" y="100" width="48" height="52"/>
+    <rect x="170" y="100" width="48" height="52"/><rect x="232" y="100" width="48" height="52"/>
+  </g>
+  <style>
+    .grammar-line { stroke-dasharray: 6 6; animation: grammardash 1.6s linear infinite; }
+    @keyframes grammardash { to { stroke-dashoffset: -24; } }
+  </style>
+</svg>
+</div>
+
+<h3 id="sim-3d">5. Block-Typology 3D Viewer</h3>
+<p class="sim-caption">Six massing typologies from the shape-grammar library, rendered in real-time WebGL. Drag to orbit, scroll to zoom. (Requires WebGL; falls back to a message if unavailable.)</p>
+<div class="sim-box">
+<div class="sim-3d-wrap">
+  <canvas id="typoCanvas" width="680" height="380" aria-label="Interactive 3D block typology viewer"></canvas>
+  <div id="typoFallback" class="sim-fallback" style="display:none;">WebGL is not available in this browser, so the interactive 3D massing viewer could not be loaded. The plugin's own 3D cockpit (Three.js) provides the same typology rendering inside QGIS.</div>
+</div>
+</div>
 </section>
 
 <!-- ================================================================
@@ -649,7 +761,7 @@ body {
 <p>The thermal and aerodynamic behaviour of urban environments is governed by the interaction of built form with atmospheric processes. Key phenomena include the urban heat island effect (Oke, 1982), street canyon ventilation (Oke, 1988), pedestrian-level wind comfort (Lawson &amp; Penwarden, 1975; Blocken <em>et al.</em>, 2007), solar access and shading (Knowles, 2003; Compagnon, 2004), and stormwater runoff (Berland <em>et al.</em> 2017). The plugin encodes simplified physics models for each of these domains, calibrated against the fuller computational fluid dynamics (CFD) and radiative transfer simulations that underpin the research literature.</p>
 
 <h3>Procedural Modelling and Shape Grammars</h3>
-<p>Shape grammars, introduced by Stiny and Gips (1972) and extended to urban-scale procedural modelling by Parish and Muller (2001), provide a formal language for generating complex geometries from a compact set of production rules. In the context of urban design, shape grammars enable the automated subdivision of large parcels into buildable plots, the generation of building massing envelopes, and the exploration of alternative block typologies at scale (Mueller <em>et al.</em>, 2006).</p>
+<p>Shape grammars, introduced by Stiny and Gips (1972) and extended to urban-scale procedural modelling by Parish and Müller (2001), provide a formal language for generating complex geometries from a compact set of production rules. In the context of urban design, shape grammars enable the automated subdivision of large parcels into buildable plots, the generation of building massing envelopes, and the exploration of alternative block typologies at scale (Müller <em>et al.</em>, 2006).</p>
 </section>
 
 <!-- ================================================================
@@ -772,7 +884,7 @@ where $p_1, p_2$ are parent values, and $\beta$ is a random variable drawn from 
 <li>Zitzler, E., Laumanns, M., &amp; Thiele, L. (2001). SPEA2: Improving the strength Pareto evolutionary algorithm. <em>TIK Report</em> 103, ETH Zurich. <span class="doi"><a href="https://doi.org/10.3929/ethz-a-004284029" target="_blank" rel="noopener">doi:10.3929/ethz-a-004284029</a></span></li>
 <li>Zhang, Q., &amp; Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm based on decomposition. <em>IEEE Transactions on Evolutionary Computation</em>, 11(6), 712&ndash;731. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2007.892759" target="_blank" rel="noopener">doi:10.1109/TEVC.2007.892759</a></span></li>
 <li>Deb, K. (2000). An efficient constraint handling method for genetic algorithms. <em>Computer Methods in Applied Mechanics and Engineering</em>, 186(2&ndash;4), 311&ndash;338. <span class="doi"><a href="https://doi.org/10.1016/S0045-7825(99)00389-8" target="_blank" rel="noopener">doi:10.1016/S0045-7825(99)00389-8</a></span></li>
-<li>Coello Coello, C. A., Van Veldhuizen, D. A., &amp; Lamont, G. B. (2007). <em>Evolutionary Algorithms for Solving Multi-Objective Problems</em> (2nd ed.). Springer. <span class="doi"><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">doi:10.1007/978-0-387-36797-2</a></span></li>
+<li>Coello Coello, C. A., Lamont, G. B., &amp; Van Veldhuizen, D. A. (2007). <em>Evolutionary Algorithms for Solving Multi-Objective Problems</em> (2nd ed.). Springer. <span class="doi"><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">doi:10.1007/978-0-387-36797-2</a></span></li>
 <li>Das, I., &amp; Dennis, J. E. (1998). Normal-boundary intersection: A new method for generating the Pareto surface in nonlinear multicriteria optimization problems. <em>SIAM Journal on Optimization</em>, 8(3), 631&ndash;657. <span class="doi"><a href="https://doi.org/10.1137/S1052623496307510" target="_blank" rel="noopener">doi:10.1137/S1052623496307510</a></span></li>
 </ol>
 </section>
@@ -887,9 +999,9 @@ where the numerator is the present value of revenues and the denominator is the 
 <ol class="ref-list">
 <li>Duffie, J. A., &amp; Beckman, W. A. (2013). <em>Solar Engineering of Thermal Processes</em> (4th ed.). Wiley. <span class="doi"><a href="https://doi.org/10.1002/9781118671603" target="_blank" rel="noopener">doi:10.1002/9781118671603</a></span></li>
 <li>Johnson, G. T., &amp; Watson, I. D. (1984). The determination of view-factors in urban canyons. <em>Journal of Climate and Applied Meteorology</em>, 23(2), 329&ndash;335. <span class="doi"><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">doi:10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></span></li>
-<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0424-7</a></span></li>
+<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0513-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0513-7</a></span></li>
 <li>Hammond, G. P., &amp; Jones, C. I. (2008). Embodied energy and carbon in construction materials. <em>Proceedings of the Institution of Civil Engineers &ndash; Energy</em>, 161(2), 87&ndash;98. <span class="doi"><a href="https://doi.org/10.1680/ener.2008.161.2.87" target="_blank" rel="noopener">doi:10.1680/ener.2008.161.2.87</a></span></li>
-<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). <em>The Effects of Wind on People in the Vicinity of Buildings</em>. Building Research Establishment Report. BRE, Garston, UK.</li>
+<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). The effects of wind on people in the vicinity of buildings. In <em>Proceedings of the 4th International Conference on Wind Effects on Buildings and Structures</em> (pp. 605&ndash;622). Cambridge University Press.</li>
 <li>Oke, T. R. (1982). The energetic basis of the urban heat island. <em>Quarterly Journal of the Royal Meteorological Society</em>, 108(455), 1&ndash;24. <span class="doi"><a href="https://doi.org/10.1002/qj.49710845502" target="_blank" rel="noopener">doi:10.1002/qj.49710845502</a></span></li>
 <li>CEN. (2011). <em>EN 15978:2011 &mdash; Sustainability of construction works &mdash; Assessment of environmental performance of buildings &mdash; Calculation method</em>. European Committee for Standardization, Brussels.</li>
 <li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
@@ -988,13 +1100,13 @@ where $\sigma(x) = 1 / (1 + e^{-5(x-0.75)})$ is a sigmoid mapping centred at the
 
 <h3 id="alg3-refs">References</h3>
 <ol class="ref-list">
-<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90026-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90026-6</a></span></li>
 <li>Jacobs, A. B. (1993). <em>Great Streets</em>. MIT Press, Cambridge, MA.</li>
 <li>Ratti, C., Baker, N., &amp; Steemers, K. (2005). Energy consumption and urban texture. <em>Energy and Buildings</em>, 37(7), 762&ndash;776. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.10.010" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.10.010</a></span></li>
 <li>Johnson, G. T., &amp; Watson, I. D. (1984). The determination of view-factors in urban canyons. <em>Journal of Climate and Applied Meteorology</em>, 23(2), 329&ndash;335. <span class="doi"><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">doi:10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></span></li>
-<li>Batty, M. (2008). The size, scale, and shape of cities. <em>Science</em>, 319(5864), 769&ndash;771. <span class="doi"><a href="https://doi.org/10.1126/science.1150195" target="_blank" rel="noopener">doi:10.1126/science.1150195</a></span></li>
+<li>Batty, M. (2008). The size, scale, and shape of cities. <em>Science</em>, 319(5864), 769&ndash;771. <span class="doi"><a href="https://doi.org/10.1126/science.1151419" target="_blank" rel="noopener">doi:10.1126/science.1151419</a></span></li>
 <li>Unger, J. (2004). Intra-urban relationship between surface geometry and urban heat island: Review and new approach. <em>Climate Research</em>, 27(3), 253&ndash;264. <span class="doi"><a href="https://doi.org/10.3354/cr027253" target="_blank" rel="noopener">doi:10.3354/cr027253</a></span></li>
-<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-X</a></span></li>
+<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-9" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-9</a></span></li>
 </ol>
 </section>
 
@@ -1010,7 +1122,7 @@ where $\sigma(x) = 1 / (1 + e^{-5(x-0.75)})$ is a sigmoid mapping centred at the
 <p>Shape grammars, introduced by Stiny and Gips (1972) in their seminal paper "Shape Grammars and the Generative Specification of Painting and Sculpture," provide a formal, rule-based framework for generating designs through the recursive application of transformation rules to initial shapes. A shape grammar is defined by a quadruple $(S, L, R, I)$, where $S$ is a finite set of shapes, $L$ is a finite set of labels (non-terminal and terminal symbols), $R$ is a finite set of shape rules of the form $\alpha \rightarrow \beta$ (read as "$\alpha$ is replaced by $\beta$"), and $I$ is the initial shape (the axiom).</p>
 
 <h4>Computer Graphics Architecture (CGA) Shape Grammars</h4>
-<p>Parish and Muller (2001) adapted shape grammars to the domain of urban procedural modelling in their influential SIGGRAPH paper, introducing CGA (Computer Graphics Architecture) shape grammars. A CGA grammar operates on volumetric shapes (building masses, block extrusions) and applies a sequence of split rules, repeat rules, and component split rules to generate detailed architectural geometry. The key innovation of CGA is the embedding of geometric operators (subdivision, extrusion, component extraction) within a grammar framework, enabling the generation of large-scale urban models from a compact set of parameters.</p>
+<p>Parish and Müller (2001) adapted shape grammars to the domain of urban procedural modelling in their influential SIGGRAPH paper, introducing CGA (Computer Graphics Architecture) shape grammars. A CGA grammar operates on volumetric shapes (building masses, block extrusions) and applies a sequence of split rules, repeat rules, and component split rules to generate detailed architectural geometry. The key innovation of CGA is the embedding of geometric operators (subdivision, extrusion, component extraction) within a grammar framework, enabling the generation of large-scale urban models from a compact set of parameters.</p>
 
 <h4>Plot-Based Urbanism</h4>
 <p>The subdivision strategy implemented in this algorithm draws on the plot-based urbanism tradition, which holds that the individual plot &mdash; a parcel of land with defined boundaries, ownership, and development rights &mdash; is the fundamental unit of urban morphology. Porta and Romice (2014) argue that plot-based development, as opposed to large-scale block development, produces cities with greater adaptability, resilience, and fine-grained urban character. Tarbatt (2012), in a RIBA-published practice guide, codified the principles of plot-based masterplanning, including the importance of frontage width, plot depth, and street interface in determining urban quality.</p>
@@ -1083,12 +1195,12 @@ where $A_i$ is the area and $P_i$ is the perimeter of sub-lot $i$. $R_i \in (0, 
 <h3 id="alg4-refs">References</h3>
 <ol class="ref-list">
 <li>Stiny, G., &amp; Gips, J. (1972). Shape grammars and the generative specification of painting and sculpture. In C. V. Freiman (Ed.), <em>Information Processing 71</em> (pp. 1460&ndash;1465). North-Holland, Amsterdam.</li>
-<li>Parish, Y. I. H., &amp; Muller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
-<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In T. Haas &amp; K. Olsson (Eds.), <em>Emergent Urbanism</em> (pp. 35&ndash;46). Routledge.</li>
-<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment</em>. RIBA Publishing, London.</li>
-<li>Akay, M. (2019). <em>A Parametric Urban Design Framework for Performance-Based Planning</em> [Unpublished MSc thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
-<li>Mueller, P., Wonka, P., Haegler, S., Ulmer, A., &amp; Van Gool, L. (2006). Procedural modeling of buildings. <em>ACM Transactions on Graphics (SIGGRAPH 2006)</em>, 25(3), 614&ndash;623. <span class="doi"><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">doi:10.1145/1141911.1141931</a></span></li>
-<li>Alexander, C., Ishikawa, S., &amp; Silverstein, M. (1977). <em>A Pattern Language: Towns, Buildings, Construction</em>. Oxford University Press, New York.</li>
+<li>Parish, Y. I. H., &amp; Müller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
+<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In C. Mäckler &amp; W. Sonne (Eds.), <em>Dortmunder Vorträge zur Stadtbaukunst: New Civic Art</em> (pp. 82&ndash;111). Niggli.</li>
+<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment &mdash; A Manual for Architects and Urban Designers</em>. RIBA Publishing, London.</li>
+<li>Akay, M. (2019). <em>Algorithmic design control for plot-based urbanism: A model proposal in Turkish spatial planning context</em> [Master's thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
+<li>Müller, P., Wonka, P., Haegler, S., Ulmer, A., &amp; Van Gool, L. (2006). Procedural modeling of buildings. <em>ACM Transactions on Graphics (SIGGRAPH 2006)</em>, 25(3), 614&ndash;623. <span class="doi"><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">doi:10.1145/1141911.1141931</a></span></li>
+<li>Alexander, C., Ishikawa, S., &amp; Silverstein, M. (with Jacobson, M., Fiksdahl-King, I., &amp; Angel, S.). (1977). <em>A Pattern Language: Towns, Buildings, Construction</em>. Oxford University Press, New York.</li>
 </ol>
 </section>
 
@@ -1174,13 +1286,13 @@ where $\mathcal{P}$ is the set of pedestrian-level sampling points across the di
 
 <h3 id="alg5-refs">References</h3>
 <ol class="ref-list">
-<li>Knowles, R. L. (2003). The solar envelope: Its meaning for energy and buildings. <em>Solar Energy</em>, 74(3), 201&ndash;211. <span class="doi"><a href="https://doi.org/10.1016/S0038-092X(03)00042-2" target="_blank" rel="noopener">doi:10.1016/S0038-092X(03)00042-2</a></span></li>
-<li>Compagnon, R. (2004). Solar and daylight availability in the urban fabric. <em>Energy and Buildings</em>, 36(4), 321&ndash;328. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.01.025" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.01.025</a></span></li>
+<li>Knowles, R. L. (2003). The solar envelope: Its meaning for energy and buildings. <em>Energy and Buildings</em>, 35(1), 15&ndash;25. <span class="doi"><a href="https://doi.org/10.1016/S0378-7788(02)00076-2" target="_blank" rel="noopener">doi:10.1016/S0378-7788(02)00076-2</a></span></li>
+<li>Compagnon, R. (2004). Solar and daylight availability in the urban fabric. <em>Energy and Buildings</em>, 36(4), 321&ndash;328. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.01.009" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.01.009</a></span></li>
 <li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
-<li>Berland, A., Shiflett, S. A., Shuster, W. D., Garmestani, A. S., Goddard, H. C., Herrmann, D. L., &amp; Hopton, M. E. (2017). The role of trees in urban stormwater management. <em>Landscape and Urban Planning</em>, 162, 167&ndash;177. <span class="doi"><a href="https://doi.org/10.1016/j.landurbplan.2017.01.005" target="_blank" rel="noopener">doi:10.1016/j.landurbplan.2017.01.005</a></span></li>
-<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). <em>The Effects of Wind on People in the Vicinity of Buildings</em>. Building Research Establishment Report. BRE, Garston, UK.</li>
-<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-X</a></span></li>
-<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Berland, A., Shiflett, S. A., Shuster, W. D., Garmestani, A. S., Goddard, H. C., Herrmann, D. L., &amp; Hopton, M. E. (2017). The role of trees in urban stormwater management. <em>Landscape and Urban Planning</em>, 162, 167&ndash;177. <span class="doi"><a href="https://doi.org/10.1016/j.landurbplan.2017.02.017" target="_blank" rel="noopener">doi:10.1016/j.landurbplan.2017.02.017</a></span></li>
+<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). The effects of wind on people in the vicinity of buildings. In <em>Proceedings of the 4th International Conference on Wind Effects on Buildings and Structures</em> (pp. 605&ndash;622). Cambridge University Press.</li>
+<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-9" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-9</a></span></li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90026-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90026-6</a></span></li>
 <li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
 </ol>
 </section>
@@ -1194,7 +1306,7 @@ where $\mathcal{P}$ is the set of pedestrian-level sampling points across the di
 <h3 id="alg6-theory">Theoretical Background</h3>
 
 <h4>The PPUD Framework</h4>
-<p>The Parametric Performance-based Urban Design (PPUD) methodology was formalised by Akay (2019) in his METU MSc thesis and subsequently published by Akay and Caliskan (2025) in <em>Urban Design International</em>. The PPUD framework integrates three traditionally separate streams of urban design theory and practice: (1) <strong>parametric urban morphology</strong>, which addresses the spatial configuration of plots, blocks, and streets; (2) <strong>performance-based design</strong>, which evaluates urban configurations against environmental, economic, and social performance criteria; and (3) <strong>sequential (incremental) development</strong>, which recognises that real cities are built incrementally over decades, with each phase responding to and modifying the conditions created by preceding phases.</p>
+<p>The Parametric Performance-based Urban Design (PPUD) methodology was formalised by Akay (2019) in his METU MSc thesis and subsequently published by Akay and Çalışkan (2025) in <em>Urban Design International</em>. The PPUD framework integrates three traditionally separate streams of urban design theory and practice: (1) <strong>parametric urban morphology</strong>, which addresses the spatial configuration of plots, blocks, and streets; (2) <strong>performance-based design</strong>, which evaluates urban configurations against environmental, economic, and social performance criteria; and (3) <strong>sequential (incremental) development</strong>, which recognises that real cities are built incrementally over decades, with each phase responding to and modifying the conditions created by preceding phases.</p>
 
 <p>Algorithm 6 operationalises the full PPUD pipeline as a three-stage sequential process, each stage corresponding to a distinct temporal phase of urban development. Critically, the pipeline includes a <strong>climate feedback loop</strong>: after each incremental step, the environmental performance of the emerging urban fabric is re-evaluated, and the genotype of buildings in subsequent steps is adaptively adjusted to compensate for adverse effects (e.g., increased shadowing, reduced ventilation) introduced by earlier development phases.</p>
 
@@ -1318,14 +1430,14 @@ where $\tau$ is the block typology, $\mathcal{P}_\tau$ is the set of plots assig
 
 <h3 id="alg6-refs">References</h3>
 <ol class="ref-list">
-<li>Akay, M., &amp; Caliskan, O. (2025). Parametric performance-based urban design: A sequential pipeline integrating morphology, microclimate, and evolutionary optimisation. <em>Urban Design International</em>, 30, 45&ndash;62. <span class="doi"><a href="https://doi.org/10.1038/s42949-025-00167-6" target="_blank" rel="noopener">doi:10.1038/s42949-025-00167-6</a></span></li>
-<li>Akay, M. (2019). <em>A Parametric Urban Design Framework for Performance-Based Planning</em> [Unpublished MSc thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
-<li>Parish, Y. I. H., &amp; Muller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
-<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In T. Haas &amp; K. Olsson (Eds.), <em>Emergent Urbanism</em> (pp. 35&ndash;46). Routledge.</li>
-<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
+<li>Akay, M., &amp; Çalışkan, O. (2025). A parametric approach to plot-based urban design: A climate-responsive algorithmic control for the generation of urban block. <em>Urban Design International</em>. Advance online publication. <span class="doi"><a href="https://doi.org/10.1057/s41289-025-00291-6" target="_blank" rel="noopener">doi:10.1057/s41289-025-00291-6</a></span></li>
+<li>Akay, M. (2019). <em>Algorithmic design control for plot-based urbanism: A model proposal in Turkish spatial planning context</em> [Master's thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
+<li>Parish, Y. I. H., &amp; Müller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
+<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In C. Mäckler &amp; W. Sonne (Eds.), <em>Dortmunder Vorträge zur Stadtbaukunst: New Civic Art</em> (pp. 82&ndash;111). Niggli.</li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90026-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90026-6</a></span></li>
 <li>Schumacher, P. (2009). Parametricism: A new global style for architecture and urban design. <em>Architectural Design</em>, 79(4), 14&ndash;23. <span class="doi"><a href="https://doi.org/10.1002/ad.912" target="_blank" rel="noopener">doi:10.1002/ad.912</a></span></li>
-<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment</em>. RIBA Publishing, London.</li>
-<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0424-7</a></span></li>
+<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment &mdash; A Manual for Architects and Urban Designers</em>. RIBA Publishing, London.</li>
+<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0513-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0513-7</a></span></li>
 </ol>
 </section>
 
@@ -1391,22 +1503,22 @@ where $\tau$ is the block typology, $\mathcal{P}_\tau$ is the set of plots assig
 <tr><td><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">10.1007/978-0-387-36797-2</a></td><td>Coello Coello et al. (2007) &mdash; MOEA textbook</td><td>1</td></tr>
 <tr><td><a href="https://doi.org/10.1137/S1052623496307510" target="_blank" rel="noopener">10.1137/S1052623496307510</a></td><td>Das &amp; Dennis (1998) &mdash; Reference points</td><td>1</td></tr>
 <tr><td><a href="https://doi.org/10.1002/9781118671603" target="_blank" rel="noopener">10.1002/9781118671603</a></td><td>Duffie &amp; Beckman (2013) &mdash; Solar engineering</td><td>2</td></tr>
-<tr><td><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">10.1007/s00484-011-0424-7</a></td><td>Jendritzky et al. (2012) &mdash; UTCI</td><td>2, 6</td></tr>
+<tr><td><a href="https://doi.org/10.1007/s00484-011-0513-7" target="_blank" rel="noopener">10.1007/s00484-011-0513-7</a></td><td>Jendritzky et al. (2012) &mdash; UTCI</td><td>2, 6</td></tr>
 <tr><td><a href="https://doi.org/10.1680/ener.2008.161.2.87" target="_blank" rel="noopener">10.1680/ener.2008.161.2.87</a></td><td>Hammond &amp; Jones (2008) &mdash; ICE database</td><td>2</td></tr>
 <tr><td><a href="https://doi.org/10.1002/qj.49710845502" target="_blank" rel="noopener">10.1002/qj.49710845502</a></td><td>Oke (1982) &mdash; Urban heat island</td><td>2</td></tr>
 <tr><td><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">10.1016/j.atmosenv.2006.08.019</a></td><td>Blocken et al. (2007) &mdash; CFD pedestrian wind</td><td>2, 5</td></tr>
-<tr><td><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">10.1016/0378-7788(88)90009-6</a></td><td>Oke (1988) &mdash; Street canyon climate</td><td>3, 5, 6</td></tr>
+<tr><td><a href="https://doi.org/10.1016/0378-7788(88)90026-6" target="_blank" rel="noopener">10.1016/0378-7788(88)90026-6</a></td><td>Oke (1988) &mdash; Street canyon climate</td><td>3, 5, 6</td></tr>
 <tr><td><a href="https://doi.org/10.1016/j.enbuild.2004.10.010" target="_blank" rel="noopener">10.1016/j.enbuild.2004.10.010</a></td><td>Ratti et al. (2005) &mdash; Urban texture energy</td><td>3</td></tr>
 <tr><td><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></td><td>Johnson &amp; Watson (1984) &mdash; SVF</td><td>2, 3</td></tr>
-<tr><td><a href="https://doi.org/10.1126/science.1150195" target="_blank" rel="noopener">10.1126/science.1150195</a></td><td>Batty (2008) &mdash; Science of cities</td><td>3</td></tr>
+<tr><td><a href="https://doi.org/10.1126/science.1151419" target="_blank" rel="noopener">10.1126/science.1151419</a></td><td>Batty (2008) &mdash; Science of cities</td><td>3</td></tr>
 <tr><td><a href="https://doi.org/10.3354/cr027253" target="_blank" rel="noopener">10.3354/cr027253</a></td><td>Unger (2004) &mdash; Urban geometry &amp; UHI</td><td>3</td></tr>
-<tr><td><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">10.1016/S1352-2310(02)00857-X</a></td><td>Vardoulakis et al. (2003) &mdash; Street canyon air quality</td><td>3, 5</td></tr>
-<tr><td><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">10.1145/383259.383292</a></td><td>Parish &amp; Muller (2001) &mdash; Procedural cities</td><td>4, 6</td></tr>
-<tr><td><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">10.1145/1141911.1141931</a></td><td>Mueller et al. (2006) &mdash; Procedural buildings</td><td>4</td></tr>
-<tr><td><a href="https://doi.org/10.1016/S0038-092X(03)00042-2" target="_blank" rel="noopener">10.1016/S0038-092X(03)00042-2</a></td><td>Knowles (2003) &mdash; Solar envelope</td><td>5</td></tr>
-<tr><td><a href="https://doi.org/10.1016/j.enbuild.2004.01.025" target="_blank" rel="noopener">10.1016/j.enbuild.2004.01.025</a></td><td>Compagnon (2004) &mdash; Solar in urban fabric</td><td>5</td></tr>
-<tr><td><a href="https://doi.org/10.1016/j.landurbplan.2017.01.005" target="_blank" rel="noopener">10.1016/j.landurbplan.2017.01.005</a></td><td>Berland et al. (2017) &mdash; Trees &amp; stormwater</td><td>5</td></tr>
-<tr><td><a href="https://doi.org/10.1038/s42949-025-00167-6" target="_blank" rel="noopener">10.1038/s42949-025-00167-6</a></td><td>Akay &amp; Caliskan (2025) &mdash; PPUD</td><td>6</td></tr>
+<tr><td><a href="https://doi.org/10.1016/S1352-2310(02)00857-9" target="_blank" rel="noopener">10.1016/S1352-2310(02)00857-9</a></td><td>Vardoulakis et al. (2003) &mdash; Street canyon air quality</td><td>3, 5</td></tr>
+<tr><td><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">10.1145/383259.383292</a></td><td>Parish &amp; Müller (2001) &mdash; Procedural cities</td><td>4, 6</td></tr>
+<tr><td><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">10.1145/1141911.1141931</a></td><td>Müller et al. (2006) &mdash; Procedural buildings</td><td>4</td></tr>
+<tr><td><a href="https://doi.org/10.1016/S0378-7788(02)00076-2" target="_blank" rel="noopener">10.1016/S0378-7788(02)00076-2</a></td><td>Knowles (2003) &mdash; Solar envelope</td><td>5</td></tr>
+<tr><td><a href="https://doi.org/10.1016/j.enbuild.2004.01.009" target="_blank" rel="noopener">10.1016/j.enbuild.2004.01.009</a></td><td>Compagnon (2004) &mdash; Solar in urban fabric</td><td>5</td></tr>
+<tr><td><a href="https://doi.org/10.1016/j.landurbplan.2017.02.017" target="_blank" rel="noopener">10.1016/j.landurbplan.2017.02.017</a></td><td>Berland et al. (2017) &mdash; Trees &amp; stormwater</td><td>5</td></tr>
+<tr><td><a href="https://doi.org/10.1057/s41289-025-00291-6" target="_blank" rel="noopener">10.1057/s41289-025-00291-6</a></td><td>Akay &amp; Çalışkan (2025) &mdash; PPUD</td><td>6</td></tr>
 <tr><td><a href="https://doi.org/10.1002/ad.912" target="_blank" rel="noopener">10.1002/ad.912</a></td><td>Schumacher (2009) &mdash; Parametricism</td><td>6 (Foundations)</td></tr>
 </tbody>
 </table>
@@ -1419,15 +1531,15 @@ where $\tau$ is the block typology, $\mathcal{P}_\tau$ is the set of plots assig
 <h2>Appendix C: Consolidated Bibliography</h2>
 
 <ol class="ref-list">
-<li>Alexander, C., Ishikawa, S., &amp; Silverstein, M. (1977). <em>A Pattern Language: Towns, Buildings, Construction</em>. Oxford University Press, New York.</li>
-<li>Akay, M. (2019). <em>A Parametric Urban Design Framework for Performance-Based Planning</em> [Unpublished MSc thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
-<li>Akay, M., &amp; Caliskan, O. (2025). Parametric performance-based urban design: A sequential pipeline integrating morphology, microclimate, and evolutionary optimisation. <em>Urban Design International</em>, 30, 45&ndash;62. <span class="doi"><a href="https://doi.org/10.1038/s42949-025-00167-6" target="_blank" rel="noopener">doi:10.1038/s42949-025-00167-6</a></span></li>
-<li>Batty, M. (2008). The size, scale, and shape of cities. <em>Science</em>, 319(5864), 769&ndash;771. <span class="doi"><a href="https://doi.org/10.1126/science.1150195" target="_blank" rel="noopener">doi:10.1126/science.1150195</a></span></li>
-<li>Berland, A., Shiflett, S. A., Shuster, W. D., Garmestani, A. S., Goddard, H. C., Herrmann, D. L., &amp; Hopton, M. E. (2017). The role of trees in urban stormwater management. <em>Landscape and Urban Planning</em>, 162, 167&ndash;177. <span class="doi"><a href="https://doi.org/10.1016/j.landurbplan.2017.01.005" target="_blank" rel="noopener">doi:10.1016/j.landurbplan.2017.01.005</a></span></li>
+<li>Alexander, C., Ishikawa, S., &amp; Silverstein, M. (with Jacobson, M., Fiksdahl-King, I., &amp; Angel, S.). (1977). <em>A Pattern Language: Towns, Buildings, Construction</em>. Oxford University Press, New York.</li>
+<li>Akay, M. (2019). <em>Algorithmic design control for plot-based urbanism: A model proposal in Turkish spatial planning context</em> [Master's thesis]. Middle East Technical University (METU), Ankara, Turkey.</li>
+<li>Akay, M., &amp; Çalışkan, O. (2025). A parametric approach to plot-based urban design: A climate-responsive algorithmic control for the generation of urban block. <em>Urban Design International</em>. Advance online publication. <span class="doi"><a href="https://doi.org/10.1057/s41289-025-00291-6" target="_blank" rel="noopener">doi:10.1057/s41289-025-00291-6</a></span></li>
+<li>Batty, M. (2008). The size, scale, and shape of cities. <em>Science</em>, 319(5864), 769&ndash;771. <span class="doi"><a href="https://doi.org/10.1126/science.1151419" target="_blank" rel="noopener">doi:10.1126/science.1151419</a></span></li>
+<li>Berland, A., Shiflett, S. A., Shuster, W. D., Garmestani, A. S., Goddard, H. C., Herrmann, D. L., &amp; Hopton, M. E. (2017). The role of trees in urban stormwater management. <em>Landscape and Urban Planning</em>, 162, 167&ndash;177. <span class="doi"><a href="https://doi.org/10.1016/j.landurbplan.2017.02.017" target="_blank" rel="noopener">doi:10.1016/j.landurbplan.2017.02.017</a></span></li>
 <li>Blocken, B., Stathopoulos, T., &amp; Carmeliet, J. (2007). CFD simulation of the atmospheric boundary layer: Wall function problems. <em>Atmospheric Environment</em>, 41(2), 238&ndash;252. <span class="doi"><a href="https://doi.org/10.1016/j.atmosenv.2006.08.019" target="_blank" rel="noopener">doi:10.1016/j.atmosenv.2006.08.019</a></span></li>
 <li>CEN. (2011). <em>EN 15978:2011 &mdash; Sustainability of construction works &mdash; Assessment of environmental performance of buildings &mdash; Calculation method</em>. European Committee for Standardization, Brussels.</li>
-<li>Coello Coello, C. A., Van Veldhuizen, D. A., &amp; Lamont, G. B. (2007). <em>Evolutionary Algorithms for Solving Multi-Objective Problems</em> (2nd ed.). Springer. <span class="doi"><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">doi:10.1007/978-0-387-36797-2</a></span></li>
-<li>Compagnon, R. (2004). Solar and daylight availability in the urban fabric. <em>Energy and Buildings</em>, 36(4), 321&ndash;328. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.01.025" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.01.025</a></span></li>
+<li>Coello Coello, C. A., Lamont, G. B., &amp; Van Veldhuizen, D. A. (2007). <em>Evolutionary Algorithms for Solving Multi-Objective Problems</em> (2nd ed.). Springer. <span class="doi"><a href="https://doi.org/10.1007/978-0-387-36797-2" target="_blank" rel="noopener">doi:10.1007/978-0-387-36797-2</a></span></li>
+<li>Compagnon, R. (2004). Solar and daylight availability in the urban fabric. <em>Energy and Buildings</em>, 36(4), 321&ndash;328. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.01.009" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.01.009</a></span></li>
 <li>Das, I., &amp; Dennis, J. E. (1998). Normal-boundary intersection: A new method for generating the Pareto surface in nonlinear multicriteria optimization problems. <em>SIAM Journal on Optimization</em>, 8(3), 631&ndash;657. <span class="doi"><a href="https://doi.org/10.1137/S1052623496307510" target="_blank" rel="noopener">doi:10.1137/S1052623496307510</a></span></li>
 <li>Deb, K. (2000). An efficient constraint handling method for genetic algorithms. <em>Computer Methods in Applied Mechanics and Engineering</em>, 186(2&ndash;4), 311&ndash;338. <span class="doi"><a href="https://doi.org/10.1016/S0045-7825(99)00389-8" target="_blank" rel="noopener">doi:10.1016/S0045-7825(99)00389-8</a></span></li>
 <li>Deb, K., &amp; Jain, H. (2014). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, Part I: Solving problems with box constraints. <em>IEEE Transactions on Evolutionary Computation</em>, 18(4), 577&ndash;601. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2013.2281535" target="_blank" rel="noopener">doi:10.1109/TEVC.2013.2281535</a></span></li>
@@ -1435,21 +1547,21 @@ where $\tau$ is the block typology, $\mathcal{P}_\tau$ is the set of plots assig
 <li>Duffie, J. A., &amp; Beckman, W. A. (2013). <em>Solar Engineering of Thermal Processes</em> (4th ed.). Wiley. <span class="doi"><a href="https://doi.org/10.1002/9781118671603" target="_blank" rel="noopener">doi:10.1002/9781118671603</a></span></li>
 <li>Hammond, G. P., &amp; Jones, C. I. (2008). Embodied energy and carbon in construction materials. <em>Proceedings of the Institution of Civil Engineers &ndash; Energy</em>, 161(2), 87&ndash;98. <span class="doi"><a href="https://doi.org/10.1680/ener.2008.161.2.87" target="_blank" rel="noopener">doi:10.1680/ener.2008.161.2.87</a></span></li>
 <li>Jacobs, A. B. (1993). <em>Great Streets</em>. MIT Press, Cambridge, MA.</li>
-<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0424-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0424-7</a></span></li>
+<li>Jendritzky, G., de Dear, R., &amp; Havenith, G. (2012). UTCI&mdash;Why another thermal index? <em>International Journal of Biometeorology</em>, 56(3), 421&ndash;428. <span class="doi"><a href="https://doi.org/10.1007/s00484-011-0513-7" target="_blank" rel="noopener">doi:10.1007/s00484-011-0513-7</a></span></li>
 <li>Johnson, G. T., &amp; Watson, I. D. (1984). The determination of view-factors in urban canyons. <em>Journal of Climate and Applied Meteorology</em>, 23(2), 329&ndash;335. <span class="doi"><a href="https://doi.org/10.1175/1520-0450(1984)023<0329:TDOVFI>2.0.CO;2" target="_blank" rel="noopener">doi:10.1175/1520-0450(1984)023&lt;0329:TDOVFI&gt;2.0.CO;2</a></span></li>
-<li>Knowles, R. L. (2003). The solar envelope: Its meaning for energy and buildings. <em>Solar Energy</em>, 74(3), 201&ndash;211. <span class="doi"><a href="https://doi.org/10.1016/S0038-092X(03)00042-2" target="_blank" rel="noopener">doi:10.1016/S0038-092X(03)00042-2</a></span></li>
-<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). <em>The Effects of Wind on People in the Vicinity of Buildings</em>. Building Research Establishment Report. BRE, Garston, UK.</li>
-<li>Mueller, P., Wonka, P., Haegler, S., Ulmer, A., &amp; Van Gool, L. (2006). Procedural modeling of buildings. <em>ACM Transactions on Graphics (SIGGRAPH 2006)</em>, 25(3), 614&ndash;623. <span class="doi"><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">doi:10.1145/1141911.1141931</a></span></li>
+<li>Knowles, R. L. (2003). The solar envelope: Its meaning for energy and buildings. <em>Energy and Buildings</em>, 35(1), 15&ndash;25. <span class="doi"><a href="https://doi.org/10.1016/S0378-7788(02)00076-2" target="_blank" rel="noopener">doi:10.1016/S0378-7788(02)00076-2</a></span></li>
+<li>Lawson, T. V., &amp; Penwarden, A. D. (1975). The effects of wind on people in the vicinity of buildings. In <em>Proceedings of the 4th International Conference on Wind Effects on Buildings and Structures</em> (pp. 605&ndash;622). Cambridge University Press.</li>
+<li>Müller, P., Wonka, P., Haegler, S., Ulmer, A., &amp; Van Gool, L. (2006). Procedural modeling of buildings. <em>ACM Transactions on Graphics (SIGGRAPH 2006)</em>, 25(3), 614&ndash;623. <span class="doi"><a href="https://doi.org/10.1145/1141911.1141931" target="_blank" rel="noopener">doi:10.1145/1141911.1141931</a></span></li>
 <li>Oke, T. R. (1982). The energetic basis of the urban heat island. <em>Quarterly Journal of the Royal Meteorological Society</em>, 108(455), 1&ndash;24. <span class="doi"><a href="https://doi.org/10.1002/qj.49710845502" target="_blank" rel="noopener">doi:10.1002/qj.49710845502</a></span></li>
-<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90009-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90009-6</a></span></li>
-<li>Parish, Y. I. H., &amp; Muller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
-<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In T. Haas &amp; K. Olsson (Eds.), <em>Emergent Urbanism</em> (pp. 35&ndash;46). Routledge.</li>
+<li>Oke, T. R. (1988). Street design and urban canopy layer climate. <em>Energy and Buildings</em>, 11(1&ndash;3), 103&ndash;113. <span class="doi"><a href="https://doi.org/10.1016/0378-7788(88)90026-6" target="_blank" rel="noopener">doi:10.1016/0378-7788(88)90026-6</a></span></li>
+<li>Parish, Y. I. H., &amp; Müller, P. (2001). Procedural modeling of cities. <em>Proceedings of SIGGRAPH 2001</em>, 301&ndash;308. ACM. <span class="doi"><a href="https://doi.org/10.1145/383259.383292" target="_blank" rel="noopener">doi:10.1145/383259.383292</a></span></li>
+<li>Porta, S., &amp; Romice, O. (2014). Plot-based urbanism: Towards time-consciousness in place-making. In C. Mäckler &amp; W. Sonne (Eds.), <em>Dortmunder Vorträge zur Stadtbaukunst: New Civic Art</em> (pp. 82&ndash;111). Niggli.</li>
 <li>Ratti, C., Baker, N., &amp; Steemers, K. (2005). Energy consumption and urban texture. <em>Energy and Buildings</em>, 37(7), 762&ndash;776. <span class="doi"><a href="https://doi.org/10.1016/j.enbuild.2004.10.010" target="_blank" rel="noopener">doi:10.1016/j.enbuild.2004.10.010</a></span></li>
 <li>Schumacher, P. (2009). Parametricism: A new global style for architecture and urban design. <em>Architectural Design</em>, 79(4), 14&ndash;23. <span class="doi"><a href="https://doi.org/10.1002/ad.912" target="_blank" rel="noopener">doi:10.1002/ad.912</a></span></li>
 <li>Stiny, G., &amp; Gips, J. (1972). Shape grammars and the generative specification of painting and sculpture. In C. V. Freiman (Ed.), <em>Information Processing 71</em> (pp. 1460&ndash;1465). North-Holland, Amsterdam.</li>
-<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment</em>. RIBA Publishing, London.</li>
+<li>Tarbatt, J. (2012). <em>The Plot: Designing Diversity in the Built Environment &mdash; A Manual for Architects and Urban Designers</em>. RIBA Publishing, London.</li>
 <li>Unger, J. (2004). Intra-urban relationship between surface geometry and urban heat island: Review and new approach. <em>Climate Research</em>, 27(3), 253&ndash;264. <span class="doi"><a href="https://doi.org/10.3354/cr027253" target="_blank" rel="noopener">doi:10.3354/cr027253</a></span></li>
-<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-X" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-X</a></span></li>
+<li>Vardoulakis, S., Fisher, B. E. A., Pericleous, K., &amp; Gonzalez-Flesca, N. (2003). Modelling air quality in street canyons: A review. <em>Atmospheric Environment</em>, 37(2), 155&ndash;182. <span class="doi"><a href="https://doi.org/10.1016/S1352-2310(02)00857-9" target="_blank" rel="noopener">doi:10.1016/S1352-2310(02)00857-9</a></span></li>
 <li>Zhang, Q., &amp; Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm based on decomposition. <em>IEEE Transactions on Evolutionary Computation</em>, 11(6), 712&ndash;731. <span class="doi"><a href="https://doi.org/10.1109/TEVC.2007.892759" target="_blank" rel="noopener">doi:10.1109/TEVC.2007.892759</a></span></li>
 <li>Zitzler, E., Laumanns, M., &amp; Thiele, L. (2001). SPEA2: Improving the strength Pareto evolutionary algorithm. <em>TIK Report</em> 103, ETH Zurich. <span class="doi"><a href="https://doi.org/10.3929/ethz-a-004284029" target="_blank" rel="noopener">doi:10.3929/ethz-a-004284029</a></span></li>
 </ol>
@@ -1614,6 +1726,154 @@ function filterContent() {
 @media (max-width: 768px) { #print-pdf-btn { bottom: 12px; right: 12px; padding: 8px 14px; font-size: 12px; } }
 </style>
 <button id="print-pdf-btn" onclick="window.print()" title="Save as PDF / Print">🖨️ Save as PDF</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* NSGA-II Pareto-front convergence simulation (self-contained) */
+(function () {
+  var c = document.getElementById('paretoCanvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var W = c.width, H = c.height;
+  var PL = 54, PR = 18, PT = 18, PB = 42;
+  var N = 46, MAXGEN = 20, gen = 0, playing = false, timer = null;
+  var pts = [];
+  function frontY(x) { return 0.55 / (x + 0.30) + 0.05; }
+  function px(x) { return PL + x * (W - PL - PR); }
+  function py(y) { return H - PB - y * (H - PT - PB); }
+  function reset() {
+    gen = 0; pts = [];
+    for (var i = 0; i < N; i++) {
+      var x = Math.random();
+      var y = Math.random() < 0.30 ? frontY(x) + (Math.random() - 0.5) * 0.04
+                                   : frontY(x) + 0.08 + Math.random() * 0.30;
+      pts.push({ x: x, y: Math.min(y, 0.95) });
+    }
+    draw();
+  }
+  function step() {
+    if (gen >= MAXGEN) { playing = false; if (timer) clearInterval(timer); timer = null;
+      document.getElementById('paretoPlay').textContent = '▶ Play'; return; }
+    for (var i = 0; i < N; i++) {
+      var target = frontY(pts[i].x) + (Math.random() - 0.5) * 0.05;
+      if (Math.random() < 0.75) pts[i].y += (target - pts[i].y) * 0.30;
+      pts[i].x += (Math.random() - 0.5) * 0.06;
+      pts[i].x = Math.max(0.02, Math.min(0.98, pts[i].x));
+      pts[i].y = Math.max(0.02, Math.min(0.95, pts[i].y));
+    }
+    gen++;
+    draw();
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+    for (var g = 0; g <= 1.0001; g += 0.2) {
+      ctx.beginPath(); ctx.moveTo(px(g), PT); ctx.lineTo(px(g), H - PB); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PL, py(g)); ctx.lineTo(W - PR, py(g)); ctx.stroke();
+    }
+    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2.5; ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    for (var x = 0.02; x <= 0.98; x += 0.02) {
+      var X = px(x), Y = py(frontY(x));
+      if (x === 0.02) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+    for (var i = 0; i < N; i++) {
+      var d = pts[i].y - frontY(pts[i].x);
+      var col = d <= 0.02 ? 'rgba(16,185,129,0.95)' : (d < 0.12 ? 'rgba(245,158,11,0.85)' : 'rgba(148,163,184,0.7)');
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(px(pts[i].x), py(pts[i].y), 4, 0, 2 * Math.PI); ctx.fill();
+    }
+    ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Objective A — GFA (maximise) →', PL + (W - PL - PR) / 2, H - 10);
+    ctx.save(); ctx.translate(14, PT + (H - PT - PB) / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.fillText('Objective B — Carbon (minimise) →', 0, 0); ctx.restore();
+    var el = document.getElementById('paretoGen'); if (el) el.textContent = 'Generation ' + gen + ' / ' + MAXGEN;
+  }
+  var playBtn = document.getElementById('paretoPlay');
+  if (playBtn) playBtn.addEventListener('click', function () {
+    if (playing) { playing = false; if (timer) clearInterval(timer); timer = null; this.textContent = '▶ Play'; }
+    else { playing = true; this.textContent = '⏸ Pause'; timer = setInterval(step, 160); }
+  });
+  var resetBtn = document.getElementById('paretoReset');
+  if (resetBtn) resetBtn.addEventListener('click', function () {
+    if (timer) clearInterval(timer); timer = null; playing = false;
+    if (playBtn) playBtn.textContent = '▶ Play'; reset();
+  });
+  reset();
+})();
+</script>
+<script>
+/* Block-typology 3D viewer (Three.js r128, graceful fallback) */
+(function () {
+  var canvas = document.getElementById('typoCanvas');
+  if (!canvas) return;
+  if (!window.THREE) { var fb = document.getElementById('typoFallback'); if (fb) fb.style.display = 'block'; return; }
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(canvas.clientWidth || 680, canvas.clientHeight || 380);
+  renderer.setClearColor(0xf4f5f7, 1);
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(42, (canvas.clientWidth || 680) / (canvas.clientHeight || 380), 0.1, 200);
+  camera.position.set(0, 11, 24);
+  var group = new THREE.Group(); scene.add(group);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  var dl = new THREE.DirectionalLight(0xffffff, 0.75); dl.position.set(15, 22, 12); scene.add(dl);
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(44, 44), new THREE.MeshLambertMaterial({ color: 0xe2e8f0 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; scene.add(ground);
+  var grid = new THREE.GridHelper(44, 22, 0xcbd5e1, 0xe2e8f0); grid.position.y = 0.01; scene.add(grid);
+
+  function box(x, z, w, d, h, color) {
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: color }));
+    m.position.set(x, h / 2, z); return m;
+  }
+  var C = [0x2563eb, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xef4444, 0x0ea5e9];
+  function tower() { var g = new THREE.Group(); g.add(box(0, 0, 2.2, 2.2, 11, C[0])); return g; }
+  function slab() { var g = new THREE.Group(); g.add(box(0, 0, 4.4, 1.6, 5.5, C[1])); return g; }
+  function courtyard() {
+    var g = new THREE.Group(), h = 4.4, t = 0.6, half = 2;
+    g.add(box(0, -half, 4, t, h, C[2])); g.add(box(0, half, 4, t, h, C[2]));
+    g.add(box(-half, 0, t, 4, h, C[2])); g.add(box(half, 0, t, 4, h, C[2]));
+    return g;
+  }
+  function lshape() {
+    var g = new THREE.Group(), h = 4.4, t = 0.7;
+    g.add(box(0.85, 0, 0.7, 3.6, h, C[3])); g.add(box(-0.85, -0.85, 3.6, 0.7, h, C[3]));
+    return g;
+  }
+  function ushape() {
+    var g = new THREE.Group(), h = 5.5, t = 0.7;
+    g.add(box(-1.3, 1.2, 0.7, 0.7, h, C[4])); g.add(box(1.3, 1.2, 0.7, 0.7, h, C[4])); g.add(box(0, -1.2, 3.4, 0.7, h, C[4]));
+    return g;
+  }
+  function stepped() {
+    var g = new THREE.Group();
+    var base = box(0, 0, 3, 3, 4, C[5]);
+    var top = box(0, 0, 2, 2, 4, C[5]); top.position.y = 6;
+    g.add(base); g.add(top);
+    return g;
+  }
+  var builds = [tower, slab, courtyard, lshape, ushape, stepped];
+  var pos = [[-7, 6], [0, 6], [7, 6], [-7, -6], [0, -6], [7, -6]];
+  builds.forEach(function (fn, i) { var b = fn(); b.position.set(pos[i][0], 0, pos[i][1]); group.add(b); });
+
+  var rotY = 0.6, targetRotY = 0.6, dist = 24, targetDist = 24, dragging = false, lx = 0, ly = 0;
+  canvas.addEventListener('mousedown', function (e) { dragging = true; lx = e.clientX; ly = e.clientY; });
+  window.addEventListener('mousemove', function (e) { if (!dragging) return; targetRotY += (e.clientX - lx) * 0.008; lx = e.clientX; ly = e.clientY; });
+  window.addEventListener('mouseup', function () { dragging = false; });
+  canvas.addEventListener('wheel', function (e) { e.preventDefault(); targetDist = Math.max(14, Math.min(42, targetDist + e.deltaY * 0.03)); }, { passive: false });
+
+  function render() {
+    requestAnimationFrame(render);
+    rotY += (targetRotY - rotY) * 0.08; dist += (targetDist - dist) * 0.08;
+    group.rotation.y = rotY;
+    camera.position.set(Math.sin(rotY) * dist, 11, Math.cos(rotY) * dist);
+    camera.lookAt(0, 2, 0);
+    renderer.render(scene, camera);
+  }
+  render();
+})();
+</script>
 
 </body>
 </html>
