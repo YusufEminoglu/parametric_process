@@ -770,6 +770,43 @@ body {
 <section id="alg1" class="search-section">
 <h2>Algorithm 1: Parametric Multi-Objective Evolutionary Optimization</h2>
 
+<div class="sim-box" style="margin:8px 0 20px;">
+<svg viewBox="0 0 340 150" style="width:100%;height:auto;" role="img" aria-label="NSGA-II iterative loop diagram">
+  <g font-family="sans-serif">
+    <rect x="6" y="40" width="58" height="46" rx="5" fill="#eef2ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="35" y="58" text-anchor="middle" font-size="8.5" fill="#1e3a8a">Initialise</text>
+    <text x="35" y="70" text-anchor="middle" font-size="8.5" fill="#1e3a8a">population</text>
+    <text x="35" y="80" text-anchor="middle" font-size="7.5" fill="#64748b">P(0)</text>
+    <rect x="76" y="40" width="58" height="46" rx="5" fill="#eef2ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="105" y="56" text-anchor="middle" font-size="7.5" fill="#1e3a8a">Fast non-</text>
+    <text x="105" y="66" text-anchor="middle" font-size="7.5" fill="#1e3a8a">dominated</text>
+    <text x="105" y="76" text-anchor="middle" font-size="7.5" fill="#1e3a8a">sorting</text>
+    <rect x="146" y="40" width="58" height="46" rx="5" fill="#eef2ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="175" y="56" text-anchor="middle" font-size="7.5" fill="#1e3a8a">Crowding</text>
+    <text x="175" y="66" text-anchor="middle" font-size="7.5" fill="#1e3a8a">distance</text>
+    <text x="175" y="78" text-anchor="middle" font-size="7.5" fill="#64748b">diversity</text>
+    <rect x="216" y="40" width="58" height="46" rx="5" fill="#eef2ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="245" y="56" text-anchor="middle" font-size="7.5" fill="#1e3a8a">Tournament</text>
+    <text x="245" y="66" text-anchor="middle" font-size="7.5" fill="#1e3a8a">selection</text>
+    <text x="245" y="78" text-anchor="middle" font-size="7.5" fill="#64748b">rank + CD</text>
+    <rect x="286" y="40" width="50" height="46" rx="5" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
+    <text x="311" y="56" text-anchor="middle" font-size="7" fill="#065f46">SBX</text>
+    <text x="311" y="66" text-anchor="middle" font-size="7" fill="#065f46">crossover</text>
+    <text x="311" y="76" text-anchor="middle" font-size="7" fill="#065f46">+ mutation</text>
+    <g stroke="#2563eb" stroke-width="1.5">
+      <line x1="64" y1="63" x2="74" y2="63"/><path d="M74 63 l-5 -4 v8 z" fill="#2563eb" stroke="none"/>
+      <line x1="134" y1="63" x2="144" y2="63"/><path d="M144 63 l-5 -4 v8 z" fill="#2563eb" stroke="none"/>
+      <line x1="204" y1="63" x2="214" y2="63"/><path d="M214 63 l-5 -4 v8 z" fill="#2563eb" stroke="none"/>
+      <line x1="274" y1="63" x2="284" y2="63"/><path d="M284 63 l-5 -4 v8 z" fill="#2563eb" stroke="none"/>
+    </g>
+    <path d="M311 86 L311 120 L35 120 L35 90" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <path d="M35 90 l-5 5 l5 5" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="173" y="136" text-anchor="middle" font-size="8" fill="#dc2626">next generation — repeat until convergence</text>
+  </g>
+</svg>
+<p class="sim-caption" style="text-align:center;margin:8px 0 0;"><strong>Algorithm 1.</strong> The NSGA-II loop: each generation sorts the population into Pareto ranks, preserves spread via crowding distance, selects by tournament, then applies SBX crossover and polynomial mutation.</p>
+</div>
+
 <h3 id="alg1-theory">Theoretical Background</h3>
 
 <p>This algorithm implements four canonical multi-objective evolutionary algorithms (MOEAs) for the simultaneous optimisation of five urban performance objectives. Each solver belongs to a distinct family of multi-objective optimisation techniques, and the choice among them depends on the characteristics of the problem instance (number of objectives, desired population diversity, convergence speed requirements).</p>
@@ -895,6 +932,50 @@ where $p_1, p_2$ are parent values, and $\beta$ is a random variable drawn from 
 <section id="alg2" class="search-section">
 <h2>Algorithm 2: Urban Physics &amp; Microclimate Multi-Domain Evaluator</h2>
 
+<div class="sim-box" style="margin:8px 0 20px;">
+<svg viewBox="0 0 340 160" style="width:100%;height:auto;" role="img" aria-label="Multi-domain microclimate evaluator diagram">
+  <g font-family="sans-serif">
+    <rect x="120" y="55" width="90" height="85" fill="#334155"/>
+    <rect x="132" y="68" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="152" y="68" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="172" y="68" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="132" y="86" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="152" y="86" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="172" y="86" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="132" y="104" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="152" y="104" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="172" y="104" width="14" height="12" fill="#e2e8f0"/>
+    <rect x="60" y="140" width="230" height="3" fill="#94a3b8"/>
+    <text x="165" y="150" text-anchor="middle" font-size="8" fill="#334155">building</text>
+
+    <circle cx="275" cy="28" r="12" fill="#f59e0b"/>
+    <g stroke="#f59e0b" stroke-width="1.4">
+      <line x1="275" y1="8" x2="275" y2="2"/><line x1="275" y1="48" x2="275" y2="54"/>
+      <line x1="255" y1="28" x2="249" y2="28"/><line x1="295" y1="28" x2="301" y2="28"/>
+      <line x1="261" y1="14" x2="257" y2="10"/><line x1="289" y1="14" x2="293" y2="10"/>
+      <line x1="261" y1="42" x2="257" y2="46"/><line x1="289" y1="42" x2="293" y2="46"/>
+    </g>
+    <line x1="262" y1="40" x2="212" y2="62" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="283" y="72" font-size="8" fill="#b45309">solar / PV</text>
+
+    <g stroke="#0ea5e9" stroke-width="1.5">
+      <line x1="8" y1="90" x2="40" y2="90"/><path d="M40 90 l-6 -4 v8 z" fill="#0ea5e9" stroke="none"/>
+      <line x1="8" y1="78" x2="34" y2="78"/><path d="M34 78 l-6 -4 v8 z" fill="#0ea5e9" stroke="none"/>
+      <line x1="8" y1="102" x2="34" y2="102"/><path d="M34 102 l-6 -4 v8 z" fill="#0ea5e9" stroke="none"/>
+    </g>
+    <text x="8" y="122" font-size="8" fill="#0369a1">wind / comfort</text>
+
+    <text x="220" y="140" font-size="7.5" fill="#065f46">thermal UTCI</text>
+    <text x="285" y="150" font-size="7.5" fill="#065f46">carbon LCA</text>
+    <text x="14" y="150" font-size="7.5" fill="#065f46">runoff</text>
+    <line x1="210" y1="136" x2="188" y2="120" stroke="#10b981" stroke-width="1"/>
+    <line x1="285" y1="146" x2="245" y2="132" stroke="#10b981" stroke-width="1"/>
+    <line x1="30" y1="146" x2="70" y2="140" stroke="#10b981" stroke-width="1"/>
+  </g>
+</svg>
+<p class="sim-caption" style="text-align:center;margin:8px 0 0;"><strong>Algorithm 2.</strong> A building footprint evaluated across solar, wind, thermal comfort, carbon, and runoff domains — each metric is written back to the layer as a comparable attribute.</p>
+</div>
+
 <h3 id="alg2-theory">Theoretical Background</h3>
 
 <p>This algorithm provides a multi-domain physics evaluation of building configurations across seven environmental performance dimensions. Rather than relying on computationally expensive CFD or building energy simulation, it employs validated reduced-order models that capture the first-order physical behaviour of urban environments at a fraction of the computational cost, enabling their use within iterative optimisation loops.</p>
@@ -1014,6 +1095,31 @@ where the numerator is the present value of revenues and the denominator is the 
 <section id="alg3" class="search-section">
 <h2>Algorithm 3: Urban Morphology &amp; Canyon Analytics</h2>
 
+<div class="sim-box" style="margin:8px 0 20px;">
+<svg viewBox="0 0 340 160" style="width:100%;height:auto;" role="img" aria-label="Street canyon height-to-width and sky-view-factor diagram">
+  <g font-family="sans-serif">
+    <rect x="50" y="45" width="70" height="95" fill="#334155"/>
+    <rect x="225" y="40" width="70" height="100" fill="#334155"/>
+    <rect x="20" y="140" width="300" height="3" fill="#94a3b8"/>
+    <line x1="30" y1="45" x2="30" y2="140" stroke="#2563eb" stroke-width="1.3"/>
+    <path d="M30 45 l-4 6 m4 -6 l4 6" fill="none" stroke="#2563eb" stroke-width="1.3"/>
+    <path d="M30 140 l-4 -6 m4 6 l4 -6" fill="none" stroke="#2563eb" stroke-width="1.3"/>
+    <text x="22" y="92" font-size="8" fill="#2563eb" text-anchor="middle" transform="rotate(-90 22 92)">H</text>
+    <line x1="122" y1="150" x2="223" y2="150" stroke="#2563eb" stroke-width="1.3"/>
+    <path d="M122 150 l4 -4 m-4 4 l4 4" fill="none" stroke="#2563eb" stroke-width="1.3"/>
+    <path d="M223 150 l-4 -4 m4 4 l-4 4" fill="none" stroke="#2563eb" stroke-width="1.3"/>
+    <text x="172" y="158" font-size="8" fill="#2563eb" text-anchor="middle">W</text>
+    <path d="M120 140 L50 45" fill="none" stroke="#8b5cf6" stroke-width="1.3" stroke-dasharray="4 3"/>
+    <path d="M120 140 L225 40" fill="none" stroke="#8b5cf6" stroke-width="1.3" stroke-dasharray="4 3"/>
+    <path d="M120 140 A 78 78 0 0 1 172 62" fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.5"/>
+    <circle cx="120" cy="140" r="3" fill="#8b5cf6"/>
+    <text x="165" y="22" font-size="8" fill="#6d28d9" text-anchor="middle">Sky View Factor (SVF)</text>
+    <text x="86" y="106" font-size="8" fill="#475569">canyon</text>
+  </g>
+</svg>
+<p class="sim-caption" style="text-align:center;margin:8px 0 0;"><strong>Algorithm 3.</strong> The canyon height-to-width ratio (H/W) and the Sky View Factor (the visible-sky angle from a ground point) are the two geometry descriptors that drive the morphology metrics.</p>
+</div>
+
 <h3 id="alg3-theory">Theoretical Background</h3>
 
 <h4>Street Canyon H/W Ratio</h4>
@@ -1116,6 +1222,42 @@ where $\sigma(x) = 1 / (1 + e^{-5(x-0.75)})$ is a sigmoid mapping centred at the
 <section id="alg4" class="search-section">
 <h2>Algorithm 4: Procedural Shape Grammar Block Subdivider</h2>
 
+<div class="sim-box" style="margin:8px 0 20px;">
+<svg viewBox="0 0 340 120" style="width:100%;height:auto;" role="img" aria-label="Shape grammar subdivision strategies diagram">
+  <g font-family="sans-serif">
+    <g>
+      <rect x="8" y="6" width="76" height="70" fill="#eef2ff" stroke="#2563eb" stroke-width="1.4"/>
+      <line x1="28" y1="6" x2="28" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <line x1="48" y1="6" x2="48" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <line x1="68" y1="6" x2="68" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <text x="46" y="92" text-anchor="middle" font-size="8" fill="#1e3a8a">frontage</text>
+    </g>
+    <g>
+      <rect x="92" y="6" width="76" height="70" fill="#eef2ff" stroke="#2563eb" stroke-width="1.4"/>
+      <line x1="130" y1="6" x2="130" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <line x1="92" y1="40" x2="168" y2="40" stroke="#2563eb" stroke-width="1"/>
+      <line x1="168" y1="6" x2="168" y2="40" stroke="#2563eb" stroke-width="1"/>
+      <text x="130" y="92" text-anchor="middle" font-size="8" fill="#1e3a8a">grid</text>
+    </g>
+    <g>
+      <rect x="176" y="6" width="76" height="70" fill="#eef2ff" stroke="#2563eb" stroke-width="1.4"/>
+      <rect x="190" y="20" width="48" height="42" fill="#fff" stroke="#2563eb" stroke-width="1"/>
+      <line x1="214" y1="6" x2="214" y2="20" stroke="#2563eb" stroke-width="1"/>
+      <line x1="214" y1="62" x2="214" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <text x="214" y="92" text-anchor="middle" font-size="8" fill="#1e3a8a">perimeter</text>
+    </g>
+    <g>
+      <rect x="260" y="6" width="72" height="70" fill="#eef2ff" stroke="#2563eb" stroke-width="1.4"/>
+      <line x1="260" y1="6" x2="332" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <line x1="285" y1="6" x2="260" y2="50" stroke="#2563eb" stroke-width="1"/>
+      <line x1="332" y1="40" x2="285" y2="76" stroke="#2563eb" stroke-width="1"/>
+      <text x="296" y="92" text-anchor="middle" font-size="8" fill="#1e3a8a">organic</text>
+    </g>
+  </g>
+</svg>
+<p class="sim-caption" style="text-align:center;margin:8px 0 0;"><strong>Algorithm 4.</strong> Four subdivision strategies — frontage, grid, perimeter, and organic — each applies a different shape-grammar rule set to the parent block.</p>
+</div>
+
 <h3 id="alg4-theory">Theoretical Background</h3>
 
 <h4>Shape Grammar Theory</h4>
@@ -1210,6 +1352,36 @@ where $A_i$ is the area and $P_i$ is the perimeter of sub-lot $i$. $R_i \in (0, 
 <section id="alg5" class="search-section">
 <h2>Algorithm 5: Multi-Parcel District Environmental Coupling</h2>
 
+<div class="sim-box" style="margin:8px 0 20px;">
+<svg viewBox="0 0 340 150" style="width:100%;height:auto;" role="img" aria-label="District inter-building coupling diagram">
+  <g font-family="sans-serif">
+    <circle cx="42" cy="26" r="10" fill="#f59e0b"/>
+    <g stroke="#f59e0b" stroke-width="1.2">
+      <line x1="42" y1="9" x2="42" y2="4"/><line x1="42" y1="43" x2="42" y2="48"/>
+      <line x1="25" y1="26" x2="20" y2="26"/><line x1="59" y1="26" x2="64" y2="26"/>
+    </g>
+    <rect x="50" y="45" width="60" height="85" fill="#334155"/>
+    <rect x="225" y="40" width="60" height="90" fill="#334155"/>
+    <rect x="20" y="130" width="300" height="3" fill="#94a3b8"/>
+    <polygon points="110,45 185,130 155,130 110,78" fill="#cbd5e1" opacity="0.65"/>
+    <g stroke="#0ea5e9" stroke-width="1.5">
+      <line x1="155" y1="90" x2="185" y2="90"/><path d="M185 90 l-6 -4 v8 z" fill="#0ea5e9" stroke="none"/>
+      <line x1="155" y1="104" x2="180" y2="104"/><path d="M180 104 l-6 -4 v8 z" fill="#0ea5e9" stroke="none"/>
+      <line x1="155" y1="118" x2="180" y2="118"/><path d="M180 118 l-6 -4 v8 z" fill="#0ea5e9" stroke="none"/>
+    </g>
+    <g stroke="#0ea5e9" stroke-width="1.3">
+      <path d="M90 132 L90 142" fill="none"/><path d="M90 142 l-3 4 l3 4" fill="none"/>
+      <path d="M255 132 L255 142" fill="none"/><path d="M255 142 l-3 4 l3 4" fill="none"/>
+    </g>
+    <text x="150" y="75" font-size="7.5" fill="#475569">shadow</text>
+    <text x="168" y="146" font-size="8" fill="#0369a1" text-anchor="middle">wind</text>
+    <text x="65" y="148" font-size="8" fill="#0369a1">runoff</text>
+    <text x="265" y="148" font-size="8" fill="#0369a1">runoff</text>
+  </g>
+</svg>
+<p class="sim-caption" style="text-align:center;margin:8px 0 0;"><strong>Algorithm 5.</strong> At the district scale, each building casts shadow on its neighbours, constricts the wind corridor between them, and contributes to cumulative runoff — coupling that a single-parcel model cannot capture.</p>
+</div>
+
 <h3 id="alg5-theory">Theoretical Background</h3>
 
 <p>While Algorithms 1&ndash;3 evaluate the environmental performance of individual buildings and parcels, many physical phenomena in the urban environment are inherently <strong>emergent</strong> &mdash; they arise from the interactions among multiple buildings and do not manifest when each building is considered in isolation. Algorithm 5 captures three such inter-building coupling effects at the district scale.</p>
@@ -1302,6 +1474,40 @@ where $\mathcal{P}$ is the set of pedestrian-level sampling points across the di
      ================================================================ -->
 <section id="alg6" class="search-section">
 <h2>Algorithm 6: PPUD Sequential Pipeline</h2>
+
+<div class="sim-box" style="margin:8px 0 20px;">
+<svg viewBox="0 0 340 150" style="width:100%;height:auto;" role="img" aria-label="PPUD sequential pipeline diagram">
+  <g font-family="sans-serif">
+    <rect x="8" y="34" width="96" height="72" rx="5" fill="#eef2ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="56" y="52" text-anchor="middle" font-size="8" fill="#64748b">block</text>
+    <text x="56" y="68" text-anchor="middle" font-size="8.5" fill="#1e3a8a">1 · Plot Layout</text>
+    <text x="56" y="82" text-anchor="middle" font-size="7.5" fill="#64748b">plots</text>
+    <line x1="56" y1="56" x2="56" y2="62" stroke="#2563eb" stroke-width="1"/>
+
+    <rect x="122" y="34" width="96" height="72" rx="5" fill="#eef2ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="170" y="52" text-anchor="middle" font-size="8" fill="#64748b">plots</text>
+    <text x="170" y="68" text-anchor="middle" font-size="8.5" fill="#1e3a8a">2 · Building Config</text>
+    <text x="170" y="82" text-anchor="middle" font-size="7.5" fill="#64748b">massing</text>
+    <line x1="170" y1="56" x2="170" y2="62" stroke="#2563eb" stroke-width="1"/>
+
+    <rect x="236" y="34" width="96" height="72" rx="5" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
+    <text x="284" y="52" text-anchor="middle" font-size="8" fill="#065f46">massing</text>
+    <text x="284" y="68" text-anchor="middle" font-size="8.5" fill="#065f46">3 · Incremental Fabric</text>
+    <text x="284" y="82" text-anchor="middle" font-size="7.5" fill="#065f46">grown fabric</text>
+    <line x1="284" y1="56" x2="284" y2="62" stroke="#10b981" stroke-width="1"/>
+
+    <g stroke="#2563eb" stroke-width="1.5">
+      <line x1="104" y1="70" x2="118" y2="70"/><path d="M118 70 l-5 -4 v8 z" fill="#2563eb" stroke="none"/>
+      <line x1="218" y1="70" x2="232" y2="70"/><path d="M232 70 l-5 -4 v8 z" fill="#2563eb" stroke="none"/>
+    </g>
+
+    <path d="M284 106 L284 126 L56 126 L56 110" fill="none" stroke="#dc2626" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <path d="M56 110 l-5 5 l5 5" fill="none" stroke="#dc2626" stroke-width="1.4"/>
+    <text x="170" y="142" text-anchor="middle" font-size="8" fill="#dc2626">climate feedback refines the next phase</text>
+  </g>
+</svg>
+<p class="sim-caption" style="text-align:center;margin:8px 0 0;"><strong>Algorithm 6.</strong> The PPUD pipeline chains the three stages — plot layout, building configuration, and incremental fabric — with a climate-feedback loop that refines each subsequent phase.</p>
+</div>
 
 <h3 id="alg6-theory">Theoretical Background</h3>
 
