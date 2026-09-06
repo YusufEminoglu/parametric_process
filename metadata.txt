@@ -7,11 +7,11 @@ version=2.0.10
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
-about=Parametric Process is a standalone generative urban design and multi-objective evolutionary optimization lab for QGIS. Build reusable Grasshopper-style visual rule workflows, select urban block/parcel layers, run NSGA-II evolutionary simulations across density, daylight, carbon, and urban quality metrics, analyze Pareto trade-offs, preview 3D phenotypes in real time, and sync reviewed solutions directly into QGIS vector layers. Online User Manual & Documentation: https://geophilo.pages.dev/parametric_process/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geospacephilo/parametric_process)!
+about=Parametric Process is a standalone generative urban design and multi-objective evolutionary optimization lab for QGIS. Build reusable Grasshopper-style visual rule workflows, select urban block/parcel layers, run NSGA-II evolutionary simulations across density, daylight, carbon, and urban quality metrics, analyze Pareto trade-offs, preview 3D phenotypes in real time, and sync reviewed solutions directly into QGIS vector layers. Online User Manual & Documentation: https://geophilo.com/parametric_process/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geospacephilo/parametric_process)!
 
 tracker=https://gitlab.com/geospacephilo/parametric_process/-/issues
 repository=https://gitlab.com/geospacephilo/parametric_process
-homepage=https://geophilo.pages.dev/parametric_process/
+homepage=https://geophilo.com/parametric_process/
 
 category=Vector
 tags=parametric,generative,urban,design,3d,evolutionary,optimization,nsga2,pareto,planning,massing,workflow,graph,grasshopper
