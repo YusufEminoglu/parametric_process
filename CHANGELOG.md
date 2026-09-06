@@ -1,5 +1,9 @@
 # Changelog - Parametric Process
 
+## [2.0.10] - 2026-09-06
+
+- Migrate repository and documentation URLs to GitLab and Cloudflare Pages.
+
 ## [2.0.9] - 2026-08-07
 
 - Added online user manual link (https://yusufeminoglu.github.io/parametric_process/) and GitHub repository star call-to-action.
