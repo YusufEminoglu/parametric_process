@@ -186,10 +186,10 @@ class WorkflowHttpTests(unittest.TestCase):
     def test_web_entry_assets_are_served(self):
         expected = {
             "/index.html": ("text/html", b"workflow_modeler.css"),
-            "/app.js?v=2.0.6": ("application/javascript", b"./workflow_modeler.js"),
-            "/style.css?v=2.0.6": ("text/css", b".loading-screen"),
+            "/app.js?v=3.0.0": ("application/javascript", b"./workflow_modeler.js"),
+            "/style.css?v=3.0.0": ("text/css", b".loading-screen"),
             "/workflow_modeler.js": ("application/javascript", b"class WorkflowModeler"),
-            "/workflow_modeler.css?v=2.0.6": ("text/css", b".workflow-modeler-view"),
+            "/workflow_modeler.css?v=3.0.0": ("text/css", b".workflow-modeler-view"),
         }
         for path, (content_type, marker) in expected.items():
             with self.subTest(path=path):
@@ -198,6 +198,34 @@ class WorkflowHttpTests(unittest.TestCase):
                     self.assertEqual(response.status, 200)
                     self.assertIn(content_type, response.headers.get("Content-Type", ""))
                     self.assertIn(marker, body)
+
+
+    def test_academic_schema_study_and_robustness_endpoints(self):
+        with urllib.request.urlopen(f"{self.base_url}/api/academic/schema", timeout=5) as response:
+            schema = json.load(response)
+        self.assertEqual(schema["product_language"], "en")
+        self.assertEqual(schema["study_schema"], "parametric-process-study/3.0")
+
+        request = urllib.request.Request(
+            f"{self.base_url}/api/academic/study",
+            data=json.dumps({"name": "Research site", "crs": "EPSG:32635", "seeds": [7, 11, 13]}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            study = json.load(response)["study"]
+        self.assertEqual(len(study["study_id"]), 16)
+
+        request = urllib.request.Request(
+            f"{self.base_url}/api/academic/robustness",
+            data=json.dumps({
+                "metrics": ["gfa"],
+                "runs": [
+                    {"feasible": True, "metrics": {"gfa": 100}},
+                    {"feasible": False, "metrics": {"gfa": 120}},
+                ],
+            }).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            robustness = json.load(response)["robustness"]
+        self.assertEqual(robustness["feasible_run_rate"], 0.5)
 
 
 if __name__ == "__main__":

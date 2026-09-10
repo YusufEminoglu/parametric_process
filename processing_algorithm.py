@@ -16,6 +16,7 @@ from qgis.core import (
     QgsPointXY,
     QgsProcessing,
     QgsProcessingAlgorithm,
+    QgsProcessingException,
     QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource,
@@ -146,12 +147,14 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'POP_SIZE', 'Population Size', QgsProcessingParameterNumber.Type.Integer, 30
+                'POP_SIZE', 'Population Size', QgsProcessingParameterNumber.Type.Integer, 30,
+                minValue=2, maxValue=500
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'GENERATIONS', 'Generations', QgsProcessingParameterNumber.Type.Integer, 15
+                'GENERATIONS', 'Generations', QgsProcessingParameterNumber.Type.Integer, 15,
+                minValue=1, maxValue=500
             )
         )
         self.addParameter(
@@ -161,17 +164,26 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Type.Double, 0.45
+                'MAX_BCR', 'Max BCR (ratio)', QgsProcessingParameterNumber.Type.Double, 0.45,
+                minValue=0.01, maxValue=1.0
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Type.Double, 2.5
+                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Type.Double, 2.5,
+                minValue=0.01
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_HEIGHT', 'Max Height', QgsProcessingParameterNumber.Type.Double, 18.0
+                'MAX_HEIGHT', 'Max Height (m)', QgsProcessingParameterNumber.Type.Double, 18.0,
+                minValue=0.1
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'SEED', 'Random seed (reproducibility)',
+                QgsProcessingParameterNumber.Type.Integer, 42, minValue=0, maxValue=2147483646
             )
         )
         self.addParameter(
@@ -186,6 +198,15 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         max_bcr = self.parameterAsDouble(parameters, 'MAX_BCR', context)
         max_far = self.parameterAsDouble(parameters, 'MAX_FAR', context)
         max_height = self.parameterAsDouble(parameters, 'MAX_HEIGHT', context)
+        seed = self.parameterAsInt(parameters, 'SEED', context)
+
+        if source is None:
+            raise QgsProcessingException('A polygon input layer is required')
+        if source.sourceCrs().isGeographic():
+            raise QgsProcessingException(
+                'Input CRS is geographic; area would be measured in degrees. '
+                'Reproject parcels to a suitable local projected CRS in metres.'
+            )
 
         features = list(source.getFeatures()) if source else []
         total_area = sum(f.geometry().area() for f in features) if features else 1200.0
@@ -228,6 +249,10 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
         fields.append(QgsField('pv_kwh', QVariant.Double))
         fields.append(QgsField('pareto_rank', QVariant.Int))
         fields.append(QgsField('wallacei_id', QVariant.String))
+        fields.append(QgsField('source_fid', QVariant.LongLong))
+        fields.append(QgsField('seed', QVariant.Int))
+        fields.append(QgsField('run_id', QVariant.String))
+        fields.append(QgsField('model_ver', QVariant.String))
 
         (sink, dest_id) = self.parameterAsSink(
             parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
@@ -262,9 +287,11 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
                 max_bcr=max_bcr,
                 max_far=max_far,
                 max_height=max_height,
+                seed=seed + f_idx,
             )
 
             pareto_sols = res.get('pareto_solutions', [])
+            manifest = res.get('run_manifest', {})
 
             for idx, sol in enumerate(pareto_sols):
                 if feedback.isCanceled():
@@ -312,6 +339,10 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
                 new_f.setAttribute('pv_kwh', float(m.get('pv_yield_mwh', 0) * 1000.0))
                 new_f.setAttribute('pareto_rank', int(sol.get('rank', 1)))
                 new_f.setAttribute('wallacei_id', str(sol.get('id', f'sol_{idx+1}')))
+                new_f.setAttribute('source_fid', int(feature.id()))
+                new_f.setAttribute('seed', int(seed + f_idx))
+                new_f.setAttribute('run_id', str(manifest.get('run_id', '')))
+                new_f.setAttribute('model_ver', str(manifest.get('model_version', '')))
 
                 sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
 
@@ -390,8 +421,8 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
             "<p><b>Stormwater runoff & financials.</b> Runoff (m<sup>3</sup>) uses the "
             "Rational Method Q = CIA with roof-form coefficients (flat 0.85, hipped 0.92) "
             "and 80% imperviousness assumption. ROI (%) = (revenue - construction cost) / "
-            "construction cost * 100 with 82% net-sellable-area efficiency. NPV computed "
-            "over 20 years at 6% discount rate; IRR approximated from cash-flow ratio.</p>"
+            "construction cost * 100 with 82% net-sellable-area efficiency. NPV and IRR "
+            "use explicit discounted cash flows. These are scenario outputs, not forecasts.</p>"
 
             "<p><b>Input requirements.</b> Polygon layer with attributes: floors, setback, "
             "typology, usage, roof_style. Ideal input is the output of Algorithm 1 "

@@ -47,8 +47,8 @@
             if (loading) loading.style.display = 'none';
         };
     </script>
-    <link rel="stylesheet" href="style.css?v=2.0.6">
-    <link rel="stylesheet" href="workflow_modeler.css?v=2.0.6">
+    <link rel="stylesheet" href="style.css?v=3.0.0">
+    <link rel="stylesheet" href="workflow_modeler.css?v=3.0.0">
     <script type="importmap">
         {
             "imports": {
@@ -68,7 +68,7 @@
         <div class="spinner"></div>
         <h2>Parametric Process Studio</h2>
         <p id="loading-text">Loading layer features from QGIS...</p>
-        <div class="version-badge">v2.0.6 - QGIS 4 Ready</div>
+        <div class="version-badge">v3.0.0 - Academic Study Platform</div>
     </div>
 
     <!-- 3D WebGL Viewport Canvas -->
@@ -79,13 +79,14 @@
         <div class="nav-brand">
             <span class="brand-icon">🏢</span>
             <span class="brand-title">Parametric Process Studio</span>
-            <span class="brand-badge">v2.0.6</span>
+            <span class="brand-badge">v3.0.0</span>
         </div>
 
         <div class="mode-tabs-container">
             <button id="tab-btn-parametric" class="mode-tab active" type="button">🎛️ Parametric Cockpit</button>
             <button id="tab-btn-wallacei" class="mode-tab" type="button">🧬 Evolutionary Studio</button>
             <button id="tab-btn-workflow" class="mode-tab" type="button">Workflow Modeler</button>
+            <button id="tab-btn-academic" class="mode-tab" type="button">Academic Study</button>
         </div>
 
         <div class="nav-actions">
@@ -95,6 +96,41 @@
             <button id="btn-guide-top" class="nav-btn" type="button">❓ Guide</button>
         </div>
     </header>
+
+    <section id="academic-study-view" class="academic-study-view hidden" aria-label="Academic urban design study">
+        <div class="academic-study-shell">
+            <header class="academic-study-header">
+                <div><p class="workflow-eyebrow">Reproducible block and neighborhood research</p><h2>Academic Urban Design Study</h2></div>
+                <span id="academic-schema-badge">Loading schema...</span>
+            </header>
+            <div class="academic-stage-grid">
+                <section class="academic-card">
+                    <h3>1. Study definition</h3>
+                    <label>Study name<input id="academic-name" value="Urban Design Alternatives"></label>
+                    <label>Projected CRS<input id="academic-crs" value="EPSG:32635"></label>
+                    <label>Seeds<input id="academic-seeds" value="42,31415,271828"></label>
+                    <button id="academic-create" class="workflow-run-button" type="button">Create validated study</button>
+                </section>
+                <section class="academic-card">
+                    <h3>2. Scenario assumptions</h3>
+                    <label>Maximum BCR<input id="academic-bcr" type="number" min="0.01" max="1" step="0.01" value="0.45"></label>
+                    <label>Maximum FAR<input id="academic-far" type="number" min="0.01" step="0.1" value="2.5"></label>
+                    <label>Maximum height (m)<input id="academic-height" type="number" min="0.1" step="0.5" value="18"></label>
+                    <label>Design rainfall (mm)<input id="academic-rainfall" type="number" min="0" step="1" value="50"></label>
+                </section>
+                <section class="academic-card">
+                    <h3>3. Research protocol</h3>
+                    <ol><li>Validate projected site geometry and zoning sources.</li><li>Run at least three declared seeds.</li><li>Inspect the full Pareto set and robustness summary.</li><li>Validate shortlisted designs with an appropriate domain model.</li></ol>
+                    <p class="academic-scope">Built-in environmental metrics are screening-level proxies, not calibrated CFD, energy, or certified LCA results.</p>
+                </section>
+                <section class="academic-card academic-result-card">
+                    <h3>Study manifest</h3>
+                    <pre id="academic-result">Create a study to generate its auditable manifest.</pre>
+                    <button id="academic-export" type="button" disabled>Export study JSON</button>
+                </section>
+            </div>
+        </div>
+    </section>
 
     <section id="workflow-modeler-view" class="workflow-modeler-view hidden" aria-label="Visual workflow modeler">
         <aside class="workflow-palette workflow-panel">
@@ -918,6 +954,6 @@
     <!-- Measurement Overlay -->
     <div id="measurement-overlay-container" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 15; width: 100%; height: 100%; overflow: hidden;"></div>
 
-    <script type="module" src="app.js?v=2.0.6"></script>
+    <script type="module" src="app.js?v=3.0.0"></script>
 </body>
 </html>

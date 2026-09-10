@@ -13,8 +13,11 @@ from qgis.PyQt.QtWidgets import (
     QComboBox,
     QDockWidget,
     QFormLayout,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QMessageBox,
     QPushButton,
     QSpinBox,
     QTreeWidget,
@@ -143,6 +146,24 @@ class ParametricProcessStudioDock(QDockWidget):
         self.status_label.setStyleSheet("color: #0f766e; font-style: italic; padding: 2px 4px;")
         layout.addWidget(self.status_label)
 
+        engine_group = QWidget()
+        engine_form = QFormLayout(engine_group)
+        engine_form.setContentsMargins(4, 6, 4, 6)
+        self.engine_path = QLineEdit()
+        self.engine_path.setReadOnly(True)
+        self.engine_path.setPlaceholderText("No approved external engine")
+        engine_buttons = QHBoxLayout()
+        self.btn_engine_browse = QPushButton("Select engine...")
+        self.btn_engine_approve = QPushButton("Approve executable")
+        self.btn_engine_approve.setEnabled(False)
+        self.btn_engine_browse.clicked.connect(self._select_external_engine)
+        self.btn_engine_approve.clicked.connect(self._approve_external_engine)
+        engine_buttons.addWidget(self.btn_engine_browse)
+        engine_buttons.addWidget(self.btn_engine_approve)
+        engine_form.addRow(QLabel("External validation engine:"), self.engine_path)
+        engine_form.addRow(engine_buttons)
+        layout.addWidget(engine_group)
+
         # ---- Algorithm Browser (PlanX-style tree) ----
         algo_label = QLabel("<b>Processing Tools</b> — double-click to run")
         algo_label.setStyleSheet("padding-top: 8px; color: #475569;")
@@ -156,6 +177,41 @@ class ParametricProcessStudioDock(QDockWidget):
         body.setStyleSheet(_DOCK_QSS)
         self.setWidget(body)
         self._populate_tree()
+
+    def _select_external_engine(self):
+        path, _selected_filter = QFileDialog.getOpenFileName(
+            self, "Select external research engine executable", "",
+            "Executables (*.exe *.bat *.cmd);;All files (*)")
+        if path:
+            self.engine_path.setText(os.path.realpath(path))
+            from .external_adapter import ExternalEngineAdapter
+            approved = ExternalEngineAdapter().is_approved(path)
+            self.btn_engine_approve.setEnabled(not approved)
+            self.status_label.setText(
+                "External engine already approved." if approved else
+                "Executable selected; approval required.")
+
+    def _approve_external_engine(self):
+        path = self.engine_path.text().strip()
+        if not path:
+            return
+        answer = QMessageBox.question(
+            self, "Approve external research engine",
+            "This executable can process study data outside Parametric Process. "
+            "Approve its current SHA-256 fingerprint?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            from .external_adapter import ExternalEngineAdapter
+            fingerprint = ExternalEngineAdapter().approve(path)
+            self.btn_engine_approve.setEnabled(False)
+            self.status_label.setText(f"External engine approved: {fingerprint[:12]}")
+        except Exception as exc:
+            self.iface.messageBar().pushCritical(
+                "Parametric Process", f"Engine approval failed: {exc}")
 
     # ------------------------------------------------------------------ #
     # Algorithm tree

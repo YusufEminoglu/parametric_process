@@ -26,9 +26,11 @@ class ParametricProcessProvider(QgsProcessingProvider):
             MultiParcelDistrictCouplingAlgorithm,
             PpudPipelineAlgorithm,
         )
+        from .academic_processing import AcademicUrbanDesignStudyAlgorithm
         self.addAlgorithm(ParametricOptimizationAlgorithm())
         self.addAlgorithm(UrbanPhysicsEvaluatorAlgorithm())
         self.addAlgorithm(UrbanMorphologyAnalyticsAlgorithm())
         self.addAlgorithm(ProceduralShapeGrammarAlgorithm())
         self.addAlgorithm(MultiParcelDistrictCouplingAlgorithm())
         self.addAlgorithm(PpudPipelineAlgorithm())
+        self.addAlgorithm(AcademicUrbanDesignStudyAlgorithm())

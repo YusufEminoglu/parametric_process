@@ -1,5 +1,13 @@
 # Changelog - Parametric Process
 
+## [3.0.0] - 2026-09-10
+
+- Add the integrated Academic Urban Design Study algorithm with parcel-specific zoning field mapping, projected-CRS validation, multi-seed optimization, parcel-conforming building massing, residual open-space geometry, rejected-design records, and robustness summaries.
+- Add a versioned study schema, deterministic study/run identifiers, scenario comparison, consensus attainment, rank stability, Morris elementary-effects sensitivity, and auditable CSV output.
+- Add neighborhood accessibility, blue-green infrastructure, discounted cash-flow, exact IRR, payback, and separate embodied/operational lifecycle-carbon indicators.
+- Add an approved SHA-256 allowlisted JSON-in/JSON-out external research engine adapter with direct QProcess execution, strict response validation, timeouts, and output limits.
+- Add an English Academic Study web workspace, English runtime analytical guide, academic API endpoints, model-scope disclosures, and expanded QGIS 3.44/QGIS 4.2 regression coverage.
+
 ## [2.0.10] - 2026-09-06
 
 - Migrate repository and documentation URLs to GitLab and Cloudflare Pages.

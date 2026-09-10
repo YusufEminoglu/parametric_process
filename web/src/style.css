@@ -195,6 +195,21 @@ body, html {
     background: rgba(255, 255, 255, 0.08);
 }
 
+.academic-study-view { position: fixed; inset: 72px 0 0; z-index: 30; overflow: auto; background: #f4f1ea; color: #1f2937; }
+.academic-study-shell { max-width: 1280px; margin: 0 auto; padding: 28px; }
+.academic-study-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+.academic-study-header h2 { margin: 4px 0; font-size: 28px; }
+#academic-schema-badge { padding: 7px 12px; border-radius: 999px; background: #dff4ef; color: #0f766e; font-weight: 700; }
+.academic-stage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.academic-card { background: #fff; border: 1px solid #d6d3cd; border-radius: 14px; padding: 20px; box-shadow: 0 8px 24px rgba(42, 37, 30, .08); }
+.academic-card h3 { margin: 0 0 14px; color: #115e59; }
+.academic-card label { display: grid; gap: 5px; margin: 10px 0; font-size: 12px; font-weight: 700; }
+.academic-card input { border: 1px solid #b8b5ae; border-radius: 7px; padding: 9px; font: inherit; }
+.academic-card button { border: 0; border-radius: 7px; padding: 10px 14px; cursor: pointer; }
+.academic-scope { border-left: 4px solid #d97706; padding: 10px; background: #fff7ed; }
+.academic-result-card pre { min-height: 180px; max-height: 320px; overflow: auto; white-space: pre-wrap; background: #17211f; color: #d1fae5; border-radius: 8px; padding: 12px; }
+@media (max-width: 900px) { .academic-stage-grid { grid-template-columns: 1fr; } }
+
 /* Top Bar Stats & Actions */
 .nav-actions {
     display: flex;

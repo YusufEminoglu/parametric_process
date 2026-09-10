@@ -7231,9 +7231,11 @@ const CLUSTER_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '
 const tabBtnParametric = document.getElementById('tab-btn-parametric');
 const tabBtnWallacei = document.getElementById('tab-btn-wallacei');
 const tabBtnWorkflow = document.getElementById('tab-btn-workflow');
+const tabBtnAcademic = document.getElementById('tab-btn-academic');
 const parametricView = document.getElementById('parametric-cockpit-view');
 const wallaceiView = document.getElementById('wallacei-studio-view');
 const workflowView = document.getElementById('workflow-modeler-view');
+const academicView = document.getElementById('academic-study-view');
 const editorControls = document.getElementById('editor-controls');
 
 // DOM Elements - Wallacei Params
@@ -7330,15 +7332,18 @@ function setStudioMode(mode) {
     const isParametric = mode === 'parametric';
     const isWallacei = mode === 'wallacei';
     const isWorkflow = mode === 'workflow';
+    const isAcademic = mode === 'academic';
     tabBtnParametric?.classList.toggle('active', isParametric);
     tabBtnWallacei?.classList.toggle('active', isWallacei);
     tabBtnWorkflow?.classList.toggle('active', isWorkflow);
+    tabBtnAcademic?.classList.toggle('active', isAcademic);
     parametricView?.classList.toggle('hidden', !isParametric);
     wallaceiView?.classList.toggle('hidden', !isWallacei);
     workflowView?.classList.toggle('hidden', !isWorkflow);
+    academicView?.classList.toggle('hidden', !isAcademic);
     editorControls?.classList.toggle('hidden', !isParametric);
     controlDockEl?.classList.toggle('wide-dock', isWallacei);
-    document.body.classList.toggle('workflow-mode', isWorkflow);
+    document.body.classList.toggle('workflow-mode', isWorkflow || isAcademic);
     if (isWorkflow) {
         window.location.hash = 'workflow';
     } else if (window.location.hash === '#workflow') {
@@ -7348,6 +7353,7 @@ function setStudioMode(mode) {
 tabBtnParametric?.addEventListener('click', () => setStudioMode('parametric'));
 tabBtnWallacei?.addEventListener('click', () => setStudioMode('wallacei'));
 tabBtnWorkflow?.addEventListener('click', () => setStudioMode('workflow'));
+tabBtnAcademic?.addEventListener('click', () => setStudioMode('academic'));
 
 // --- Slider Input Handlers ---
 if (inWallaceiPop) inWallaceiPop.addEventListener('input', e => { if (valWallaceiPop) valWallaceiPop.textContent = e.target.value; });
@@ -9116,4 +9122,113 @@ const workflowModeler = new WorkflowModeler({
     onSync: syncWorkflowUpdates,
 });
 workflowModeler.init();
+
+// Academic Study workspace: versioned, strict-JSON study manifests.
+let activeAcademicStudy = null;
+const academicResult = document.getElementById('academic-result');
+const academicExport = document.getElementById('academic-export');
+
+async function loadAcademicSchema() {
+    try {
+        const response = await fetch('/api/academic/schema');
+        const data = await response.json();
+        if (!response.ok || data.status !== 'ok') throw new Error(data.message || 'Schema request failed');
+        const badge = document.getElementById('academic-schema-badge');
+        if (badge) badge.textContent = data.study_schema;
+    } catch (error) {
+        const badge = document.getElementById('academic-schema-badge');
+        if (badge) badge.textContent = 'Schema unavailable';
+    }
+}
+
+document.getElementById('academic-create')?.addEventListener('click', async () => {
+    const seeds = document.getElementById('academic-seeds').value.split(',').map(value => Number(value.trim()));
+    const payload = {
+        name: document.getElementById('academic-name').value,
+        crs: document.getElementById('academic-crs').value,
+        seeds,
+        assumptions: {
+            max_bcr: Number(document.getElementById('academic-bcr').value),
+            max_far: Number(document.getElementById('academic-far').value),
+            max_height_m: Number(document.getElementById('academic-height').value),
+            rainfall_event_mm: Number(document.getElementById('academic-rainfall').value),
+        },
+    };
+    try {
+        const response = await fetch('/api/academic/study', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'ok') throw new Error(data.message || 'Study validation failed');
+        activeAcademicStudy = data.study;
+        academicResult.textContent = JSON.stringify(activeAcademicStudy, null, 2);
+        academicExport.disabled = false;
+        showToast('Academic study validated and assigned ID ' + activeAcademicStudy.study_id, 'success');
+    } catch (error) {
+        activeAcademicStudy = null;
+        academicExport.disabled = true;
+        academicResult.textContent = 'Validation error: ' + error.message;
+        showToast('Academic study validation failed: ' + error.message, 'error');
+    }
+});
+
+academicExport?.addEventListener('click', () => {
+    if (!activeAcademicStudy) return;
+    const blob = new Blob([JSON.stringify(activeAcademicStudy, null, 2)], {type: 'application/json'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'parametric-process-study-' + activeAcademicStudy.study_id + '.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+});
+
+loadAcademicSchema();
+
+function installEnglishAnalyticalGuide() {
+    const panel = document.getElementById('guide-panel');
+    if (!panel) return;
+    panel.innerHTML = `
+        <div class="guide-header"><div><p class="guide-kicker">Research and decision handbook</p>
+        <h2 id="guide-title">Parametric Process: End-to-End Analytical Guide</h2>
+        <p class="guide-subtitle">Define, generate, evaluate, compare, validate, and document urban design alternatives.</p></div>
+        <button id="btn-guide-close" class="guide-close" type="button" aria-label="Close guide">Close</button></div>
+        <div class="guide-tools"><label for="guide-search">Search guide</label>
+        <input id="guide-search" type="search" placeholder="Try Pareto, FAR, carbon, convergence, QGIS..." autocomplete="off">
+        <span id="guide-search-status" aria-live="polite">10 sections</span></div>
+        <div class="guide-layout"><nav id="guide-nav" class="guide-nav" aria-label="Guide sections">
+        ${[['start','Decision model'],['data','Data preparation'],['workspaces','Workspaces'],['workflow','Workflow Modeler'],['nodes','Node reference'],['optimizer','Optimization'],['results','Reading results'],['decision','Decision governance'],['improve','Improvement'],['output','Outputs and audit']].map((item, index) => `<button type="button" data-guide-target="guide-${item[0]}">${index + 1}. ${item[1]}</button>`).join('')}
+        </nav><article id="guide-content" class="guide-content">
+        <section id="guide-start" class="guide-section guide-searchable"><h3>Start with a decision question</h3><p>The software generates trade-off alternatives, not one objectively correct plan. Predeclare legal constraints, performance objectives, evidence requirements, and the number of alternatives to shortlist.</p><p class="guide-warning"><strong>Limit:</strong> outputs support early design screening. They do not replace statutory, structural, fire, transport, geotechnical, calibrated CFD, energy, or certified LCA studies.</p></section>
+        <section id="guide-data" class="guide-section guide-searchable"><h3>Prepare defensible QGIS data</h3><p>Use valid polygons in a suitable projected CRS measured in metres. Preserve stable parcel IDs, document layer sources, and test a selected pilot area before scaling to a neighborhood.</p></section>
+        <section id="guide-workspaces" class="guide-section guide-searchable"><h3>Choose the right workspace</h3><p>Use Parametric Cockpit for direct massing review, Evolutionary Studio for Pareto search, Workflow Modeler for reusable rule graphs, and Academic Study for versioned assumptions and reproducibility manifests.</p></section>
+        <section id="guide-workflow" class="guide-section guide-searchable"><h3>Build an auditable workflow</h3><p>Begin with QGIS Site Layer, add a zoning envelope, generation or analysis nodes, a solver, optional TOPSIS ranking, selection, and QGIS output. A run log records the validated topological execution order.</p></section>
+        <section id="guide-nodes" class="guide-section guide-searchable"><h3>Node semantics</h3><p>Site nodes read geometry; rule nodes constrain it; generators create candidates; analysis nodes calculate indicators; solvers search alternatives; decision nodes express preferences; output nodes prepare reviewed updates. Keep constraints separate from objectives.</p></section>
+        <section id="guide-optimizer" class="guide-section guide-searchable"><h3>Calibrate the optimization</h3><p>Use NSGA-II for a robust general baseline, SPEA-2 for archive density, and NSGA-III or MOEA/D for many objectives. Start with a small diagnostic run, then compare at least three fixed seeds with identical bounds and budgets.</p></section>
+        <section id="guide-results" class="guide-section guide-searchable"><h3>Read evidence together</h3><p>Check feasibility first, then Pareto position, parallel-coordinate thresholds, convergence, cluster diversity, raw values, and spatial geometry. A composite score never replaces its component metrics.</p></section>
+        <section id="guide-decision" class="guide-section guide-searchable"><h3>Govern the decision</h3><p>Shortlist alternatives from distinct solution families. Publish TOPSIS weights and rank sensitivity. Prefer alternatives that remain feasible and competitive across seeds and plausible scenario assumptions.</p></section>
+        <section id="guide-improve" class="guide-section guide-searchable"><h3>Diagnose before tuning</h3><p>No feasible designs usually indicate incompatible zoning or bounds. Identical designs suggest premature convergence. Unstable rankings require more seeds or evidence. Change one major assumption at a time during calibration.</p></section>
+        <section id="guide-output" class="guide-section guide-searchable"><h3>Preserve the audit trail</h3><p>Archive the study JSON, CRS, input snapshot, field mapping, model version, seeds, objective directions, constraints, Pareto set, robustness summary, selection rationale, and validation status with exported spatial layers.</p></section>
+        </article></div>`;
+}
+
+installEnglishAnalyticalGuide();
+document.getElementById('btn-guide-close')?.addEventListener('click', () => {
+    document.getElementById('guide-panel')?.classList.add('hidden');
+    document.getElementById('guide-scrim')?.classList.add('hidden');
+});
+document.getElementById('guide-nav')?.addEventListener('click', event => {
+    const target = event.target.closest('[data-guide-target]');
+    if (target) document.getElementById(target.dataset.guideTarget)?.scrollIntoView({behavior: 'smooth'});
+});
+document.getElementById('guide-search')?.addEventListener('input', event => {
+    const query = event.target.value.trim().toLowerCase();
+    let visible = 0;
+    document.querySelectorAll('.guide-searchable').forEach(section => {
+        const matches = !query || section.textContent.toLowerCase().includes(query);
+        section.classList.toggle('hidden', !matches);
+        if (matches) visible += 1;
+    });
+    const status = document.getElementById('guide-search-status');
+    if (status) status.textContent = `${visible} section${visible === 1 ? '' : 's'}`;
+});
 

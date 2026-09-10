@@ -5,14 +5,14 @@
 </p>
 
 <p align="center">
-  <strong>Parametric Urban Massing, Microclimate Physics & WallaceiX-Grade Evolutionary Studio for QGIS</strong>
+  <strong>Parametric Urban Massing and Reproducible Multi-Objective Research for QGIS</strong>
 </p>
 
 <p align="center">
   <a href="https://qgis.org"><img src="https://img.shields.io/badge/QGIS-3.28%2B%20%7C%204.x-589632.svg?logo=qgis&logoColor=white" alt="QGIS"></a>
 [![Documentation](https://img.shields.io/badge/📖_Reference_Manual-13a0a0)](https://geophilo.com/parametric_process/)
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg" alt="License"></a>
-  <a href="metadata.txt"><img src="https://img.shields.io/badge/Version-2.0.6-0f766e.svg?style=flat" alt="Version"></a>
+  <a href="metadata.txt"><img src="https://img.shields.io/badge/Version-3.0.0-0f766e.svg?style=flat" alt="Version"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-Pure%20Stdlib-3776AB.svg?logo=python&logoColor=white" alt="Python"></a>
   <a href="https://gitlab.com/geospacephilo/parametric_process"><img src="https://img.shields.io/badge/Engine-NSGA--II%20%2F%20SPEA--2%20%2F%20NSGA--III%20%2F%20MOEA--D-10b981.svg" alt="Engine"></a>
 </p>
@@ -26,7 +26,7 @@
 
 ## 🌟 Overview
 
-**Parametric Process** is an elite, standalone generative urban design and multi-objective evolutionary optimization lab natively built for **QGIS**. It brings **Grasshopper WallaceiX-grade evolutionary analytics**, 3-Stage Sequential PPUD Pipeline (Plot Layout → Building Configuration → Incremental Fabric), interactive 3D WebGL cockpit simulation, multi-domain microclimate physics, and bidirectional GIS vector layer synchronization directly into your spatial planning workspace.
+**Parametric Process** is a standalone generative urban design and multi-objective optimization laboratory for **QGIS**. It combines a three-stage PPUD pipeline (plot layout, building configuration, and incremental fabric), interactive 3D review, transparent screening models, and bidirectional GIS workflows for reproducible planning studies.
 
 Unlike traditional CAD-bound tools, **Parametric Process** is **GIS-native**—it operates on real spatial coordinate reference systems (CRS), real parcel boundaries, and real-world urban context while enforcing strict zoning laws (BCR, FAR, height caps) with zero third-party C/C++ dependencies.
 
@@ -34,7 +34,7 @@ Unlike traditional CAD-bound tools, **Parametric Process** is **GIS-native**—i
 
 ## 🔥 Key Feature Highlights
 
-> Ayrıntılı Türkçe işletim, sonuç okuma ve karar protokolü: [Kapsamlı Kullanım Rehberi](USER_GUIDE_TR.md)
+> Research operation, interpretation, and decision protocol: [Academic Use Protocol](docs/ACADEMIC_USE.md)
 
 ### Visual Rule Workflow Modeler
 - Build reusable urban-design rule chains on a draggable node canvas inspired by Grasshopper.
@@ -139,3 +139,13 @@ $$H' = -\sum_{i=1}^{S} p_i \ln p_i$$
 - **Author:** Yusuf Eminoğlu ([yusuf.eminoglu@deu.edu.tr](mailto:yusuf.eminoglu@deu.edu.tr))
 - **License:** GPL-3.0-or-later
 - **Repository:** [YusufEminoglu/parametric_process](https://gitlab.com/geospacephilo/parametric_process)
+
+## Scientific scope and reproducibility
+
+The built-in wind, solar, thermal, carbon and financial equations are deterministic screening-level surrogate models for comparative early-design studies. They are not substitutes for calibrated CFD, dynamic energy simulation, measured UTCI, certified LCA inventories or professional financial appraisal. The optimization tool rejects geographic CRSs, accepts an explicit random seed, and records `run_id`, `model_ver`, `seed`, and `source_fid` in every alternative. See the [Academic Use Protocol](docs/ACADEMIC_USE.md).
+
+## Version 3 academic workflow
+
+The **Academic Urban Design Study** Processing algorithm is the recommended research entry point. It combines projected-CRS and geometry checks, parcel-specific zoning field mapping, deterministic multi-seed optimization, parcel-conforming massing, neighborhood accessibility, blue-green infrastructure, discounted cash flow, lifecycle carbon, and robustness summaries. It produces separate alternative, building, open-space, rejected-design, and summary layers so planning records are not confused with generated footprints.
+
+Studies use the versioned `parametric-process-study/3.0` JSON schema. Optional external validation engines use a strict JSON-in/JSON-out contract and must be explicitly approved by executable path and SHA-256 fingerprint. Changed executables require renewed approval; failed external validation is reported and never silently replaced with a built-in proxy result.

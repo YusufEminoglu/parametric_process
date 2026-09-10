@@ -11,6 +11,8 @@ Zero external dependencies (pure Python stdlib).
 from __future__ import annotations
 
 import math
+import hashlib
+import json
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -73,6 +75,83 @@ class _ThreadLocalRng:
 
 _rng = _ThreadLocalRng()
 
+MODEL_VERSION = "2.1"
+
+
+def validate_model_inputs(parcel_area, max_bcr=0.45, max_far=2.5, max_height=18.0,
+                          sim_params=None):
+    """Validate dimensional model inputs before any scientific calculation."""
+    values = {
+        "parcel_area": parcel_area,
+        "max_bcr": max_bcr,
+        "max_far": max_far,
+        "max_height": max_height,
+    }
+    for name, value in values.items():
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name} must be numeric") from exc
+        if not math.isfinite(numeric) or numeric <= 0:
+            raise ValueError(f"{name} must be a finite value greater than zero")
+    if float(max_bcr) > 1.0:
+        raise ValueError("max_bcr must be a ratio in the interval (0, 1]")
+
+    params = sim_params or {}
+    for name in ("wind_speed", "const_cost", "sale_price"):
+        if name in params and (not math.isfinite(float(params[name])) or float(params[name]) < 0):
+            raise ValueError(f"{name} must be a finite non-negative value")
+    if "latitude" in params and not -90.0 <= float(params["latitude"]) <= 90.0:
+        raise ValueError("latitude must be between -90 and 90 degrees")
+
+
+def _irr(cash_flows, lower=-0.9999, upper=10.0, iterations=160):
+    """Return periodic IRR using a bounded bisection root, or None if no root exists."""
+    def npv(rate):
+        return sum(value / ((1.0 + rate) ** period)
+                   for period, value in enumerate(cash_flows))
+
+    lo_value = npv(lower)
+    hi_value = npv(upper)
+    if lo_value == 0:
+        return lower
+    if hi_value == 0:
+        return upper
+    if lo_value * hi_value > 0:
+        return None
+    for _ in range(iterations):
+        midpoint = (lower + upper) / 2.0
+        mid_value = npv(midpoint)
+        if abs(mid_value) < 1e-8:
+            return midpoint
+        if lo_value * mid_value <= 0:
+            upper = midpoint
+        else:
+            lower = midpoint
+            lo_value = mid_value
+    return (lower + upper) / 2.0
+
+
+def build_run_manifest(algorithm, parcel_area, pop_size, generations, seed,
+                       objective_specs, constraints, bounds=None, sim_params=None):
+    """Build a stable, JSON-safe audit record for a reproducible experiment."""
+    configuration = {
+        "algorithm": str(algorithm),
+        "parcel_area_m2": float(parcel_area),
+        "population_size": int(pop_size),
+        "generations": int(generations),
+        "seed": seed,
+        "objectives": objective_specs,
+        "constraints": constraints,
+        "bounds": bounds or {},
+        "simulation_parameters": sim_params or {},
+        "model_version": MODEL_VERSION,
+    }
+    canonical = json.dumps(configuration, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    configuration["run_id"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+    configuration["model_scope"] = "screening-level deterministic surrogate"
+    return configuration
+
 
 def _prepare_optimization_run(pop_size, generations, bounds=None, seed=None):
     # Validate public controls and initialize the thread-local RNG.
@@ -112,6 +191,7 @@ def evaluate_phenotype(
     sim_params: Dict[str, Any] | None = None,
 ) -> Dict[str, float]:
     """Calculates multi-domain physical, microclimate, financial, and environmental metrics."""
+    validate_model_inputs(parcel_area, max_bcr, max_far, max_height, sim_params)
     sim_params = sim_params or {}
     prevailing_wind_deg = float(sim_params.get("wind_deg", 225.0))  # SW default
     wind_speed_ms = float(sim_params.get("wind_speed", 4.5))       # m/s
@@ -262,10 +342,8 @@ def evaluate_phenotype(
     npv_factor = sum(1.0 / ((1.0 + 0.06) ** t) for t in range(1, 21))
     net_present_value_usd = round((annual_cash_flow * npv_factor) - total_construction_cost, 2)
     
-    irr_percentage = 0.0
-    if total_construction_cost > 0 and annual_cash_flow > 0:
-        ratio = annual_cash_flow / total_construction_cost
-        irr_percentage = round((ratio - 0.02) * 100.0, 1)  # Approximation of IRR
+    irr_rate = _irr([-total_construction_cost] + [annual_cash_flow] * 20)
+    irr_percentage = round(irr_rate * 100.0, 2) if irr_rate is not None else 0.0
 
     roof_coeff = {"Flat": 0.85, "Hipped": 0.92, "Gable": 0.90, "Mansard": 0.88}.get(roof_style, 0.85)
     runoff_m3 = round((footprint_area * roof_coeff * 0.8) + (open_space_m2 * 0.3 * 0.8), 1)
@@ -444,9 +522,11 @@ def mutate_genotype(g: Dict[str, Any], mutation_rate: float = 0.15, bounds: Dict
     mutated = dict(g)
 
     if _rng.random() < mutation_rate:
-        mutated["setback"] = round(max(0.0, min(15.0, mutated["setback"] + _rng.gauss(0, 1.5))), 1)
+        mutated["setback"] = round(max(float(bounds.get("min_setback", 0.0)), min(
+            float(bounds.get("max_setback", 12.0)), mutated["setback"] + _rng.gauss(0, 1.5))), 1)
     if _rng.random() < mutation_rate:
-        mutated["floors"] = max(1, min(30, mutated["floors"] + _rng.choice([-2, -1, 1, 2])))
+        mutated["floors"] = max(int(bounds.get("min_floors", 1)), min(
+            int(bounds.get("max_floors", 24)), mutated["floors"] + _rng.choice([-2, -1, 1, 2])))
     if _rng.random() < mutation_rate:
         mutated["typology"] = _rng.choice(TYPOLOGIES)
     if _rng.random() < mutation_rate:
@@ -638,6 +718,11 @@ def run_nsga2_optimization(
 
     pareto_solutions = [ind.to_dict() for ind in final_fronts[0]]
 
+    manifest = build_run_manifest(
+        "NSGA-II", parcel_area, pop_size, generations, seed, objective_specs,
+        {"max_bcr": max_bcr, "max_far": max_far, "max_height_m": max_height},
+        bounds, sim_params,
+    )
     return {
         "status": "ok",
         "generations": generations,
@@ -646,6 +731,7 @@ def run_nsga2_optimization(
         "pareto_solutions": pareto_solutions,
         "history": history,
         "all_solutions": [ind.to_dict() for ind in population],
+        "run_manifest": manifest,
     }
 
 def kmeans_cluster(solutions: List[Dict[str, Any]], k: int = 5, max_iter: int = 50) -> Dict[str, Any]:
@@ -1343,6 +1429,13 @@ def run_spea2_optimization(
     sim_params: Dict[str, Any] | None = None,
     seed: int | None = None,
 ) -> Dict[str, Any]:
+    objective_specs = objective_specs or [
+        {"name": "gfa", "direction": "max"},
+        {"name": "planx_score", "direction": "max"},
+        {"name": "wind_ventilation", "direction": "max"},
+        {"name": "roi_percentage", "direction": "max"},
+        {"name": "carbon_kg", "direction": "min"},
+    ]
     generator = run_spea2_streaming(
         parcel_area, objective_specs, pop_size, generations,
         crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params, seed
@@ -1353,6 +1446,10 @@ def run_spea2_optimization(
         history.append(data)
         last_data = data
 
+    manifest = build_run_manifest(
+        "SPEA-2", parcel_area, pop_size, generations, seed, objective_specs,
+        {"max_bcr": max_bcr, "max_far": max_far, "max_height_m": max_height}, bounds, sim_params,
+    )
     return {
         "status": "ok",
         "generations": generations,
@@ -1361,6 +1458,7 @@ def run_spea2_optimization(
         "pareto_solutions": last_data.get("pareto_solutions", []) if last_data else [],
         "history": history,
         "all_solutions": last_data.get("all_solutions", []) if last_data else [],
+        "run_manifest": manifest,
     }
 
 # ==========================================
@@ -1563,6 +1661,13 @@ def run_nsga3_optimization(
     sim_params: Dict[str, Any] | None = None,
     seed: int | None = None,
 ) -> Dict[str, Any]:
+    objective_specs = objective_specs or [
+        {"name": "gfa", "direction": "max"},
+        {"name": "planx_score", "direction": "max"},
+        {"name": "wind_ventilation", "direction": "max"},
+        {"name": "roi_percentage", "direction": "max"},
+        {"name": "carbon_kg", "direction": "min"},
+    ]
     generator = run_nsga3_streaming(
         parcel_area, objective_specs, pop_size, generations,
         crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params, seed
@@ -1573,6 +1678,10 @@ def run_nsga3_optimization(
         history.append(data)
         last_data = data
 
+    manifest = build_run_manifest(
+        "NSGA-III", parcel_area, pop_size, generations, seed, objective_specs,
+        {"max_bcr": max_bcr, "max_far": max_far, "max_height_m": max_height}, bounds, sim_params,
+    )
     return {
         "status": "ok",
         "generations": generations,
@@ -1581,6 +1690,7 @@ def run_nsga3_optimization(
         "pareto_solutions": last_data.get("pareto_solutions", []) if last_data else [],
         "history": history,
         "all_solutions": last_data.get("all_solutions", []) if last_data else [],
+        "run_manifest": manifest,
     }
 
 
@@ -1732,6 +1842,13 @@ def run_moead_optimization(
     sim_params: Dict[str, Any] | None = None,
     seed: int | None = None,
 ) -> Dict[str, Any]:
+    objective_specs = objective_specs or [
+        {"name": "gfa", "direction": "max"},
+        {"name": "planx_score", "direction": "max"},
+        {"name": "wind_ventilation", "direction": "max"},
+        {"name": "roi_percentage", "direction": "max"},
+        {"name": "carbon_kg", "direction": "min"},
+    ]
     generator = run_moead_streaming(
         parcel_area, objective_specs, pop_size, generations,
         crossover_rate, mutation_rate, max_bcr, max_far, max_height, bounds, sim_params, seed
@@ -1742,6 +1859,10 @@ def run_moead_optimization(
         history.append(data)
         last_data = data
 
+    manifest = build_run_manifest(
+        "MOEA/D", parcel_area, pop_size, generations, seed, objective_specs,
+        {"max_bcr": max_bcr, "max_far": max_far, "max_height_m": max_height}, bounds, sim_params,
+    )
     return {
         "status": "ok",
         "generations": generations,
@@ -1750,6 +1871,7 @@ def run_moead_optimization(
         "pareto_solutions": last_data.get("pareto_solutions", []) if last_data else [],
         "history": history,
         "all_solutions": last_data.get("all_solutions", []) if last_data else [],
+        "run_manifest": manifest,
     }
 
 

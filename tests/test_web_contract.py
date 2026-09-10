@@ -63,11 +63,25 @@ class WebContractTests(unittest.TestCase):
         for term in ("Pareto", "TOPSIS", "QGIS", "constraint_penalty", "Duyarlılık"):
             self.assertIn(term.casefold(), searchable_html)
 
-        guide_path = WEB_ROOT.parents[1] / "USER_GUIDE_TR.md"
+        guide_path = WEB_ROOT.parents[1] / "docs" / "ACADEMIC_USE.md"
         guide = guide_path.read_text(encoding="utf-8")
-        self.assertGreater(len(guide), 12000)
-        self.assertIn("## 9. Karar protokolü", guide)
-        self.assertIn("## 13. Nihai checklist", guide)
+        self.assertGreater(len(guide), 1500)
+        self.assertIn("## Interpretation limits", guide)
+        self.assertIn("## External engine contract", guide)
+
+
+    def test_academic_study_workspace_is_connected(self):
+        html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        for element_id in (
+            "tab-btn-academic", "academic-study-view", "academic-name", "academic-crs",
+            "academic-seeds", "academic-create", "academic-result", "academic-export",
+        ):
+            self.assertIn(f'id="{element_id}"', html)
+        self.assertIn("/api/academic/schema", app)
+        self.assertIn("/api/academic/study", app)
+        self.assertIn("installEnglishAnalyticalGuide", app)
+        self.assertIn("Built-in environmental metrics are screening-level proxies", html)
 
 
 if __name__ == "__main__":

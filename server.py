@@ -111,6 +111,15 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json(workflow_catalog())
             return
 
+        if url == '/api/academic/schema':
+            from .academic_engine import DEFAULT_ASSUMPTIONS, METRIC_SCHEMA, STUDY_SCHEMA
+            self._send_json({
+                'status': 'ok', 'study_schema': STUDY_SCHEMA,
+                'metric_schema': METRIC_SCHEMA, 'default_assumptions': DEFAULT_ASSUMPTIONS,
+                'product_language': 'en',
+            })
+            return
+
         if url.startswith("/api/optimize/status/"):
             run_id = url.split("/")[-1]
             active_runs = getattr(self.server, "active_runs", {})
@@ -200,6 +209,57 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             return
         if declared_length > self.MAX_REQUEST_BYTES:
             self._send_json({'status': 'error', 'message': 'Request payload is too large'}, 413)
+            return
+
+        if url == '/api/academic/study':
+            try:
+                from .academic_engine import create_study, migrate_study, validate_study
+                data = self._read_json()
+                if 'study' in data:
+                    study = migrate_study(data['study'])
+                    validate_study(study)
+                else:
+                    study = create_study(
+                        data.get('name', 'Academic Urban Design Study'), data.get('crs', ''),
+                        data.get('layers'), data.get('field_mapping'), data.get('assumptions'),
+                        data.get('scenarios'), data.get('seeds'))
+                self._send_json({'status': 'ok', 'study': study})
+            except (TypeError, ValueError) as exc:
+                self._send_json({'status': 'error', 'message': str(exc)}, 400)
+            return
+
+        if url == '/api/academic/indicators':
+            try:
+                from .academic_engine import (
+                    accessibility_indicators, blue_green_indicators, financial_and_carbon,
+                )
+                data = self._read_json()
+                assumptions = data.get('assumptions', {})
+                result = {
+                    'accessibility': accessibility_indicators(
+                        data.get('site_area_m2'), data.get('street_length_m', 0),
+                        data.get('intersection_count', 0), data.get('destination_distances_m', []),
+                        data.get('active_frontage_m', 0), data.get('total_frontage_m', 0),
+                        data.get('accessible_route_ratio', 1)),
+                    'blue_green': blue_green_indicators(
+                        data.get('site_area_m2'), data.get('roof_area_m2', 0),
+                        data.get('hardscape_area_m2', 0), data.get('canopy_area_m2', 0),
+                        data.get('green_patches', []), assumptions),
+                    'finance_carbon': financial_and_carbon(data.get('gfa_m2', 0), assumptions),
+                }
+                self._send_json({'status': 'ok', 'indicators': result})
+            except (TypeError, ValueError) as exc:
+                self._send_json({'status': 'error', 'message': str(exc)}, 400)
+            return
+
+        if url == '/api/academic/robustness':
+            try:
+                from .academic_engine import aggregate_robustness
+                data = self._read_json()
+                result = aggregate_robustness(data.get('runs', []), data.get('metrics', []))
+                self._send_json({'status': 'ok', 'robustness': result})
+            except (TypeError, ValueError) as exc:
+                self._send_json({'status': 'error', 'message': str(exc)}, 400)
             return
 
         if url == '/api/workflow/validate':
@@ -344,7 +404,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                                 max_far=float(data.get("max_far", 2.5)),
                                 max_height=float(data.get("max_height", 18.0)),
                                 bounds=data.get("bounds"),
-                                sim_params=data.get("sim_params")
+                                sim_params=data.get("sim_params"),
+                                seed=seed,
                             )
                         else:
                             generator = run_nsga2_streaming(
@@ -493,7 +554,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                         max_far=float(data.get("max_far", 2.5)),
                         max_height=float(data.get("max_height", 18.0)),
                         bounds=data.get("bounds"),
-                        sim_params=data.get("sim_params")
+                        sim_params=data.get("sim_params"),
+                        seed=int(data.get("seed", 42)),
                     )
                 elif algo == "nsga3":
                     response_data = run_nsga3_optimization(
@@ -507,7 +569,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                         max_far=float(data.get("max_far", 2.5)),
                         max_height=float(data.get("max_height", 18.0)),
                         bounds=data.get("bounds"),
-                        sim_params=data.get("sim_params")
+                        sim_params=data.get("sim_params"),
+                        seed=int(data.get("seed", 42)),
                     )
                 elif algo == "moead":
                     response_data = run_moead_optimization(
@@ -521,7 +584,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                         max_far=float(data.get("max_far", 2.5)),
                         max_height=float(data.get("max_height", 18.0)),
                         bounds=data.get("bounds"),
-                        sim_params=data.get("sim_params")
+                        sim_params=data.get("sim_params"),
+                        seed=int(data.get("seed", 42)),
                     )
                 elif algo == "multiparcel":
                     generator = run_multiparcel_nsga2_streaming(
@@ -535,7 +599,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                         max_far=float(data.get("max_far", 2.5)),
                         max_height=float(data.get("max_height", 18.0)),
                         bounds=data.get("bounds"),
-                        sim_params=data.get("sim_params")
+                        sim_params=data.get("sim_params"),
+                        seed=int(data.get("seed", 42)),
                     )
                     last_data = None
                     for gen_data in generator:
@@ -557,7 +622,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                         max_far=float(data.get("max_far", 2.5)),
                         max_height=float(data.get("max_height", 18.0)),
                         bounds=data.get("bounds"),
-                        sim_params=data.get("sim_params")
+                        sim_params=data.get("sim_params"),
+                        seed=int(data.get("seed", 42)),
                     )
             except Exception as e:
                 response_data = {"status": "error", "message": str(e)}
@@ -599,6 +665,7 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                         incremental_steps=int(data.get("incremental_steps", 5)),
                         climate_feedback=bool(data.get("climate_feedback", True)),
                         sim_params=data.get("sim_params"),
+                        seed=int(data.get("seed", 42)),
                     )
 
                     # Also generate form-based code
@@ -633,6 +700,13 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
                 site_area = float(data.get("site_area", 10000.0))
                 title = data.get('title', 'Parametric Urban Master Plan Report')
                 safe_title = html.escape(str(title))
+                manifest = data.get('run_manifest', {})
+                model_version = html.escape(str(manifest.get('model_version', '3.0')))
+                crs_label = html.escape(str(data.get('crs', manifest.get('crs', 'Not recorded'))))
+                feasible_count = sum(
+                    1 for solution in solutions
+                    if float(solution.get('metrics', {}).get('constraint_penalty', 0.0)) == 0.0)
+                feasible_rate = (feasible_count / len(solutions) * 100.0) if solutions else 0.0
 
                 html_report = f"""<!DOCTYPE html>
 <html lang="en">
@@ -706,6 +780,9 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
 </body>
 </html>"""
 
+                html_report = html_report.replace("v2.0.6", f"v{model_version}")
+                html_report = html_report.replace("100% Feasible", f"{feasible_rate:.1f}% Feasible")
+                html_report = html_report.replace("EPSG:3857", crs_label)
                 response_data = {"status": "ok", "report_html": html_report}
             except Exception as e:
                 response_data = {"status": "error", "message": str(e)}
@@ -722,7 +799,16 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
 class ParametricProcessServer:
     def __init__(self, port: int, web_dir: str, sync_callback=None):
         self.port = port
-        self.web_dir = web_dir
+        if os.path.isabs(web_dir):
+            self.web_dir = os.path.realpath(web_dir)
+        else:
+            package_dir = os.path.dirname(os.path.abspath(__file__))
+            candidates = (
+                os.path.realpath(os.path.join(os.getcwd(), web_dir)),
+                os.path.realpath(os.path.join(package_dir, web_dir)),
+                os.path.realpath(os.path.join(package_dir, os.path.basename(web_dir))),
+            )
+            self.web_dir = next((path for path in candidates if os.path.isdir(path)), candidates[0])
         self.sync_callback = sync_callback
         self.geojson_data = "{}"
         self.httpd = None
