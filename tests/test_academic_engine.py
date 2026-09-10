@@ -10,6 +10,7 @@ from parametric_process.academic_engine import (
     blue_green_indicators, constraint_diagnostics, create_study,
     financial_and_carbon, migrate_study, morris_screen, resolve_zoning,
     compare_scenarios, consensus_alternatives, rank_stability,
+    audit_manifest, bootstrap_robustness, data_quality_report, pareto_quality,
 )
 
 
@@ -118,6 +119,37 @@ class IndicatorTests(unittest.TestCase):
         self.assertTrue(comparison["metrics"]["carbon"]["improved"])
         stability = rank_stability([["a", "b"], ["b", "a"]])
         self.assertEqual(stability["solutions"][0]["rank_range"], 1)
+
+    def test_bootstrap_is_reproducible_and_distribution_free(self):
+        runs = [{"feasible": True, "metrics": {"gfa": value}} for value in (80, 100, 120, 160)]
+        first = bootstrap_robustness(runs, ["gfa"], seed=91, samples=500)
+        second = bootstrap_robustness(runs, ["gfa"], seed=91, samples=500)
+        self.assertEqual(first, second)
+        interval = first["metrics"]["gfa"]
+        self.assertLess(interval["bootstrap_mean_low"], interval["mean"])
+        self.assertGreater(interval["bootstrap_mean_high"], interval["mean"])
+
+    def test_data_quality_and_pareto_quality(self):
+        quality = data_quality_report(
+            [{"id": "a", "far": 2.0}, {"id": "a", "far": 9.0}, {"id": "c", "far": None}],
+            ["id", "far"], "id", {"far": [0, 5]})
+        self.assertFalse(quality["passed"])
+        self.assertEqual(quality["duplicate_id_count"], 1)
+        self.assertEqual(quality["out_of_range"]["far"], 1)
+        pareto = pareto_quality([
+            {"metrics": {"cost": 10, "quality": 5}},
+            {"metrics": {"cost": 20, "quality": 9}},
+            {"metrics": {"cost": 20, "quality": 9}},
+        ], ["cost", "quality"])
+        self.assertEqual(pareto["unique_count"], 2)
+        self.assertAlmostEqual(pareto["duplicate_rate"], 1 / 3, places=6)
+
+    def test_audit_manifest_detects_any_material_change(self):
+        study = create_study("Audit", "EPSG:32635")
+        first = audit_manifest(study, {"parcels": [{"id": 1}]}, {"population": 40})
+        second = audit_manifest(study, {"parcels": [{"id": 2}]}, {"population": 40})
+        self.assertEqual(first, audit_manifest(study, {"parcels": [{"id": 1}]}, {"population": 40}))
+        self.assertNotEqual(first["manifest_hash"], second["manifest_hash"])
 
 
 if __name__ == "__main__":

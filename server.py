@@ -254,10 +254,39 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
 
         if url == '/api/academic/robustness':
             try:
-                from .academic_engine import aggregate_robustness
+                from .academic_engine import aggregate_robustness, bootstrap_robustness
                 data = self._read_json()
-                result = aggregate_robustness(data.get('runs', []), data.get('metrics', []))
+                if data.get('bootstrap'):
+                    result = bootstrap_robustness(
+                        data.get('runs', []), data.get('metrics', []),
+                        data.get('seed', 42), data.get('samples', 2000),
+                        data.get('confidence', 0.95))
+                else:
+                    result = aggregate_robustness(data.get('runs', []), data.get('metrics', []))
                 self._send_json({'status': 'ok', 'robustness': result})
+            except (TypeError, ValueError) as exc:
+                self._send_json({'status': 'error', 'message': str(exc)}, 400)
+            return
+
+        if url == '/api/academic/audit':
+            try:
+                from .academic_engine import audit_manifest, data_quality_report, pareto_quality
+                data = self._read_json()
+                result = {}
+                if 'records' in data:
+                    result['data_quality'] = data_quality_report(
+                        data['records'], data.get('required_fields', []),
+                        data.get('unique_id_field'), data.get('numeric_ranges'))
+                if 'alternatives' in data:
+                    result['pareto_quality'] = pareto_quality(
+                        data['alternatives'], data.get('objectives', []))
+                if 'study' in data:
+                    result['manifest'] = audit_manifest(
+                        data['study'], data.get('inputs', {}), data.get('parameters', {}),
+                        data.get('outputs'))
+                if not result:
+                    raise ValueError('Provide records, alternatives, or a study to audit')
+                self._send_json({'status': 'ok', 'audit': result})
             except (TypeError, ValueError) as exc:
                 self._send_json({'status': 'error', 'message': str(exc)}, 400)
             return

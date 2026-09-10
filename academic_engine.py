@@ -340,6 +340,115 @@ def aggregate_robustness(runs: Sequence[Mapping[str, Any]], metrics: Sequence[st
     return {"run_count": len(runs), "feasible_run_rate": feasible / len(runs), "metrics": summary}
 
 
+def bootstrap_robustness(runs: Sequence[Mapping[str, Any]], metrics: Sequence[str],
+                         seed: int = 42, samples: int = 2000,
+                         confidence: float = 0.95) -> Dict[str, Any]:
+    """Distribution-free confidence intervals for mean performance across runs."""
+    if not runs:
+        raise StudyValidationError("At least one completed run is required")
+    if not 100 <= int(samples) <= 100000:
+        raise StudyValidationError("Bootstrap samples must be between 100 and 100000")
+    level = _finite_number("confidence", confidence, 0.50, 0.999)
+    result = aggregate_robustness(runs, metrics)
+    alpha = (1.0 - level) / 2.0
+    for metric, summary in result["metrics"].items():
+        values = [float(run["metrics"][metric]) for run in runs
+                  if metric in run.get("metrics", {}) and
+                  math.isfinite(float(run["metrics"][metric]))]
+        counter = 0
+        means = []
+        for _ in range(int(samples)):
+            draw = []
+            for _ in values:
+                digest = hashlib.sha256(
+                    f"bootstrap:{int(seed)}:{metric}:{counter}".encode("utf-8")
+                ).digest()
+                draw.append(values[int.from_bytes(digest[:8], "big") % len(values)])
+                counter += 1
+            means.append(statistics.fmean(draw))
+        means.sort()
+        low_index = max(0, min(len(means) - 1, math.floor(alpha * len(means))))
+        high_index = max(0, min(len(means) - 1, math.ceil((1.0 - alpha) * len(means)) - 1))
+        summary["bootstrap_mean_low"] = round(means[low_index], 6)
+        summary["bootstrap_mean_high"] = round(means[high_index], 6)
+    result["bootstrap"] = {"method": "percentile", "samples": int(samples),
+                           "confidence": level, "seed": int(seed)}
+    return result
+
+
+def data_quality_report(records: Sequence[Mapping[str, Any]], required_fields: Sequence[str],
+                        unique_id_field: str | None = None,
+                        numeric_ranges: Mapping[str, Sequence[float]] | None = None) -> Dict[str, Any]:
+    """Audit tabular inputs without silently repairing research data."""
+    ranges = dict(numeric_ranges or {})
+    missing = {str(field): 0 for field in required_fields}
+    out_of_range = {str(field): 0 for field in ranges}
+    identifiers = []
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise StudyValidationError("Every data record must be an object")
+        for field in missing:
+            if record.get(field) in (None, ""):
+                missing[field] += 1
+        if unique_id_field and record.get(unique_id_field) not in (None, ""):
+            identifiers.append(str(record[unique_id_field]))
+        for field, limits in ranges.items():
+            if len(limits) != 2 or float(limits[1]) < float(limits[0]):
+                raise StudyValidationError(f"Invalid quality range for {field}")
+            value = record.get(field)
+            if value in (None, ""):
+                continue
+            number = _finite_number(field, value)
+            if number < float(limits[0]) or number > float(limits[1]):
+                out_of_range[field] += 1
+    duplicates = len(identifiers) - len(set(identifiers))
+    issue_count = sum(missing.values()) + sum(out_of_range.values()) + duplicates
+    return {"record_count": len(records), "required_fields": list(required_fields),
+            "missing": missing, "out_of_range": out_of_range,
+            "duplicate_id_count": duplicates, "issue_count": issue_count,
+            "passed": issue_count == 0}
+
+
+def audit_manifest(study: Mapping[str, Any], inputs: Mapping[str, Any],
+                   parameters: Mapping[str, Any], outputs: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    """Create a deterministic chain-of-custody manifest for an archived experiment."""
+    validate_study(study)
+    input_hashes = {str(name): content_hash(value, 64) for name, value in sorted(inputs.items())}
+    output_hashes = {str(name): content_hash(value, 64)
+                     for name, value in sorted((outputs or {}).items())}
+    body = {"schema": "parametric-process-audit/1.0", "study_id": study.get("study_id"),
+            "model_version": study.get("model_version"), "input_hashes": input_hashes,
+            "parameter_hash": content_hash(parameters, 64), "output_hashes": output_hashes}
+    body["manifest_hash"] = content_hash(body, 64)
+    return body
+
+
+def pareto_quality(alternatives: Sequence[Mapping[str, Any]], objectives: Sequence[str]) -> Dict[str, Any]:
+    """Report objective coverage, duplicate rate and normalized nearest-neighbour spacing."""
+    if len(objectives) < 2:
+        raise StudyValidationError("Pareto quality requires at least two objectives")
+    vectors = []
+    for item in alternatives:
+        metrics = item.get("metrics", item)
+        vectors.append(tuple(_finite_number(name, metrics.get(name)) for name in objectives))
+    if not vectors:
+        raise StudyValidationError("At least one alternative is required")
+    unique = sorted(set(vectors))
+    ranges = [max(row[i] for row in unique) - min(row[i] for row in unique)
+              for i in range(len(objectives))]
+    distances = []
+    if len(unique) > 1:
+        normalized = [tuple((row[i] - min(value[i] for value in unique)) / ranges[i]
+                            if ranges[i] else 0.0 for i in range(len(objectives))) for row in unique]
+        for index, row in enumerate(normalized):
+            distances.append(min(math.dist(row, other) for j, other in enumerate(normalized) if j != index))
+    return {"alternative_count": len(vectors), "unique_count": len(unique),
+            "duplicate_rate": round(1.0 - len(unique) / len(vectors), 6),
+            "objective_ranges": {name: round(ranges[i], 6) for i, name in enumerate(objectives)},
+            "spacing_mean": round(statistics.fmean(distances), 6) if distances else 0.0,
+            "spacing_stdev": round(statistics.stdev(distances), 6) if len(distances) > 1 else 0.0}
+
+
 def consensus_alternatives(runs: Sequence[Mapping[str, Any]], top_fraction: float = 0.20) -> List[Dict[str, Any]]:
     """Rank recurring genotype families across independent seeds."""
     fraction = _finite_number("top_fraction", top_fraction, 0.01, 1.0)

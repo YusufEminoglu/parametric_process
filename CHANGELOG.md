@@ -1,5 +1,21 @@
 # Changelog - Parametric Process
 
+## [Unreleased]
+
+- Add deterministic percentile-bootstrap confidence intervals for multi-seed robustness studies.
+- Add input completeness, identifier uniqueness, numeric-range, Pareto coverage, and spacing diagnostics.
+- Add SHA-256 experiment manifests for auditable input, parameter, and output chain of custody.
+- Expose scientific quality controls through the academic audit API.
+- Add six executable diagram templates for balanced selection, zoning feasibility,
+  low-carbon development, climate-resilient districts, phased PPUD fabric, and
+  district performance, with scenario-specific objectives, algorithms, seeds,
+  zoning envelopes, and decision rules.
+- Add real-browser acceptance coverage that loads and executes every workflow template.
+- Add Three.js viewport quality budgets with persisted Low, Balanced, and High profiles.
+- Add live FPS, draw-call, and triangle telemetry for evidence-based large-model tuning.
+- Batch street trees into deterministic `InstancedMesh` layers and switch to a lightweight proxy through distance-based `LOD`.
+- Batch repeated balcony slabs and railings into building-level instances and cull their detail at district-view distance.
+
 ## [3.0.0] - 2026-09-10
 
 - Add the integrated Academic Urban Design Study algorithm with parcel-specific zoning field mapping, projected-CRS validation, multi-seed optimization, parcel-conforming building massing, residual open-space geometry, rejected-design records, and robustness summaries.

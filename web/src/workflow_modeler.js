@@ -551,26 +551,65 @@ export class WorkflowModeler {
     template(name) {
         const definitions = {
             balanced: [
-                ['site_input', 40, 100], ['zoning_rules', 270, 100], ['evolutionary_solver', 500, 100],
-                ['topsis_ranker', 730, 100], ['select_best', 960, 100], ['qgis_output', 1190, 100],
+                ['site_input', 40, 100], ['zoning_rules', 270, 100],
+                ['evolutionary_solver', 500, 100, { algorithm: 'nsga2', population: 24, generations: 8, seed: 42 }],
+                ['topsis_ranker', 730, 100], ['select_best', 960, 100, { method: 'topsis', count: 1 }],
+                ['qgis_output', 1190, 100],
+            ],
+            feasibility: [
+                ['site_input', 40, 100],
+                ['zoning_rules', 270, 100, { max_bcr: 0.40, max_far: 2.0, max_height: 18 }],
+                ['evolutionary_solver', 500, 100, { algorithm: 'nsga2', population: 30, generations: 10, seed: 1101,
+                    objectives: [{ name: 'constraint_penalty', direction: 'min' }, { name: 'gfa', direction: 'max' }] }],
+                ['select_best', 730, 100, { method: 'max_gfa', count: 3 }],
+                ['qgis_output', 960, 100],
+            ],
+            low_carbon: [
+                ['site_input', 40, 100],
+                ['zoning_rules', 270, 100, { max_bcr: 0.42, max_far: 2.4, max_height: 24 }],
+                ['evolutionary_solver', 500, 100, { algorithm: 'spea2', population: 32, generations: 12, seed: 2202,
+                    objectives: [{ name: 'carbon_kg', direction: 'min' }, { name: 'gfa', direction: 'max' },
+                        { name: 'open_space_ratio', direction: 'max' }, { name: 'solar_radiation_kwh', direction: 'max' }] }],
+                ['topsis_ranker', 730, 100], ['select_best', 960, 100, { method: 'lowest_carbon', count: 3 }],
+                ['qgis_output', 1190, 100],
+            ],
+            climate: [
+                ['site_input', 40, 100],
+                ['zoning_rules', 270, 100, { max_bcr: 0.38, max_far: 2.2, max_height: 21 }],
+                ['evolutionary_solver', 500, 100, { algorithm: 'nsga3', population: 36, generations: 12, seed: 3303,
+                    objectives: [{ name: 'wind_ventilation', direction: 'max' }, { name: 'runoff_m3', direction: 'min' },
+                        { name: 'open_space_ratio', direction: 'max' }, { name: 'utci_score', direction: 'max' },
+                        { name: 'carbon_kg', direction: 'min' }] }],
+                ['district_analysis', 730, 100], ['topsis_ranker', 960, 100],
+                ['select_best', 1190, 100, { method: 'topsis', count: 3 }], ['qgis_output', 1420, 100],
             ],
             ppud: [
-                ['site_input', 60, 120], ['zoning_rules', 300, 120], ['subdivide_block', 540, 60],
-                ['ppud_pipeline', 780, 120],
+                ['site_input', 60, 120],
+                ['zoning_rules', 300, 120, { max_bcr: 0.45, max_far: 2.0, max_height: 18 }],
+                ['subdivide_block', 540, 60, { strategy: 'hybrid', target_frontage: 18, min_lot_area: 250 }],
+                ['ppud_pipeline', 780, 120, { strategy: 'hybrid', block_typology: 'PerimeterBlock',
+                    incremental_steps: 5, climate_feedback: true, max_features: 8, seed: 4404 }],
             ],
             district: [
-                ['site_input', 60, 120], ['zoning_rules', 300, 120], ['evolutionary_solver', 540, 120],
+                ['site_input', 60, 120], ['zoning_rules', 300, 120],
+                ['evolutionary_solver', 540, 120, { algorithm: 'moead', population: 30, generations: 10, seed: 5505,
+                    objectives: [{ name: 'planx_score', direction: 'max' }, { name: 'pedestrian_wind_comfort', direction: 'max' },
+                        { name: 'runoff_m3', direction: 'min' }, { name: 'carbon_kg', direction: 'min' }] }],
                 ['district_analysis', 780, 120],
             ],
             blank: [],
         };
         const labels = {
             balanced: 'Balanced Urban Optimization',
-            ppud: 'PPUD Rule Chain',
+            feasibility: 'Zoning Feasibility Screening',
+            low_carbon: 'Low-Carbon Development',
+            climate: 'Climate-Resilient District',
+            ppud: 'Phased PPUD Fabric',
             district: 'District Performance Workflow',
             blank: 'Untitled Workflow',
         };
-        const nodes = (definitions[name] || definitions.balanced).map(([type, x, y]) => this.makeNode(type, x, y));
+        const nodes = (definitions[name] || definitions.balanced)
+            .map(([type, x, y, params]) => this.makeNode(type, x, y, null, params));
         const edges = [];
         for (let index = 0; index < nodes.length - 1; index += 1) {
             edges.push({ id: this.nextIdentifier('edge'), source: nodes[index].id, target: nodes[index + 1].id });

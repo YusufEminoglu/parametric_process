@@ -228,6 +228,11 @@ body, html {
     font-weight: 800;
 }
 
+.render-telemetry { display: grid; min-width: 92px; line-height: 1.15; }
+.render-telemetry > span { font-size: 0.62rem; }
+.quality-control { display: grid; gap: 2px; color: var(--text-muted); font-size: 0.62rem; font-weight: 700; text-transform: uppercase; }
+.quality-control select { border: 1px solid var(--border-color); border-radius: 5px; background: rgba(255, 255, 255, 0.08); color: var(--text-primary); font-size: 0.7rem; padding: 3px 5px; }
+
 .nav-btn {
     padding: 6px 12px;
     border-radius: 6px;

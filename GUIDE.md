@@ -1,136 +1,68 @@
-# Parametric Process: Academic & Methodological Master Guide (v0.8.0)
+# Parametric Process — Academic User and Methodology Guide
 
-> **Author:** Yusuf Eminoğlu  
-> **Affiliation:** Dokuz Eylül University, Department of Urban and Regional Planning  
-> **Software Suite:** Parametric Process QGIS Plugin (v0.8.0)  
-> **License:** GPL-3.0-or-later  
+Parametric Process is a QGIS-native environment for generating, screening, and comparing urban design alternatives. It supports research and early-stage planning decisions; it does not turn proxy indicators into measurements or replace statutory review and specialist simulation.
 
----
+## 1. Frame the study before opening the solver
 
-## 📖 Executive Summary & Theoretical Foundations
+Predeclare the decision question, scale, data sources and dates, legal constraints, design variables and ranges, objectives and units, uncertainty factors, scenarios, fixed seeds, run budget, and validation methods. Treat constraints and objectives differently: a legal height limit is a feasibility condition, not a performance value that can be traded away.
 
-**Parametric Process** is a standalone, GIS-native generative urban design, procedural shape grammar, microclimate physics, and multi-objective evolutionary optimization studio developed exclusively for QGIS 3.28+ and QGIS 4.x.
+## 2. Prepare defensible spatial inputs
 
-It bridges spatial planning, computational urban morphology, microclimate thermodynamics, and Pareto-optimal decision theory into a unified environment—delivering Grasshopper 3D / Wallacei / CityEngine grade analytical power natively inside QGIS without requiring external proprietary CAD binaries or pip dependencies.
+Use valid Polygon or MultiPolygon parcels in an appropriate local projected CRS measured in metres. Preserve immutable unique parcel IDs and the unmodified source. Record geometry repairs, omissions, field mappings, and every default used for missing zoning values. Pilot a small area and inspect buildings, open space, rejected alternatives, units, nulls, and outliers in QGIS.
 
-```
-+-----------------------------------------------------------------------------------+
-|                              PARAMETRIC PROCESS STUDIO                            |
-+-----------------------------------------------------------------------------------+
-|  1. PRE-PROCESSING    : GIS Layer Prep, CRS EPSG:3857, Polygon Cleaning           |
-|  2. SHAPE GRAMMAR     : Block-to-Lot Subdivision, Footprint Setbacks & Terraces   |
-|  3. MORPHOLOGY SUITE  : Canyon H/W, Enclosure Index, SA/V Compactness, Entropy    |
-|  4. MICROCLIMATE PHY  : Sol-Air Temp, Solar Irradiance, CFD Wind Canyon, UTCI     |
-|  5. MOO SOLVER ENGINE : NSGA-II, NSGA-III (Ref Points), MOEA/D (Decomposition)     |
-|  6. AI SURROGATE ACCEL: Pure-Python k-NN / Ensemble Regressor (<0.1ms / Eval)      |
-|  7. POST-PROCESSING   : TOPSIS MCDA, Wallacei Genome Matrix, 3D CityJSON/OBJ Export|
-|  8. GIS SYNC          : 2-Way Vector Attribute Back-Propagation to QGIS Layers    |
-+-----------------------------------------------------------------------------------+
-```
+## 3. Build a transparent workflow graph
 
----
+A defensible flow normally follows:
 
-## 1. PRE-PROCESSING WORKFLOW (GIS DATA PREPARATION)
+`QGIS Site Layer → Zoning Envelope → Generator → Analysis → Evolutionary Solver → Decision Review → QGIS Output`
 
-### 1.1 Vector Layer & Coordinate Reference System (CRS) Requirements
-Before launching Parametric Process, input vector layers must meet the following GIS criteria:
-- **Geometry Type:** `Polygon` or `MultiPolygon` representing urban blocks, parcels, or zoning districts.
-- **Coordinate Reference System (CRS):** Projective CRS measured in meters (e.g., **EPSG:3857 - WGS 84 / Pseudo-Mercator** or local UTM zones like **EPSG:32635**). *Geographic CRS (EPSG:4326 in degrees) must be reprojected.*
-- **Topological Integrity:** Polygon boundaries must be valid without self-intersections or duplicate nodes. Run `QGIS Processing -> Fix Geometries` if necessary.
+The graph is an executable hypothesis about how inputs become evidence. Give nodes meaningful names, expose assumptions, keep constraints separate from objectives, validate the graph, and preserve its exported JSON.
 
-### 1.2 Mandatory & Optional Attribute Mapping
-The engine automatically detects parcel geometry bounds. Optional vector layer attribute fields:
-- `parcel_id` (String / Integer): Unique parcel identifier.
-- `max_bcr` (Real): Maximum allowed Taban Alanı Katsayısı (default: 0.45).
-- `max_far` (Real): Maximum allowed Kat Alanı Katsayısı (default: 2.50).
-- `max_height` (Real): Maximum allowed height in meters (default: 18.0 m).
-- `street_w` (Real): Adjoining street width in meters (default: 12.0 m).
+## 4. Design the computational experiment
 
----
+Run a diagnostic first, then freeze the experimental design. Compare scenarios with the same population, generations, bounds, objectives and seed set unless the changed item is the declared treatment. Use at least three predeclared seeds for exploratory work and add replication until conclusions, Pareto coverage and ranks are adequately stable. A seed provides repeatability; it is not uncertainty analysis. Preserve failed and infeasible runs.
 
-## 2. IN-PROCESS GENERATIVE & EVOLUTIONARY WORKFLOW
+Use NSGA-II as a general baseline for a modest objective count. Consider NSGA-III or MOEA/D when many objectives make dominance less discriminating. Algorithm choice belongs in the protocol, not in post-hoc attempts to obtain a preferred plan.
 
-### 2.1 Procedural Shape Grammar Engine (`procedural_grammar.py`)
-Urban blocks are procedurally subdivided into sub-lots using perpendicular bisector cuts along frontage edges:
-- **Polygon Area (Shoelace Formula):**
-  $$A = \frac{1}{2} \left| \sum_{i=1}^{n-1} (x_i y_{i+1} - x_{i+1} y_i) + (x_n y_1 - x_1 y_n) \right|$$
-- **Frontage Lot Subdivision:** Large blocks exceeding target frontage $L_{front} > 18\text{ m}$ are split into sub-lots $S_1, S_2, \dots, S_k$ with inward setback offsets.
-- **Typological Massing Articulation:**
-  - *Perimeter / Courtyard Blocks:* Internal open space ratio $OSR \ge 0.40$.
-  - *Stepped Podiums:* Terraced setback steps calculated every $\lfloor \text{Floors} / 4 \rfloor$ levels.
+## 5. Interpret the Pareto set
 
-### 2.2 Urban Morphology & Topological Metrics (`morphology_engine.py`)
-- **Street Canyon Height-to-Width Ratio ($H/W$):**
-  $$\text{Canyon } H/W = \frac{H_{building}}{W_{street}}$$
-- **Street Enclosure Index ($E_i$):**
-  $$E_i = \min\left(100, \max\left(0, \frac{H}{2 \cdot S_{setback} + 6} \times 45\right)\right)$$
-- **Thermal & Volumetric Compactness Ratio ($SA/V$):**
-  $$\frac{SA}{V} = \frac{A_{facade} + 2 \cdot A_{roof}}{V_{building}} = \frac{4 \cdot \sqrt{A_{fp}} \cdot H + 2 \cdot A_{fp}}{A_{fp} \cdot H}$$
-- **Shannon Entropy Typological Diversity ($H_{shannon}$):**
-  $$H_{shannon} = -\sum_{i=1}^{k} p_i \ln(p_i)$$
+Check input completeness and feasibility first, then convergence and cross-seed consistency, Pareto coverage and spacing, raw objective values and units, spatial plausibility, and sensitivity. Pareto rank means non-dominated under the declared model only. It does not mean legally compliant, safe, socially preferred, or optimal in an absolute sense.
 
-### 2.3 Microclimate Thermodynamics & CFD Wind Physics
-- **Sol-Air Surface Temperature ($T_{sol-air}$):**
-  $$T_{sol-air} = T_{ambient} + \frac{\alpha \cdot I_{solar} - \epsilon \cdot \Delta R}{h_c} \quad (30^\circ\text{C} \le T_{sol-air} \le 70^\circ\text{C})$$
-- **CFD Wind Canyon Acceleration:**
-  $$v_{canyon} = v_\infty \times \sqrt{1 + \left(\frac{H}{W}\right)^2}$$
+## 6. Use TOPSIS as an explicit preference model
 
-### 2.4 Multi-Objective Evolutionary Solvers (`nsga2_engine.py`)
-1. **NSGA-II:** Non-dominated Sorting & Crowding Distance Selection.
-2. **NSGA-III:** Das & Dennis Systematic Reference Points on Unit Simplex for $>4$ objectives:
-   $$H = \binom{M + p - 1}{p}$$
-3. **MOEA/D:** Multi-Objective Evolutionary Algorithm based on Tchebycheff Decomposition:
-   $$\min g^{tch}(x \mid \lambda, z^*) = \max_{1 \le j \le M} \left\{ \lambda_j \left| f_j(x) - z_j^* \right| \right\}$$
-4. **Adaptive Genotype Repair:** Projects out-of-bound chromosomes back onto feasible zoning envelopes ($BCR \le max\_bcr$, $FAR \le max\_far$) before fitness assignment.
+Apply TOPSIS only after feasibility screening. Publish criterion directions, normalization, weights, and the ranked alternative set. Repeat the ranking across plausible weights and report rank reversals. Record stakeholder weight elicitation and disagreement. A top-ranked candidate is a conditional recommendation, not validated truth.
 
-### 2.5 Pure-Python AI & Machine Learning Surrogate Acceleration
-- **Surrogate Regressor (`PurePythonSurrogateModel`):** Distance-weighted $k$-NN regressor ($k=5$) predicting physics metrics in $<0.1\text{ms}$.
-- **Active Learning Uncertainty Threshold:** Computes neighbor variance $\sigma(x)$. If $\sigma(x) > \text{threshold}$, triggers exact physics evaluation and updates the training memory.
+## 7. Analyse uncertainty and sensitivity
 
----
+Separate data, parameter, model-form and preference uncertainty. Use scenarios for structural assumptions and multiple seeds for search variability. Use Morris elementary effects for economical factor screening, then a global variance-based method where interactions and quantitative attribution matter. Do not present one-factor-at-a-time checks as global sensitivity analysis.
 
-## 3. POST-PROCESSING & DECISION SUPPORT WORKFLOW
+Bootstrap intervals describe variability in supplied results; they do not remove bias or validate a proxy. Archive their seed and sample count. Define a robustness rule before seeing the results, such as the proportion of seeds and scenarios in which a candidate remains feasible and within a declared performance band.
 
-### 3.1 Multi-Criteria TOPSIS Decision Support (`topsis_rank_solutions`)
-Computes positive ($A^*$) and negative ($A^-$) ideal solutions to determine relative closeness coefficients $C_i^* \in [0, 1]$:
-$$C_i^* = \frac{D_i^-}{D_i^+ + D_i^-}$$
+## 8. Validate claims at the right fidelity
 
-### 3.2 3D Spatial Vector & Mesh Exporters
-1. **CityJSON 3D Urban Digital Twin (`export_to_cityjson`):**
-   Generates standard CityJSON 1.0/1.1 objects (`Building` -> `Solid` LoD2 geometries with attributes).
-2. **Wavefront OBJ 3D Mesh (`exportWavefrontObj`):**
-   Generates Wavefront `.obj` / `.mtl` mesh strings for Blender, Rhino, SketchUp, and 3D printing.
-3. **3D GeoPackage Vector Sync:**
-   Writes 3D polygon geometries with $Z$ coordinates (`z_min`, `z_top`, `height_m`, `bcr`, `far`, `planx_score`, `topsis_rank`) directly into QGIS vector layers.
+Built-in wind, solar, thermal comfort, pollution, carbon, and financial outputs are screening indicators. Validate shortlisted claims using observations or an appropriate specialist method: for example, calibrated CFD, validated radiation or energy simulation, an accepted UTCI implementation with defensible weather inputs, a declared LCA database and system boundary, or a dated cost model.
 
-### 3.3 Executive HTML Report Exporter
-Generates standalone, publication-ready HTML reports containing KPI summary cards, TOPSIS rank tables, and microclimate performance metrics.
+Agreement between two proxies is not field validation. Report validation data, calibration choices, errors, applicability limits, and discrepancies. For external engines, archive the executable fingerprint and version and require explicit units and matching solution IDs.
 
----
+## 9. Preserve a reproducible research package
 
-## 4. STEP-BY-STEP USER OPERATIONAL GUIDE
+Archive source snapshots and licences; CRS and boundary; field mappings, defaults, exclusions and repairs; workflow and study JSON; software and engine versions; solver settings and seeds; objectives, constraints and scenarios; complete alternatives, buildings, open space, rejected records and summaries; robustness, sensitivity and ranking outputs; external validation; selection rationale; and the SHA-256 manifest.
 
-```
-+-----------------------------------------------------------------------------------+
-| STEP 1: Select Polygon Parcel Layer in QGIS Layers Panel                          |
-| STEP 2: Click "Parametric Process" Icon on QGIS Toolbar                            |
-| STEP 3: Click "Launch Web Cockpit" -> Browser Opens http://localhost:8080         |
-| STEP 4: Select Optimization Algorithm (NSGA-II / NSGA-III / MOEA/D)               |
-| STEP 5: Check "Enable AI Surrogate Model (<0.1ms Physics)"                        |
-| STEP 6: Click "Run Optimization" & Watch Real-Time 3D Convergence                 |
-| STEP 7: Click "Genome Gallery" or "PCP" Sub-tab to Filter Solutions              |
-| STEP 8: Click "TOPSIS Rank" -> Select Top Solution                                |
-| STEP 9: Click "CityJSON 3D" or "OBJ Mesh" to Export 3D Models                     |
-| STEP 10: Click "Sync to QGIS" -> Attributes & 3D Geometries Write Back to Layer   |
-+-----------------------------------------------------------------------------------+
-```
+Stable fields such as `source_fid`, `seed`, `run_id`, and `model_ver` support traceability. Re-run an archived sample before publication. A changed model version or manifest hash identifies a materially different experiment and must not overwrite the original.
 
----
+## 10. Minimum reporting checklist
 
-## 📚 References & Academic Citations
+Report the research question, data provenance, CRS, scale, variables and bounds, equations or engine versions, objectives and directions, constraints, solver and budget, all seeds, feasibility rate, Pareto diagnostics, uncertainty and sensitivity design, TOPSIS weights and stability, external validation, limitations, and access to the research package.
 
-1. Deb, K., et al. (2002). "A fast and elitist multiobjective genetic algorithm: NSGA-II." *IEEE Transactions on Evolutionary Computation*, 6(2), 182-197.
-2. Deb, K., & Jain, H. (2014). "An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, part I: solving problems with box constraints." *IEEE Transactions on Evolutionary Computation*, 18(4), 577-601.
-3. Zhang, Q., & Li, H. (2007). "MOEA/D: A multiobjective evolutionary algorithm based on decomposition." *IEEE Transactions on Evolutionary Computation*, 11(6), 712-731.
-4. Hwang, C. L., & Yoon, K. (1981). *Multiple attribute decision making: Methods and applications — a state-of-the-art survey* (Lecture Notes in Economics and Mathematical Systems, Vol. 186). Springer-Verlag.
-5. CityJSON Specification v1.1. Open Geospatial Consortium (OGC).
+## Verified academic references
+
+Each DOI link was checked against its publisher record or DOI registry.
+
+1. Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. *IEEE Transactions on Evolutionary Computation, 6*(2), 182–197. [https://doi.org/10.1109/4235.996017](https://doi.org/10.1109/4235.996017)
+2. Deb, K., & Jain, H. (2014). An evolutionary many-objective optimization algorithm using reference-point-based nondominated sorting approach, Part I. *IEEE Transactions on Evolutionary Computation, 18*(4), 577–601. [https://doi.org/10.1109/TEVC.2013.2281535](https://doi.org/10.1109/TEVC.2013.2281535)
+3. Zhang, Q., & Li, H. (2007). MOEA/D: A multiobjective evolutionary algorithm based on decomposition. *IEEE Transactions on Evolutionary Computation, 11*(6), 712–731. [https://doi.org/10.1109/TEVC.2007.892759](https://doi.org/10.1109/TEVC.2007.892759)
+4. Shih, H.-S., & Olson, D. L. (2022). *TOPSIS and Its Extensions: A Distance-Based MCDM Approach*. Springer. [https://doi.org/10.1007/978-3-031-09577-1](https://doi.org/10.1007/978-3-031-09577-1)
+5. Morris, M. D. (1991). Factorial sampling plans for preliminary computational experiments. *Technometrics, 33*(2), 161–174. [https://doi.org/10.1080/00401706.1991.10484804](https://doi.org/10.1080/00401706.1991.10484804)
+6. Saltelli, A., Annoni, P., Azzini, I., Campolongo, F., Ratto, M., & Tarantola, S. (2010). Variance based sensitivity analysis of model output. *Computer Physics Communications, 181*(2), 259–270. [https://doi.org/10.1016/j.cpc.2009.09.018](https://doi.org/10.1016/j.cpc.2009.09.018)
+7. Pianosi, F., Beven, K., Freer, J., Hall, J. W., Rougier, J., Stephenson, D. B., & Wagener, T. (2016). Sensitivity analysis of environmental models: A systematic review with practical workflow. *Environmental Modelling & Software, 79*, 214–232. [https://doi.org/10.1016/j.envsoft.2016.02.008](https://doi.org/10.1016/j.envsoft.2016.02.008)
+8. Bröde, P., Fiala, D., Błażejczyk, K., Holmér, I., Jendritzky, G., Kampmann, B., Tinz, B., & Havenith, G. (2012). Deriving the operational procedure for the Universal Thermal Climate Index (UTCI). *International Journal of Biometeorology, 56*, 481–494. [https://doi.org/10.1007/s00484-011-0454-1](https://doi.org/10.1007/s00484-011-0454-1)

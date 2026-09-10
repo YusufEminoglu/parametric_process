@@ -8,7 +8,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { WorkflowModeler } from './workflow_modeler.js';
 
 // Application State
-let scene, camera, renderer, controls, composer;
+let scene, camera, renderer, controls, composer, bloomPass;
 let raycaster, mouse;
 let parcelFeatures = []; // Array of { fid, properties, outerRing, parcelMesh, buildingMesh, setbackMesh, sidewalkMesh, zoningMesh, area, params }
 let selectedParcel = null;
@@ -100,6 +100,18 @@ const cityCarbonEl = document.getElementById('city-carbon');
 const legendTitleEl = document.getElementById('legend-title');
 const legendNoteEl = document.getElementById('legend-note');
 const toastContainerEl = document.getElementById('toast-container');
+const viewportQualityEl = document.getElementById('viewport-quality');
+const renderFpsEl = document.getElementById('hud-render-fps');
+const renderLoadEl = document.getElementById('hud-render-load');
+
+const VIEWPORT_QUALITY = Object.freeze({
+    low: { pixelRatio: 1, shadows: false, shadowMapSize: 512, bloom: false },
+    balanced: { pixelRatio: 1.5, shadows: true, shadowMapSize: 1024, bloom: true },
+    high: { pixelRatio: 2, shadows: true, shadowMapSize: 2048, bloom: true },
+});
+let activeViewportQuality = 'balanced';
+let renderSampleStarted = performance.now();
+let renderSampleFrames = 0;
 
 // View settings checkbox controls
 const toggleBuildingsEl = document.getElementById('toggle-buildings');
@@ -363,7 +375,7 @@ function init() {
     composer = new EffectComposer(renderer);
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
-    const bloomPass = new UnrealBloomPass(
+    bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
         0.3,   // strength
         0.4,   // radius
@@ -403,6 +415,7 @@ function init() {
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
     scene.add(dirLight);
+    applyViewportQuality(localStorage.getItem('parametric-process-quality') || 'balanced', false);
 
     // 8. Ground Terrain Plane with subtle grid texture
     const groundCanvas = document.createElement('canvas');
@@ -529,7 +542,53 @@ function animate() {
     updateHeightLabels();
 
     composer.render();
+    updateRenderTelemetry(performance.now());
 }
+
+function applyViewportQuality(requestedQuality, announce = true) {
+    const quality = VIEWPORT_QUALITY[requestedQuality] ? requestedQuality : 'balanced';
+    const profile = VIEWPORT_QUALITY[quality];
+    activeViewportQuality = quality;
+    if (viewportQualityEl) viewportQualityEl.value = quality;
+    if (!renderer) return;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.pixelRatio));
+    renderer.shadowMap.enabled = profile.shadows;
+    if (dirLight) {
+        dirLight.castShadow = profile.shadows;
+        if (dirLight.shadow.mapSize.width !== profile.shadowMapSize) {
+            dirLight.shadow.mapSize.set(profile.shadowMapSize, profile.shadowMapSize);
+            if (dirLight.shadow.map) dirLight.shadow.map.dispose();
+            dirLight.shadow.map = null;
+        }
+    }
+    if (bloomPass) bloomPass.enabled = profile.bloom;
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+    localStorage.setItem('parametric-process-quality', quality);
+    if (announce) showToast(`Viewport quality: ${quality}.`, 'info');
+}
+
+function updateRenderTelemetry(now) {
+    renderSampleFrames += 1;
+    const elapsed = now - renderSampleStarted;
+    if (elapsed < 500 || !renderer) return;
+    const fps = Math.round((renderSampleFrames * 1000) / elapsed);
+    const info = renderer.info.render;
+    if (renderFpsEl) renderFpsEl.textContent = `${fps} FPS`;
+    if (renderLoadEl) renderLoadEl.textContent = `${info.calls} calls / ${Math.round(info.triangles / 1000)}k tris`;
+    document.documentElement.dataset.viewportQuality = activeViewportQuality;
+    renderSampleFrames = 0;
+    renderSampleStarted = now;
+}
+
+if (viewportQualityEl) viewportQualityEl.addEventListener('change', () => applyViewportQuality(viewportQualityEl.value));
+
+window.__parametricProcessViewport = {
+    setQuality: applyViewportQuality,
+    getQuality: () => activeViewportQuality,
+    getRenderInfo: () => renderer ? { ...renderer.info.render } : null,
+    visitScene: callback => scene?.traverse(callback),
+};
 
 // Resize handler
 function onWindowResize() {
@@ -815,7 +874,7 @@ function filterGuideContents() {
     const term = (guideSearchEl?.value || '').trim().toLocaleLowerCase('tr-TR');
     let visible = 0;
     guideSections().forEach(section => {
-        const match = !term || section.textContent.toLocaleLowerCase('tr-TR').includes(term);
+        const match = !term || section.textContent.toLocaleLowerCase('en-US').includes(term);
         section.classList.toggle('guide-search-hidden', !match);
         const navButton = guideNavEl?.querySelector(`[data-guide-target="${section.id}"]`);
         navButton?.classList.toggle('guide-search-hidden', !match);
@@ -823,8 +882,8 @@ function filterGuideContents() {
     });
     if (guideSearchStatusEl) {
         guideSearchStatusEl.textContent = term
-            ? `${visible} bölüm eşleşti`
-            : `${guideSections().length} bölüm`;
+            ? `${visible} matching sections`
+            : `${guideSections().length} sections`;
     }
 }
 
@@ -6949,6 +7008,7 @@ function addSidewalkTreesAndAssets(group, item, insetRing) {
 
     const ring = item.outerRing;
     const len = ring.length;
+    const treePlacements = [];
     for (let i = 0; i < len; i++) {
         const p1 = ring[i];
         const p2 = ring[(i + 1) % len];
@@ -6981,21 +7041,64 @@ function addSidewalkTreesAndAssets(group, item, insetRing) {
                     const tx = bx + (nx / nLen) * offsetDistance;
                     const ty = by + (ny / nLen) * offsetDistance;
 
-                    const treeHeight = 3.5 + Math.random() * 2.5;
-                    const styles = ['deciduous', 'spherical', 'conifer'];
-                    const style = styles[Math.floor(Math.random() * styles.length)];
-                    const tree = buildLowPolyTree(tx, 0.08, -ty, treeHeight, style);
-                    group.add(tree);
+                    const seed = deterministicUnit(`${item.fid}:${i}:${j}`);
+                    treePlacements.push({ x: tx, z: -ty, height: 3.5 + seed * 2.5 });
                 }
             }
         }
     }
+    if (treePlacements.length) group.add(buildInstancedTreeLod(treePlacements, cx, -cy));
+}
+
+function deterministicUnit(value) {
+    let hash = 2166136261;
+    for (const character of String(value)) {
+        hash ^= character.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) / 4294967295;
+}
+
+function buildInstancedTreeLod(placements, centerXValue, centerZValue) {
+    const lod = new THREE.LOD();
+    lod.position.set(centerXValue, 0, centerZValue);
+    lod.userData = { urbanAsset: 'instanced-trees', instances: placements.length };
+    const detail = new THREE.Group();
+    const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.12, 0.18, 1, 6), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 }), placements.length);
+    const crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.88 }), placements.length);
+    const proxies = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 5), new THREE.MeshStandardMaterial({ color: 0x16734a, roughness: 1 }), placements.length);
+    trunks.name = 'street-tree-trunks-instanced';
+    crowns.name = 'street-tree-crowns-instanced';
+    proxies.name = 'street-trees-proxy-instanced';
+    trunks.castShadow = crowns.castShadow = true;
+    trunks.receiveShadow = crowns.receiveShadow = true;
+    const matrix = new THREE.Matrix4();
+    const rotation = new THREE.Quaternion();
+    placements.forEach((placement, index) => {
+        const localX = placement.x - centerXValue;
+        const localZ = placement.z - centerZValue;
+        const trunkHeight = placement.height * 0.34;
+        matrix.compose(new THREE.Vector3(localX, 0.08 + trunkHeight / 2, localZ), rotation, new THREE.Vector3(1, trunkHeight, 1));
+        trunks.setMatrixAt(index, matrix);
+        const crownRadius = placement.height * 0.24;
+        matrix.compose(new THREE.Vector3(localX, 0.08 + trunkHeight + crownRadius * 0.9, localZ), rotation, new THREE.Vector3(crownRadius, crownRadius * 1.15, crownRadius));
+        crowns.setMatrixAt(index, matrix);
+        matrix.compose(new THREE.Vector3(localX, 0.08 + placement.height / 2, localZ), rotation, new THREE.Vector3(placement.height * 0.25, placement.height, placement.height * 0.25));
+        proxies.setMatrixAt(index, matrix);
+    });
+    trunks.instanceMatrix.needsUpdate = true;
+    crowns.instanceMatrix.needsUpdate = true;
+    proxies.instanceMatrix.needsUpdate = true;
+    detail.add(trunks, crowns);
+    lod.addLevel(detail, 0);
+    lod.addLevel(proxies, 260);
+    return lod;
 }
 
 // Procedurally extrude concrete balconies and railings on building facades
 function addBuildingBalconies(group, insetRing, floors, floorHeight) {
     if (floors <= 1) return;
-
+    const placements = [];
     const len = insetRing.length;
     for (let i = 0; i < len; i++) {
         // Place balconies on alternate facades for architectural rhythm
@@ -7023,52 +7126,56 @@ function addBuildingBalconies(group, insetRing, floors, floorHeight) {
 
                 const angle = Math.atan2(dy, dx);
 
-                // Add balconies for each upper floor
+                // Record balconies for each upper floor; one instanced batch is built below.
                 for (let f = 1; f < floors; f++) {
-                    const bh = f * floorHeight;
-
-                    const balcony = new THREE.Group();
-                    balcony.position.set(mx + nx * 0.5, bh, -(my + ny * 0.5));
-                    balcony.rotation.y = angle;
-
-                    // Slab
-                    const slabWidth = dist * 0.4;
-                    const slabGeom = new THREE.BoxGeometry(slabWidth, 0.12, 1.2);
-                    const slabMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
-                    const slab = new THREE.Mesh(slabGeom, slabMat);
-                    slab.position.set(0, -0.06, 0.6);
-                    slab.castShadow = true;
-                    slab.receiveShadow = true;
-                    balcony.add(slab);
-
-                    // Glass railing
-                    const railGeom = new THREE.BoxGeometry(slabWidth, 1.0, 0.05);
-                    const railMat = new THREE.MeshStandardMaterial({ 
-                        color: 0x38bdf8, 
-                        transparent: true, 
-                        opacity: 0.4,
-                        roughness: 0.1,
-                        metalness: 0.9
-                    });
-                    const rail = new THREE.Mesh(railGeom, railMat);
-                    rail.position.set(0, 0.5, 1.2);
-                    rail.castShadow = true;
-                    balcony.add(rail);
-
-                    // Glass railing sides
-                    const sideRailGeom = new THREE.BoxGeometry(0.05, 1.0, 1.2);
-                    for (let side = -1; side <= 1; side += 2) {
-                        const sideRail = new THREE.Mesh(sideRailGeom, railMat);
-                        sideRail.position.set(side * (slabWidth / 2), 0.5, 0.6);
-                        sideRail.castShadow = true;
-                        balcony.add(sideRail);
-                    }
-
-                    group.add(balcony);
+                    placements.push({ x: mx + nx * 0.5, y: f * floorHeight, z: -(my + ny * 0.5), angle, width: dist * 0.4 });
                 }
             }
         }
     }
+    if (!placements.length) return;
+    let centerXValue = 0;
+    let centerZValue = 0;
+    placements.forEach(item => { centerXValue += item.x; centerZValue += item.z; });
+    centerXValue /= placements.length;
+    centerZValue /= placements.length;
+    const lod = new THREE.LOD();
+    lod.position.set(centerXValue, 0, centerZValue);
+    lod.userData = { urbanAsset: 'instanced-balconies', instances: placements.length };
+    const detail = new THREE.Group();
+    const slabInstances = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 }), placements.length);
+    const frontRailInstances = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.9 }), placements.length);
+    const sideRailInstances = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), frontRailInstances.material, placements.length * 2);
+    slabInstances.name = 'balcony-slabs-instanced';
+    frontRailInstances.name = 'balcony-front-rails-instanced';
+    sideRailInstances.name = 'balcony-side-rails-instanced';
+    slabInstances.castShadow = slabInstances.receiveShadow = true;
+    frontRailInstances.castShadow = sideRailInstances.castShadow = true;
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    placements.forEach((item, index) => {
+        const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), item.angle);
+        position.set(item.x - centerXValue, item.y - 0.06, item.z - centerZValue).add(new THREE.Vector3(0, 0, 0.6).applyQuaternion(rotation));
+        matrix.compose(position, rotation, scale.set(item.width, 0.12, 1.2));
+        slabInstances.setMatrixAt(index, matrix);
+        position.set(item.x - centerXValue, item.y + 0.5, item.z - centerZValue).add(new THREE.Vector3(0, 0, 1.2).applyQuaternion(rotation));
+        matrix.compose(position, rotation, scale.set(item.width, 1, 0.05));
+        frontRailInstances.setMatrixAt(index, matrix);
+        for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
+            const side = sideIndex === 0 ? -1 : 1;
+            position.set(side * item.width / 2, 0.5, 0.6).applyQuaternion(rotation).add(new THREE.Vector3(item.x - centerXValue, item.y, item.z - centerZValue));
+            matrix.compose(position, rotation, scale.set(0.05, 1, 1.2));
+            sideRailInstances.setMatrixAt(index * 2 + sideIndex, matrix);
+        }
+    });
+    slabInstances.instanceMatrix.needsUpdate = true;
+    frontRailInstances.instanceMatrix.needsUpdate = true;
+    sideRailInstances.instanceMatrix.needsUpdate = true;
+    detail.add(slabInstances, frontRailInstances, sideRailInstances);
+    lod.addLevel(detail, 0);
+    lod.addLevel(new THREE.Group(), 220);
+    group.add(lod);
 }
 
 // Clip convex polygon with vertical lines in 2D local space
@@ -9203,11 +9310,11 @@ function installEnglishAnalyticalGuide() {
         <section id="guide-workspaces" class="guide-section guide-searchable"><h3>Choose the right workspace</h3><p>Use Parametric Cockpit for direct massing review, Evolutionary Studio for Pareto search, Workflow Modeler for reusable rule graphs, and Academic Study for versioned assumptions and reproducibility manifests.</p></section>
         <section id="guide-workflow" class="guide-section guide-searchable"><h3>Build an auditable workflow</h3><p>Begin with QGIS Site Layer, add a zoning envelope, generation or analysis nodes, a solver, optional TOPSIS ranking, selection, and QGIS output. A run log records the validated topological execution order.</p></section>
         <section id="guide-nodes" class="guide-section guide-searchable"><h3>Node semantics</h3><p>Site nodes read geometry; rule nodes constrain it; generators create candidates; analysis nodes calculate indicators; solvers search alternatives; decision nodes express preferences; output nodes prepare reviewed updates. Keep constraints separate from objectives.</p></section>
-        <section id="guide-optimizer" class="guide-section guide-searchable"><h3>Calibrate the optimization</h3><p>Use NSGA-II for a robust general baseline, SPEA-2 for archive density, and NSGA-III or MOEA/D for many objectives. Start with a small diagnostic run, then compare at least three fixed seeds with identical bounds and budgets.</p></section>
+        <section id="guide-optimizer" class="guide-section guide-searchable"><h3>Predeclare the experiment</h3><p>Use NSGA-II as a general baseline and consider NSGA-III or MOEA/D for many objectives. Run a diagnostic first; then freeze objectives, bounds, constraints, budget, scenario matrix and seed list. Compare scenarios with identical settings and preserve failed runs.</p></section>
         <section id="guide-results" class="guide-section guide-searchable"><h3>Read evidence together</h3><p>Check feasibility first, then Pareto position, parallel-coordinate thresholds, convergence, cluster diversity, raw values, and spatial geometry. A composite score never replaces its component metrics.</p></section>
         <section id="guide-decision" class="guide-section guide-searchable"><h3>Govern the decision</h3><p>Shortlist alternatives from distinct solution families. Publish TOPSIS weights and rank sensitivity. Prefer alternatives that remain feasible and competitive across seeds and plausible scenario assumptions.</p></section>
-        <section id="guide-improve" class="guide-section guide-searchable"><h3>Diagnose before tuning</h3><p>No feasible designs usually indicate incompatible zoning or bounds. Identical designs suggest premature convergence. Unstable rankings require more seeds or evidence. Change one major assumption at a time during calibration.</p></section>
-        <section id="guide-output" class="guide-section guide-searchable"><h3>Preserve the audit trail</h3><p>Archive the study JSON, CRS, input snapshot, field mapping, model version, seeds, objective directions, constraints, Pareto set, robustness summary, selection rationale, and validation status with exported spatial layers.</p></section>
+        <section id="guide-improve" class="guide-section guide-searchable"><h3>Separate uncertainty sources</h3><p>Distinguish data, parameter, model-form and preference uncertainty. Use scenarios for structural assumptions, multiple seeds for search variability, Morris for factor screening and global methods when interactions matter.</p><p class="guide-warning"><strong>Validation:</strong> built-in wind, solar, UTCI, carbon and financial values are screening indicators. Validate shortlisted claims with an appropriate calibrated or specialist method.</p></section>
+        <section id="guide-output" class="guide-section guide-searchable"><h3>Preserve the audit trail</h3><p>Archive source snapshots, licences, CRS, repairs, field mapping, workflow and study JSON, engine versions, seed list, rejected runs, complete Pareto set, robustness and sensitivity results, ranking assumptions, validation evidence and the SHA-256 manifest.</p><p>Method foundations: NSGA-II (<a href="https://doi.org/10.1109/4235.996017" target="_blank" rel="noopener">DOI</a>), NSGA-III (<a href="https://doi.org/10.1109/TEVC.2013.2281535" target="_blank" rel="noopener">DOI</a>), MOEA/D (<a href="https://doi.org/10.1109/TEVC.2007.892759" target="_blank" rel="noopener">DOI</a>), and sensitivity analysis (<a href="https://doi.org/10.1016/j.envsoft.2016.02.008" target="_blank" rel="noopener">DOI</a>).</p></section>
         </article></div>`;
 }
 

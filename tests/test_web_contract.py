@@ -50,6 +50,7 @@ class WebContractTests(unittest.TestCase):
 
     def test_analytical_guide_is_complete_and_navigable(self):
         html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         required_sections = {
             "guide-start", "guide-data", "guide-workspaces", "guide-workflow",
             "guide-nodes", "guide-optimizer", "guide-results", "guide-decision",
@@ -59,9 +60,9 @@ class WebContractTests(unittest.TestCase):
         nav_targets = set(re.findall(r'data-guide-target="([^"]+)"', html))
         self.assertTrue(required_sections.issubset(section_ids))
         self.assertEqual(nav_targets, required_sections)
-        searchable_html = html.casefold()
-        for term in ("Pareto", "TOPSIS", "QGIS", "constraint_penalty", "Duyarlılık"):
-            self.assertIn(term.casefold(), searchable_html)
+        searchable_guide = f"{html}\n{app}".casefold()
+        for term in ("Pareto", "TOPSIS", "QGIS", "constraint_penalty", "sensitivity"):
+            self.assertIn(term.casefold(), searchable_guide)
 
         guide_path = WEB_ROOT.parents[1] / "docs" / "ACADEMIC_USE.md"
         guide = guide_path.read_text(encoding="utf-8")
@@ -82,6 +83,15 @@ class WebContractTests(unittest.TestCase):
         self.assertIn("/api/academic/study", app)
         self.assertIn("installEnglishAnalyticalGuide", app)
         self.assertIn("Built-in environmental metrics are screening-level proxies", html)
+
+    def test_threejs_instancing_and_lod_contract(self):
+        script = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        self.assertIn("new THREE.InstancedMesh", script)
+        self.assertIn("new THREE.LOD", script)
+        self.assertIn("deterministicUnit", script)
+        self.assertIn("street-trees-proxy-instanced", script)
+        self.assertIn("balcony-slabs-instanced", script)
+        self.assertIn("urbanAsset: 'instanced-balconies'", script)
 
 
 if __name__ == "__main__":
