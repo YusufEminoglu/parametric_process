@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-09-10
+
 - Add deterministic percentile-bootstrap confidence intervals for multi-seed robustness studies.
 - Add input completeness, identifier uniqueness, numeric-range, Pareto coverage, and spacing diagnostics.
 - Add SHA-256 experiment manifests for auditable input, parameter, and output chain of custody.
