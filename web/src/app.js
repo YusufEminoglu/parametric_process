@@ -109,9 +109,11 @@ const VIEWPORT_QUALITY = Object.freeze({
     balanced: { pixelRatio: 1.5, shadows: true, shadowMapSize: 1024, bloom: true },
     high: { pixelRatio: 2, shadows: true, shadowMapSize: 2048, bloom: true },
 });
-let activeViewportQuality = 'balanced';
+let activeViewportQuality = 'low';
 let renderSampleStarted = performance.now();
 let renderSampleFrames = 0;
+let lastRenderedAt = 0;
+const facadeTextureCache = new Map();
 
 // View settings checkbox controls
 const toggleBuildingsEl = document.getElementById('toggle-buildings');
@@ -122,6 +124,20 @@ const togglePedestriansEl = document.getElementById('toggle-pedestrians');
 const toggleTrafficEl = document.getElementById('toggle-traffic');
 const toggleGridEl = document.getElementById('toggle-grid');
 const toggleHeightLabelsEl = document.getElementById('toggle-height-labels');
+const toggleLandscapeEl = document.getElementById('toggle-landscape');
+const toggleArchitecturalDetailEl = document.getElementById('toggle-architectural-detail');
+const toggleMotionEl = document.getElementById('toggle-motion');
+const btnTogglePalette = document.getElementById('btn-toggle-palette');
+const btnToggleDock = document.getElementById('btn-toggle-dock');
+const btnOnboarding = document.getElementById('btn-onboarding');
+const onboardingCard = document.getElementById('onboarding-card');
+const onboardingTitle = document.getElementById('onboarding-title');
+const onboardingCopy = document.getElementById('onboarding-copy');
+const onboardingStepLabel = document.getElementById('onboarding-step-label');
+const onboardingProgressFill = document.getElementById('onboarding-progress-fill');
+const onboardingBack = document.getElementById('onboarding-back');
+const onboardingNext = document.getElementById('onboarding-next');
+const onboardingClose = document.getElementById('onboarding-close');
 
 // Input controls
 const inTypology = document.getElementById('input-typology');
@@ -415,7 +431,7 @@ function init() {
     dirLight.shadow.camera.top = d;
     dirLight.shadow.camera.bottom = -d;
     scene.add(dirLight);
-    applyViewportQuality(localStorage.getItem('parametric-process-quality') || 'balanced', false);
+    applyViewportQuality(localStorage.getItem('parametric-process-quality') || 'low', false);
 
     // 8. Ground Terrain Plane with subtle grid texture
     const groundCanvas = document.createElement('canvas');
@@ -517,6 +533,11 @@ function init() {
 function animate() {
     requestAnimationFrame(animate);
     if (document.hidden || document.body.classList.contains('workflow-mode')) return;
+    const now = performance.now();
+    const motionEnabled = toggleMotionEl?.checked === true;
+    const targetInterval = motionEnabled || isCinematicTour || isDraggingHeight || isDraggingSetback || isDraggingScaleAxis ? 16 : 50;
+    if (now - lastRenderedAt < targetInterval) return;
+    lastRenderedAt = now;
     
     // Auto orbit camera for Cinematic Tour
     if (isCinematicTour) {
@@ -532,17 +553,17 @@ function animate() {
     controls.update();
 
     // Update traffic cars positions
-    updateTraffic();
+    if (motionEnabled && toggleTrafficEl?.checked) updateTraffic();
 
     // Update pedestrian positions
-    updatePedestrians();
+    if (motionEnabled && togglePedestriansEl?.checked) updatePedestrians();
 
     // Update 3D ruler tool labels screen positions
     updateMeasurementLabels();
     updateHeightLabels();
 
     composer.render();
-    updateRenderTelemetry(performance.now());
+    updateRenderTelemetry(now);
 }
 
 function applyViewportQuality(requestedQuality, announce = true) {
@@ -582,11 +603,63 @@ function updateRenderTelemetry(now) {
 }
 
 if (viewportQualityEl) viewportQualityEl.addEventListener('change', () => applyViewportQuality(viewportQualityEl.value));
+if (btnTogglePalette) btnTogglePalette.addEventListener('click', () => toggleApplicationPanel('palette'));
+if (btnToggleDock) btnToggleDock.addEventListener('click', () => toggleApplicationPanel('dock'));
+if (btnOnboarding) btnOnboarding.addEventListener('click', () => openOnboarding(0));
+if (onboardingBack) onboardingBack.addEventListener('click', () => showOnboardingStep(onboardingStep - 1));
+if (onboardingNext) onboardingNext.addEventListener('click', () => onboardingStep >= ONBOARDING_STEPS.length - 1 ? closeOnboarding() : showOnboardingStep(onboardingStep + 1));
+if (onboardingClose) onboardingClose.addEventListener('click', closeOnboarding);
+
+function toggleApplicationPanel(panel) {
+    const className = panel === 'palette' ? 'palette-collapsed' : 'dock-collapsed';
+    const button = panel === 'palette' ? btnTogglePalette : btnToggleDock;
+    const collapsed = document.body.classList.toggle(className);
+    button?.setAttribute('aria-expanded', String(!collapsed));
+    onWindowResize();
+}
+
+const ONBOARDING_STEPS = [
+    { target: '#btn-sync-top', title: 'Start with a site', copy: 'Load a projected polygon layer in QGIS. Use Sync QGIS whenever the source geometry or attributes change.' },
+    { target: '#tool-palette', title: 'Control scene cost', copy: 'Open Scene Layers and enable only what you need. Traffic, pedestrians, labels, and motion stay off for fast editing.' },
+    { target: '#control-dock', title: 'Select and shape a parcel', copy: 'Click a parcel in 3D, then adjust typology, floors, setback, BCR, FAR, and height in the parameter panel.' },
+    { target: '#tab-btn-workflow', title: 'Build a reproducible workflow', copy: 'Open Workflow Modeler, load an example template, inspect its nodes, and run the graph before editing it.' },
+    { target: '#tab-btn-wallacei', title: 'Explore trade-offs', copy: 'Use Evolutionary Studio for Pareto alternatives. Compare objectives and seeds instead of accepting one opaque optimum.' },
+    { target: '#tab-btn-academic', title: 'Archive an academic study', copy: 'Create a validated study manifest with declared CRS, seeds, assumptions, and screening limits; export it with the results.' },
+];
+let onboardingStep = 0;
+
+function openOnboarding(step = 0) {
+    onboardingCard?.classList.remove('hidden');
+    showOnboardingStep(step);
+}
+
+function showOnboardingStep(step) {
+    onboardingStep = Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, step));
+    document.querySelectorAll('.onboarding-focus').forEach(element => element.classList.remove('onboarding-focus'));
+    const definition = ONBOARDING_STEPS[onboardingStep];
+    const target = document.querySelector(definition.target);
+    if (target?.closest('#tool-palette')) document.body.classList.remove('palette-collapsed');
+    if (target?.closest('#control-dock')) document.body.classList.remove('dock-collapsed');
+    target?.classList.add('onboarding-focus');
+    if (onboardingTitle) onboardingTitle.textContent = definition.title;
+    if (onboardingCopy) onboardingCopy.textContent = definition.copy;
+    if (onboardingStepLabel) onboardingStepLabel.textContent = `Step ${onboardingStep + 1} of ${ONBOARDING_STEPS.length}`;
+    if (onboardingProgressFill) onboardingProgressFill.style.width = `${((onboardingStep + 1) / ONBOARDING_STEPS.length) * 100}%`;
+    if (onboardingBack) onboardingBack.disabled = onboardingStep === 0;
+    if (onboardingNext) onboardingNext.textContent = onboardingStep === ONBOARDING_STEPS.length - 1 ? 'Finish' : 'Next';
+}
+
+function closeOnboarding() {
+    onboardingCard?.classList.add('hidden');
+    document.querySelectorAll('.onboarding-focus').forEach(element => element.classList.remove('onboarding-focus'));
+}
 
 window.__parametricProcessViewport = {
     setQuality: applyViewportQuality,
     getQuality: () => activeViewportQuality,
     getRenderInfo: () => renderer ? { ...renderer.info.render } : null,
+    getMemoryInfo: () => renderer ? { ...renderer.info.memory } : null,
+    getMotionCounts: () => ({ traffic: trafficCars.length, pedestrians: pedestrians.length }),
     visitScene: callback => scene?.traverse(callback),
 };
 
@@ -832,8 +905,24 @@ function setupInputListeners() {
     if (toggleZoningEl) toggleZoningEl.addEventListener('change', onVisibilityChange);
     if (toggleSetbacksEl) toggleSetbacksEl.addEventListener('change', onVisibilityChange);
     if (toggleSidewalksEl) toggleSidewalksEl.addEventListener('change', onVisibilityChange);
-    if (togglePedestriansEl) togglePedestriansEl.addEventListener('change', onVisibilityChange);
-    if (toggleTrafficEl) toggleTrafficEl.addEventListener('change', onVisibilityChange);
+    if (toggleLandscapeEl) toggleLandscapeEl.addEventListener('change', () => {
+        parcelFeatures.forEach(item => buildSidewalk(item));
+        updateLayersVisibility();
+    });
+    if (toggleArchitecturalDetailEl) toggleArchitecturalDetailEl.addEventListener('change', () => {
+        parcelFeatures.forEach(item => rebuildParcel3D(item));
+        updateLayersVisibility();
+    });
+    if (togglePedestriansEl) togglePedestriansEl.addEventListener('change', () => {
+        if (togglePedestriansEl.checked && pedestrians.length === 0) {
+            parcelFeatures.forEach(item => spawnSidewalkPedestrians(item, item.outerRing));
+        }
+        updateLayersVisibility();
+    });
+    if (toggleTrafficEl) toggleTrafficEl.addEventListener('change', () => {
+        if (toggleTrafficEl.checked && trafficCars.length === 0 && roadMeshes.length === 0) generateTrafficCars();
+        updateLayersVisibility();
+    });
     if (toggleGridEl) toggleGridEl.addEventListener('change', onVisibilityChange);
     if (toggleHeightLabelsEl) toggleHeightLabelsEl.addEventListener('change', updateHeightLabels);
 
@@ -1670,7 +1759,7 @@ async function loadGeoJSON() {
         if (!response.ok) throw new Error("Could not load data");
         
         const data = await response.json();
-        parseGeoJSON(data);
+        await parseGeoJSON(data);
         
         loadingEl.style.opacity = 0;
         setTimeout(() => loadingEl.classList.add('hidden'), 500);
@@ -1697,9 +1786,9 @@ function showDataWarning(message, tone = 'warning') {
     }
 }
 
-function showFallbackScene(reason) {
+async function showFallbackScene(reason) {
     console.warn(`PlanX fallback city loaded: ${reason}`);
-    parseGeoJSON(mockupGeoJSON, { allowFallback: false, fallbackReason: reason });
+    await parseGeoJSON(mockupGeoJSON, { allowFallback: false, fallbackReason: reason });
     showDataWarning(reason);
     if (window.planxDebug) {
         window.planxDebug.fallbackReason = reason;
@@ -2027,14 +2116,15 @@ function updateSceneDebug(bounds, fallbackReason = null) {
 }
 
 // Parse GeoJSON geometries and center coordinates
-function parseGeoJSON(data, options = {}) {
+async function parseGeoJSON(data, options = {}) {
+    const totalStartedAt = performance.now();
     const allowFallback = options.allowFallback !== false;
     const renderableFeatures = collectRenderableFeatures(data);
     const bounds = calculateCoordinateBounds(renderableFeatures);
 
     if (renderableFeatures.length === 0 || !bounds) {
         if (allowFallback) {
-            return showFallbackScene('QGIS returned no renderable polygon features, so a demo city was loaded instead of a blank grid.');
+            return await showFallbackScene('QGIS returned no renderable polygon features, so a demo city was loaded instead of a blank grid.');
         }
         clearScene();
         hudTotalParcels.textContent = "0";
@@ -2074,8 +2164,11 @@ function parseGeoJSON(data, options = {}) {
     centerX = (bounds.minX + bounds.maxX) / 2;
     centerY = (bounds.minY + bounds.maxY) / 2;
 
-    // 2. Parse features
-    renderableFeatures.forEach(entry => {
+    // 2. Parse features progressively so large QGIS layers do not freeze the UI.
+    const buildStartedAt = performance.now();
+    const batchSize = activeViewportQuality === 'low' ? 40 : 24;
+    for (let entryIndex = 0; entryIndex < renderableFeatures.length; entryIndex++) {
+        const entry = renderableFeatures[entryIndex];
         const f = entry.feature;
         const fid = f.id !== undefined ? f.id : entry.index;
         const props = f.properties || {};
@@ -2085,11 +2178,11 @@ function parseGeoJSON(data, options = {}) {
             return { x: pt[0] - centerX, y: pt[1] - centerY };
         }));
 
-        if (localPoints.length < 3) return;
+        if (localPoints.length < 3) continue;
 
         // Calculate parcel area
         const area = calculatePolygonArea(localPoints);
-        if (!Number.isFinite(area) || area <= 0.01) return;
+        if (!Number.isFinite(area) || area <= 0.01) continue;
         const usage = normalizeUsage(readProp(props, ['usage', 'use', 'landuse', 'land_use', 'kullanim', 'fonksiyon']), 'Residential');
         const typology = normalizeTypology(readProp(props, ['typology', 'type', 'building_type', 'form']), defaultTypologyForBlock(area, usage, localPoints));
         const floorHeight = parseNumberProp(props, ['floor_h', 'floor_height', 'floorheight', 'kat_yuk', 'kat_yuksekligi'], 3.0);
@@ -2132,18 +2225,26 @@ function parseGeoJSON(data, options = {}) {
 
         parcelFeatures.push(item);
         buildFeatureMeshesSafely(item);
-    });
+        if ((entryIndex + 1) % batchSize === 0) {
+            if (loadingEl) {
+                const progress = Math.round(((entryIndex + 1) / renderableFeatures.length) * 100);
+                const loadingText = document.getElementById('loading-text');
+                if (loadingText) loadingText.textContent = `Building urban model: ${progress}%`;
+            }
+            await new Promise(resolve => requestAnimationFrame(resolve));
+        }
+    }
 
     if (parcelFeatures.length === 0) {
         if (allowFallback) {
-            return showFallbackScene('QGIS polygons could not be converted into valid 3D footprints, so a demo city was loaded instead of a blank grid.');
+            return await showFallbackScene('QGIS polygons could not be converted into valid 3D footprints, so a demo city was loaded instead of a blank grid.');
         }
         updateSceneDebug(bounds, options.fallbackReason || 'No valid footprints after parsing');
         return false;
     }
 
-    // Generate Animated Traffic on road tracks (minimal default)
-    try {
+    // Heavy road/vehicle geometry is lazy: build only when the user enables Traffic.
+    if (toggleTrafficEl?.checked) try {
         generateTrafficCars();
         // Keep only first 4 cars for minimal default
         if (trafficCars.length > 4) {
@@ -2164,6 +2265,12 @@ function parseGeoJSON(data, options = {}) {
     updateSceneDebug({ ...bounds, maxDim: fit.maxDim, focusDim: fit.focusDim }, options.fallbackReason || null);
     updateHeatmapLegend();
     updateCitySummary();
+    window.planxDebug.performance = {
+        featureCount: parcelFeatures.length,
+        batchSize,
+        buildMs: Number((performance.now() - buildStartedAt).toFixed(1)),
+        totalMs: Number((performance.now() - totalStartedAt).toFixed(1)),
+    };
     return true;
 }
 
@@ -2228,7 +2335,8 @@ function buildParcelGround(item) {
 function buildSidewalk(item) {
     if (item.sidewalkMesh) {
         scene.remove(item.sidewalkMesh);
-        item.sidewalkMesh.geometry.dispose();
+        disposeObject3D(item.sidewalkMesh);
+        item.sidewalkMesh = null;
     }
 
     // Outer sidewalk polygon (shifted 2.0 meters outward)
@@ -2263,6 +2371,9 @@ function buildSidewalk(item) {
     mesh.position.y = -0.05;
     scene.add(mesh);
     item.sidewalkMesh = mesh;
+
+    // Street furniture and vegetation are an explicit, lazy scene layer.
+    if (!toggleLandscapeEl?.checked) return;
 
     // Place Procedural Streetlights along curb corners
     const numLights = Math.max(2, Math.floor(item.outerRing.length / 2));
@@ -2308,12 +2419,7 @@ function buildSidewalk(item) {
             bulb.visible = false; // off by default (daylight)
             pole.add(bulb);
 
-            // Spot light source casting downward
-            const spotLight = new THREE.SpotLight(0xfef08a, 4, 15, Math.PI / 4, 0.5, 1);
-            spotLight.position.set(0, 2.7, 1.2);
-            spotLight.target.position.set(0, 0, 1.2);
-            bulb.add(spotLight);
-            bulb.add(spotLight.target);
+            // City-scale fixtures use emissive bulbs; per-fixture lights exceed GPU uniform budgets.
         } else {
             // Plant a beautiful sidewalk tree with random style variety
             const treeStyles = ['conifer', 'deciduous', 'palm'];
@@ -2323,8 +2429,8 @@ function buildSidewalk(item) {
         }
     }
 
-    // Spawn animated pedestrians on the sidewalk
-    spawnSidewalkPedestrians(item, outerSidewalk);
+    // Animated people are lazy and opt-in to keep initial model construction fast.
+    if (togglePedestriansEl?.checked) spawnSidewalkPedestrians(item, outerSidewalk);
 }
 
 // Rebuild building massing, zoning envelopes, and setback lines based on params
@@ -2596,7 +2702,9 @@ function rebuildParcel3D(item) {
         // Add roof details on top based on roof style selection
         const topMesh = towerMesh || podiumMesh;
         const roofStyle = roofStyleForItem(item);
-        if (roofStyle === 'Hipped') {
+        if (!toggleArchitecturalDetailEl?.checked) {
+            // The extruded massing already provides a flat analytical roof.
+        } else if (roofStyle === 'Hipped') {
             buildHippedRoof(topMesh, towerRing, height);
         } else if (roofStyle === 'Gable') {
             buildGableRoof(topMesh, towerRing, height);
@@ -3032,7 +3140,7 @@ function rebuildParcel3D(item) {
         }
 
         // Add Courtyard/Inner garden trees for specific typologies
-        if (typology === 'Courtyard') {
+        if (toggleLandscapeEl?.checked && typology === 'Courtyard') {
             let cx = 0, cy = 0;
             insetRing.forEach(pt => { cx += pt.x; cy += pt.y; });
             cx /= insetRing.length;
@@ -3040,7 +3148,7 @@ function rebuildParcel3D(item) {
             
             const courtTree = buildLowPolyTree(cx, 0.05, -cy, 6);
             bldMesh.add(courtTree);
-        } else if (typology === 'LShape') {
+        } else if (toggleLandscapeEl?.checked && typology === 'LShape') {
             const ob = getOrientedBounds(insetRing);
             const w = Math.min(12, ob.W * 0.5);
             const h = Math.min(12, ob.H * 0.5);
@@ -3051,7 +3159,7 @@ function rebuildParcel3D(item) {
             
             const courtTree = buildLowPolyTree(gx, 0.05, -gy, 5);
             bldMesh.add(courtTree);
-        } else if (typology === 'UShape') {
+        } else if (toggleLandscapeEl?.checked && typology === 'UShape') {
             const ob = getOrientedBounds(insetRing);
             const w = Math.min(12, ob.W * 0.4);
             const h = Math.min(12, ob.H * 0.4);
@@ -3447,6 +3555,9 @@ function getBuildingMaterials(usage, floors) {
 
 // Canvas-drawn texture mapping for realistic windows with randomized emissive maps
 function createFacadeTextures(wallColor, usage, floors) {
+    const floorBand = Math.max(1, Math.min(30, Math.round(Number(floors) || 1)));
+    const cacheKey = `${wallColor}:${usage}:${floorBand}`;
+    if (facadeTextureCache.has(cacheKey)) return facadeTextureCache.get(cacheKey);
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 512;
@@ -3587,7 +3698,11 @@ function createFacadeTextures(wallColor, usage, floors) {
     emissiveTex.wrapS = THREE.RepeatWrapping;
     emissiveTex.wrapT = THREE.RepeatWrapping;
 
-    return { map: diffuseTex, emissiveMap: emissiveTex };
+    diffuseTex.userData.sharedAsset = true;
+    emissiveTex.userData.sharedAsset = true;
+    const textures = { map: diffuseTex, emissiveMap: emissiveTex };
+    facadeTextureCache.set(cacheKey, textures);
+    return textures;
 }
 
 // Hipped pitched roof generator with clay tiles
@@ -3762,6 +3877,7 @@ function buildMansardRoof(parentMesh, footprintPoints, height) {
 
 // Flat roof details (helipad, HVAC boxes, solar panels)
 function addRooftopDetails(parentMesh, insetRing, height, usage) {
+    if (!toggleArchitecturalDetailEl?.checked) return;
     let cx = 0, cy = 0;
     insetRing.forEach(pt => { cx += pt.x; cy += pt.y; });
     cx /= insetRing.length;
@@ -5581,7 +5697,7 @@ function disposeMaterialOrMaterials(material) {
 
 function disposeSingleMaterial(m) {
     if (!m) return;
-    if (m.map) m.map.dispose();
+    if (m.map && !m.map.userData?.sharedAsset) m.map.dispose();
     if (m.lightMap) m.lightMap.dispose();
     if (m.bumpMap) m.bumpMap.dispose();
     if (m.normalMap) m.normalMap.dispose();
@@ -5590,7 +5706,7 @@ function disposeSingleMaterial(m) {
     if (m.alphaMap) m.alphaMap.dispose();
     if (m.aoMap) m.aoMap.dispose();
     if (m.displacementMap) m.displacementMap.dispose();
-    if (m.emissiveMap) m.emissiveMap.dispose();
+    if (m.emissiveMap && !m.emissiveMap.userData?.sharedAsset) m.emissiveMap.dispose();
     if (m.roughnessMap) m.roughnessMap.dispose();
     if (m.metalnessMap) m.metalnessMap.dispose();
     m.dispose();
@@ -5670,7 +5786,7 @@ async function reloadData() {
         if (!response.ok) throw new Error("Could not load data");
         
         const data = await response.json();
-        parseGeoJSON(data);
+        await parseGeoJSON(data);
         
         // Hide loading screen
         if (loadingEl) {
@@ -6924,7 +7040,7 @@ async function runPpudPipeline() {
 
 // Generate a grass garden lawn in the setback zone
 function buildSetbackLawn(item, insetRing) {
-    if (item.params.usage === 'Park') return null;
+    if (!toggleLandscapeEl?.checked || item.params.usage === 'Park') return null;
 
     const lawnShape = new THREE.Shape();
     item.outerRing.forEach((pt, i) => {
@@ -6986,19 +7102,12 @@ function buildStreetlight(x, y, z) {
     bulb.userData = { isStreetlightBulb: true };
     group.add(bulb);
 
-    // Light source pointing downwards
-    const spotlight = new THREE.SpotLight(0xfef08a, isNight ? 3.0 : 0.0, 15, Math.PI / 4, 0.5, 1);
-    spotlight.position.set(0, 4.8, 1.1);
-    spotlight.target.position.set(0, 0, 1.1);
-    group.add(spotlight);
-    group.add(spotlight.target);
-
     return group;
 }
 
 // Generate street trees and lamp posts along outer parcel boundary segments
 function addSidewalkTreesAndAssets(group, item, insetRing) {
-    if (item.params.usage === 'Park') return;
+    if (!toggleLandscapeEl?.checked || item.params.usage === 'Park') return;
 
     // Calculate centroid of parcel to determine inward direction
     let cx = 0, cy = 0;
@@ -7097,7 +7206,7 @@ function buildInstancedTreeLod(placements, centerXValue, centerZValue) {
 
 // Procedurally extrude concrete balconies and railings on building facades
 function addBuildingBalconies(group, insetRing, floors, floorHeight) {
-    if (floors <= 1) return;
+    if (!toggleArchitecturalDetailEl?.checked || floors <= 1) return;
     const placements = [];
     const len = insetRing.length;
     for (let i = 0; i < len; i++) {

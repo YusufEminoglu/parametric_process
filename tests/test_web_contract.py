@@ -93,6 +93,23 @@ class WebContractTests(unittest.TestCase):
         self.assertIn("balcony-slabs-instanced", script)
         self.assertIn("urbanAsset: 'instanced-balconies'", script)
 
+    def test_performance_first_layer_panel_contract(self):
+        html = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        script = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        for element_id in ("toggle-traffic", "toggle-pedestrians", "toggle-motion", "toggle-landscape", "toggle-architectural-detail", "btn-toggle-palette", "btn-toggle-dock"):
+            self.assertIn(f'id="{element_id}"', html)
+        self.assertNotRegex(html, r'id="toggle-(?:traffic|pedestrians|motion)"[^>]*checked')
+        self.assertIn("targetInterval", script)
+        self.assertIn("toggleApplicationPanel", script)
+        self.assertIn("Heavy road/vehicle geometry is lazy", script)
+        self.assertIn("Animated people are lazy", script)
+        self.assertIn("Street furniture and vegetation are an explicit, lazy scene layer", script)
+        self.assertIn("Building urban model:", script)
+        self.assertIn("window.planxDebug.performance", script)
+        self.assertIn("facadeTextureCache", script)
+        self.assertIn("sharedAsset", script)
+        self.assertNotIn("new THREE.SpotLight", script)
+
 
 if __name__ == "__main__":
     unittest.main()

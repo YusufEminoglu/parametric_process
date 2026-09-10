@@ -66,6 +66,9 @@ test('Three.js viewport exposes measurable render budgets', async ({ page }) => 
     await page.locator('#viewport-quality').selectOption(quality);
     await expect.poll(() => page.evaluate(() => window.__parametricProcessViewport.getQuality())).toBe(quality);
   }
+  await page.locator('#toggle-landscape').check();
+  await page.locator('#toggle-architectural-detail').check();
+  await page.waitForTimeout(100);
   const info = await page.evaluate(() => window.__parametricProcessViewport.getRenderInfo());
   expect(info).toEqual(expect.objectContaining({ calls: expect.any(Number), triangles: expect.any(Number) }));
   const instancing = await page.evaluate(() => {
@@ -83,4 +86,39 @@ test('Three.js viewport exposes measurable render budgets', async ({ page }) => 
   expect(instancing.balconyLods).toBeGreaterThan(0);
   expect(instancing.instances).toBeGreaterThan(0);
   expect(errors).toEqual([]);
+});
+
+test('performance-first panels remain usable in a QGIS-sized viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 700 });
+  await page.goto('http://127.0.0.1:18100/index.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#toggle-motion')).not.toBeChecked();
+  await expect(page.locator('#toggle-traffic')).not.toBeChecked();
+  await expect(page.locator('#toggle-pedestrians')).not.toBeChecked();
+  await expect(page.locator('#toggle-landscape')).not.toBeChecked();
+  await expect(page.locator('#toggle-architectural-detail')).not.toBeChecked();
+  await page.locator('#btn-toggle-palette').click();
+  await expect(page.locator('body')).toHaveClass(/palette-collapsed/);
+  await expect(page.locator('#btn-toggle-palette')).toHaveAttribute('aria-expanded', 'false');
+  await page.locator('#btn-toggle-dock').click();
+  await expect(page.locator('body')).toHaveClass(/dock-collapsed/);
+  const scorecard = await page.locator('#city-scorecard').boundingBox();
+  expect(scorecard.x).toBeGreaterThanOrEqual(0);
+  expect(scorecard.x + scorecard.width).toBeLessThanOrEqual(960);
+});
+
+test('guided onboarding advances and heavy motion layers load on demand', async ({ page }) => {
+  await page.goto('http://127.0.0.1:18100/index.html', { waitUntil: 'networkidle' });
+  expect(await page.evaluate(() => window.__parametricProcessViewport.getMotionCounts())).toEqual({ traffic: 0, pedestrians: 0 });
+  await page.locator('#btn-onboarding').click();
+  await expect(page.locator('#onboarding-step-label')).toHaveText('Step 1 of 6');
+  for (let step = 2; step <= 6; step++) {
+    await page.locator('#onboarding-next').click();
+    await expect(page.locator('#onboarding-step-label')).toHaveText(`Step ${step} of 6`);
+  }
+  await page.locator('#onboarding-next').click();
+  await expect(page.locator('#onboarding-card')).toBeHidden();
+  await page.locator('#toggle-traffic').check();
+  await expect.poll(() => page.evaluate(() => window.__parametricProcessViewport.getMotionCounts().traffic)).toBeGreaterThan(0);
+  await page.locator('#toggle-pedestrians').check();
+  await expect.poll(() => page.evaluate(() => window.__parametricProcessViewport.getMotionCounts().pedestrians)).toBeGreaterThan(0);
 });

@@ -15,6 +15,12 @@
 - Add live FPS, draw-call, and triangle telemetry for evidence-based large-model tuning.
 - Batch street trees into deterministic `InstancedMesh` layers and switch to a lightweight proxy through distance-based `LOD`.
 - Batch repeated balcony slabs and railings into building-level instances and cull their detail at district-view distance.
+- Add a collapsible scene-layer panel, opt-in motion, 20 FPS idle rendering, panel collapse controls, and responsive QGIS-sized layouts.
+- Add a six-step contextual onboarding tour and lazily construct traffic and pedestrian layers only when requested.
+- Make architectural details, landscape, and street furniture true opt-in layers that are not constructed during initial loading.
+- Build large QGIS layers progressively in UI-yielding batches, expose measured build timings, and add a sustained 400-parcel browser acceptance protocol.
+- Cache deterministic facade texture atlases by use and floor band while preserving per-building interactive materials.
+- Replace per-fixture street spotlights with emissive fixtures to prevent city-scale GPU uniform overflow.
 
 ## [3.0.0] - 2026-09-10
 

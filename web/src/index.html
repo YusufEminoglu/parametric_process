@@ -99,12 +99,13 @@
             <label class="quality-control" title="Viewport render budget">
                 <span>Quality</span>
                 <select id="viewport-quality" aria-label="Viewport quality">
-                    <option value="low">Low</option>
-                    <option value="balanced" selected>Balanced</option>
+                    <option value="low" selected>Low</option>
+                    <option value="balanced">Balanced</option>
                     <option value="high">High</option>
                 </select>
             </label>
             <button id="btn-sync-top" class="nav-btn primary-btn" onclick="document.getElementById('btn-sync')?.click()">⚡ Sync QGIS</button>
+            <button id="btn-onboarding" class="nav-btn" type="button">Start Here</button>
             <button id="btn-guide-top" class="nav-btn" type="button">❓ Guide</button>
         </div>
     </header>
@@ -231,7 +232,26 @@
     </section>
 
     <!-- Left Tool Drawer Palette -->
-    <aside class="hud-bar glass-panel" aria-label="Tool Palette">
+    <button id="btn-toggle-palette" class="panel-toggle palette-toggle" type="button" aria-controls="tool-palette" aria-expanded="true" title="Collapse tool and layer panel">&#9776;</button>
+    <button id="btn-toggle-dock" class="panel-toggle dock-toggle" type="button" aria-controls="control-dock" aria-expanded="true" title="Collapse parameter panel">&#9881;</button>
+    <aside id="tool-palette" class="hud-bar glass-panel" aria-label="Tool Palette">
+        <details class="layer-panel" open>
+            <summary>Scene Layers</summary>
+            <div class="layer-grid">
+                <label><input id="toggle-buildings" type="checkbox" checked> Buildings</label>
+                <label><input id="toggle-zoning" type="checkbox"> Zoning envelope</label>
+                <label><input id="toggle-setbacks" type="checkbox" checked> Setbacks</label>
+                <label><input id="toggle-sidewalks" type="checkbox" checked> Sidewalks</label>
+                <label><input id="toggle-landscape" type="checkbox"> Landscape & furniture</label>
+                <label><input id="toggle-architectural-detail" type="checkbox"> Architectural detail</label>
+                <label><input id="toggle-pedestrians" type="checkbox"> Pedestrians</label>
+                <label><input id="toggle-traffic" type="checkbox"> Traffic</label>
+                <label><input id="toggle-grid" type="checkbox"> Reference grid</label>
+                <label><input id="toggle-height-labels" type="checkbox"> Height labels</label>
+                <label class="motion-master"><input id="toggle-motion" type="checkbox"> Animate traffic and people</label>
+            </div>
+            <small class="layer-note">Motion and decorative overlays are off by default for fast model editing.</small>
+        </details>
         <div class="palette-category">🎨 Visual Heatmap</div>
         <div class="hud-chip heatmap-chip">
             <span class="chip-title">Heatmap Mode</span>
@@ -747,6 +767,18 @@
 
     <!-- Centered Toast Notifications -->
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <section id="onboarding-card" class="onboarding-card hidden" role="dialog" aria-modal="false" aria-labelledby="onboarding-title">
+        <div class="onboarding-progress"><span id="onboarding-progress-fill"></span></div>
+        <p id="onboarding-step-label" class="onboarding-step-label">Step 1 of 6</p>
+        <h2 id="onboarding-title">Start with a site</h2>
+        <p id="onboarding-copy">Load a projected polygon layer in QGIS, then open Parametric Process.</p>
+        <div class="onboarding-actions">
+            <button id="onboarding-back" type="button">Back</button>
+            <button id="onboarding-close" type="button">Close</button>
+            <button id="onboarding-next" class="primary-btn" type="button">Next</button>
+        </div>
+    </section>
 
     <!-- Analytical User Guide Scrim & Panel -->
     <div id="guide-scrim" class="guide-scrim hidden"></div>
