@@ -1,5 +1,10 @@
 # Changelog - Parametric Process
 
+## [3.1.1] - 2026-09-17
+
+- Upgraded official plugin icon to high-end tactile 3D brand identity (isometric 45°, slim teal pedestal, full bleed transparent canvas).
+- Synchronized documentation, repository and issue tracker endpoints to GeoPhilo and GitLab.
+
 ## [Unreleased]
 
 ## [3.1.0] - 2026-09-10
