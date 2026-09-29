@@ -3,7 +3,7 @@ name=Parametric Process
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Parametric Generative Design and Multi-Objective Evolutionary Optimization Studio for QGIS.
-version=3.1.1
+version=3.2.0
 author=Yusuf Eminoglu
 email=yusuf.eminoglu@deu.edu.tr
 
@@ -23,5 +23,6 @@ hasProcessingProvider=yes
 license=GPL-3.0-or-later
 
 changelog=
+    3.2.0 - NSGA-III now performs real reference-point niching (Deb & Jain 2014); it previously behaved as NSGA-II. MOEA/D compares range-normalised objectives. Roof sol-air temperature responds to the design instead of being a constant.
     3.1.1 - Upgraded official plugin icon to high-end tactile 3D brand identity with circular teal pedestal; synchronized documentation, repository and issue tracker endpoints to GeoPhilo and GitLab.
     Parametric Process 0.1.0 - Initial Release: Parametric generative urban design suite with NSGA-II multi-objective evolutionary solver, 3D Three.js cockpit, Parallel Coordinate Plot (PCP), 2D Pareto Front Scatter plot, Diamond/Radar phenotype charts, generation convergence graph, real-time phenotype 3D preview, and 2-way QGIS vector layer sync.

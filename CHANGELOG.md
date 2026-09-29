@@ -1,11 +1,37 @@
 # Changelog - Parametric Process
 
+## [Unreleased]
+
+## [3.2.0] - 2026-09-29
+
+### Fixed
+
+- **NSGA-III was NSGA-II under another name.** Das-Dennis reference points
+  were generated and never used; the last front was filled by crowding
+  distance. Survivor selection now follows Deb & Jain (2014): unit-free
+  normalisation (ideal point, ASF extreme points, hyperplane intercepts with
+  a nadir fallback), association with the nearest reference line, and niche
+  counts that include survivors from earlier fronts. Parents are mated at
+  random, as in the paper. Results of earlier "NSGA-III" runs were NSGA-II
+  with genotype repair.
+- **MOEA/D compared raw objectives.** The Tchebycheff function now divides
+  by each objective's current range, so an objective in kg CO2e no longer
+  outweighs one in percent by six orders of magnitude; zero weights are
+  floored at 1e-6.
+- **Sol-air temperature was a constant** (66.1 degC for every design). It
+  now follows the ASHRAE sol-air relation with the roof's albedo.
+- README and showcase no longer describe the wind index or particles as CFD.
+
+### Added
+
+- Algorithm-property tests: NSGA-III niching against earlier-front
+  survivors (fails for crowding-distance selection), unit-free
+  normalisation, unit-free MOEA/D ranking, and metric response to design.
+
 ## [3.1.1] - 2026-09-17
 
 - Upgraded official plugin icon to high-end tactile 3D brand identity (isometric 45°, slim teal pedestal, full bleed transparent canvas).
 - Synchronized documentation, repository and issue tracker endpoints to GeoPhilo and GitLab.
-
-## [Unreleased]
 
 ## [3.1.0] - 2026-09-10
 

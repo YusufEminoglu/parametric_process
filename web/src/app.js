@@ -8833,7 +8833,7 @@ if (btnToggleCfd) {
         btnToggleCfd.classList.toggle('active', isCfdActive);
         if (isCfdActive) {
             initCfdParticles();
-            showToast("🌬️ Aerodynamic CFD Wind Vector Flows activated in 3D viewport.", "info");
+            showToast("🌬️ Wind-direction particles shown (illustrative, not a CFD simulation).", "info");
         } else if (cfdParticlesMesh) {
             scene.remove(cfdParticlesMesh);
             cfdParticlesMesh = null;

@@ -57,9 +57,9 @@ Unlike traditional CAD-bound tools, **Parametric Process** is **GIS-native**—i
 6. **Population Browser Data Table:** Sortable, filterable (*All Solutions*, *Rank 1 Only*, *Top 10%*) tabular browser with direct 3D scene preview and CSV/JSON export.
 
 ### 🔬 15 Multi-Domain Microclimate & Financial Engines
-- **CFD Wind Ventilation & Pedestrian Comfort:** Lawson wind comfort criteria and directional wind flushing efficiency.
+- **Wind Ventilation & Pedestrian Comfort (screening index, not CFD):** porosity, open space, canyon ratio and wind-direction terms, with a Lawson-style comfort score.
 - **Solar Irradiance & Rooftop PV Energy:** Latitude-adjusted solar irradiance ($kWh/m^2/yr$) and rooftop solar PV yield ($MWh/yr$).
-- **Sol-Air Facade Temperature:** Peak solar radiation thermal loading calculation ($T_{sol-air}$).
+- **Roof Sol-Air Temperature:** ASHRAE sol-air relation at a design peak irradiance, driven by the roof's albedo ($T_{sol-air}$).
 - **Air Pollution Dispersion (AQI):** Street canyon pollutant trapping penalty vs. green open-space flushing.
 - **Outdoor Thermal Comfort (UTCI / MRT):** Urban Heat Island ($UHI$) temperature rise and Universal Thermal Climate Index ($UTCI$).
 - **Life-Cycle Carbon Assessment (LCA):** Embodied Carbon ($kgCO_2e/m^2$ by material selection: Timber/Concrete/Steel) + 50-year Operational Carbon footprint.

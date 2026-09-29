@@ -10,7 +10,7 @@
 - 🤖 **Pure-Python AI Surrogate Engine:** Distance-weighted k-NN / Ensemble regressor predicting physics metrics in $<0.1\text{ms}$ with active learning uncertainty refinement.
 - 📐 **Procedural Shape Grammar:** Block-to-lot subdivision, frontage lot splitting, setback terracing, and courtyard allocation rules.
 - 🏢 **Urban Morphology & Connectivity Suite:** Street canyon height-to-width ratio ($H/W$), Sky View Factor ($SVF$), Street Enclosure Index, $SA/V$ Building Compactness, and Shannon Entropy typological diversity.
-- 🌤️ **Real-Time 3D Physics Shaders:** Sol-Air surface heatmaps ($30^\circ\text{C} \rightarrow 70^\circ\text{C}$), Solar Irradiance ramps, animated CFD wind vector particles, and sun azimuth/shadow engine.
+- 🌤️ **Real-Time 3D Physics Shaders:** Sol-Air surface heatmaps ($30^\circ\text{C} \rightarrow 70^\circ\text{C}$), Solar Irradiance ramps, animated wind-direction particles (illustrative, not CFD), and sun azimuth/shadow engine.
 - 🏢 **Multi-Parcel District Coupling:** Inter-building mutual solar shadow loss, canyon wind tunnel wake acceleration, and district-wide green infrastructure stormwater balancing.
 - ✂️ **3D Interactive Section Cut Planes:** Real-time Three.js WebGL clipping planes for floor plate, courtyard, and podium inspection.
 - 📊 **Wallacei-Grade Analytics Studio:** 2D Pareto Front Scatter, Parallel Coordinates Plot (PCP) Brushing, Diamond Radar, K-Means Clustering, and Phenotype Genome Gallery View.
