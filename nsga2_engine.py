@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Comprehensive Multi-Objective Physics, Microclimate & Generative Engine for Parametric Process.
 
-Implements advanced NSGA-II & SPEA2 multi-objective evolutionary computation for generative urban design.
-Simulates urban morphology, CFD wind flow ventilation, solar irradiance & PV yield, air pollution dispersion (AQI),
+Implements NSGA-II, SPEA2, NSGA-III and MOEA/D multi-objective evolutionary computation for generative urban design.
+Screening-level indices (not simulations) for urban morphology, wind ventilation, solar irradiance & PV yield, air pollution dispersion (AQI),
 urban heat island (UHI / MRT / UTCI), lifecycle carbon emissions, and real estate financial feasibility (ROI).
 
 Zero external dependencies (pure Python stdlib).
@@ -258,7 +258,7 @@ def evaluate_phenotype(
     street_canyon_hw = round(height_m / max(1.0, street_width), 2)
     svf = round(min(1.0, max(0.12, 1.0 - (street_canyon_hw * 0.24) + (open_space_ratio * 0.32))), 2)
 
-    # 4. Microclimate Wind CFD & Ventilation Engine
+    # 4. Wind ventilation screening index (weighted terms, not CFD)
     # Calculates wind alignment angle, drag coefficient, and pedestrian comfort
     bldg_orientation_deg = 45.0 if typology in ["LShape", "UShape"] else 0.0
     wind_incident_angle = math.radians(abs((prevailing_wind_deg - bldg_orientation_deg) % 180))
@@ -335,7 +335,11 @@ def evaluate_phenotype(
     total_lca_carbon_kg = round(embodied_carbon_kg + (50.0 * operational_carbon_kg), 1)
     carbon_kg = total_lca_carbon_kg  # map to carbon_kg for existing objective functions
 
-    sol_air_temp_celsius = round(30.0 + (0.7 * 900.0 - 4.0 * 4.0) / 17.0, 1)
+    # Roof sol-air temperature (ASHRAE): T_sa = T_o + a*I/h_o - e*dR/h_o, with
+    # absorptance a = 1 - roof albedo, a 900 W/m2 design peak irradiance, a
+    # 30 degC design air temperature, h_o = 17 W/m2K and the 3.9 K long-wave
+    # term for horizontal surfaces. The roof is the only design input here.
+    sol_air_temp_celsius = round(30.0 + (1.0 - albedo) * 900.0 / 17.0 - 3.9, 1)
 
     # Financial NPV and IRR
     annual_cash_flow = total_revenue * 0.08
@@ -1531,6 +1535,153 @@ def generate_das_dennis_ref_points(num_objectives: int, partitions: int = 4) -> 
     return ref_points
 
 
+def _solve_linear(a: List[List[float]], rhs: List[float]) -> List[float] | None:
+    """Gaussian elimination with partial pivoting; None when singular."""
+    n = len(rhs)
+    m = [list(row) + [rhs[i]] for i, row in enumerate(a)]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda r: abs(m[r][col]))
+        if abs(m[pivot][col]) < 1e-12:
+            return None
+        m[col], m[pivot] = m[pivot], m[col]
+        for r in range(n):
+            if r != col:
+                f = m[r][col] / m[col][col]
+                for c in range(col, n + 1):
+                    m[r][c] -= f * m[col][c]
+    return [m[i][n] / m[i][i] for i in range(n)]
+
+
+def nsga3_normalize(vectors: List[List[float]]) -> List[List[float]]:
+    """Deb & Jain (2014) normalisation of minimisation objective vectors.
+
+    Translate by the ideal point, find one extreme point per axis with the
+    achievement scalarising function (weights 1 on the axis, 1e-6 elsewhere),
+    and divide by the intercepts of the hyperplane through them. Falls back
+    to the per-objective maximum (nadir estimate) when the hyperplane is
+    degenerate, as the paper prescribes.
+
+    Each translated axis is first divided by its range: the 1e-6 ASF weights
+    only isolate an axis when the axes share a scale, and objectives here
+    run from percentages to kilograms of CO2 in the millions. With that
+    step the result does not depend on any objective's unit.
+    """
+    if not vectors:
+        return []
+    n_obj = len(vectors[0])
+    ideal = [min(v[k] for v in vectors) for k in range(n_obj)]
+    spans = [max(v[k] for v in vectors) - ideal[k] for k in range(n_obj)]
+    spans = [x if x > 1e-12 else 1.0 for x in spans]
+    translated = [[(v[k] - ideal[k]) / spans[k] for k in range(n_obj)] for v in vectors]
+    extremes = []
+    for axis in range(n_obj):
+        w = [1e-6] * n_obj
+        w[axis] = 1.0
+        extremes.append(min(translated, key=lambda t: max(t[k] / w[k] for k in range(n_obj))))
+    nadir = [max(t[k] for t in translated) for k in range(n_obj)]
+    intercepts = None
+    coeffs = _solve_linear(extremes, [1.0] * n_obj)
+    if coeffs is not None and all(c > 1e-12 for c in coeffs):
+        intercepts = [1.0 / c for c in coeffs]
+        if any(not math.isfinite(x) or x < 1e-9 for x in intercepts):
+            intercepts = None
+    if intercepts is None:
+        intercepts = nadir
+    intercepts = [x if x > 1e-12 else 1.0 for x in intercepts]
+    return [[t[k] / intercepts[k] for k in range(n_obj)] for t in translated]
+
+
+def perpendicular_distance(vector: List[float], direction: List[float]) -> float:
+    """Distance from ``vector`` to the line through the origin along ``direction``."""
+    ww = sum(x * x for x in direction) or 1.0
+    proj = sum(a * b for a, b in zip(vector, direction)) / ww
+    return math.sqrt(sum((a - proj * b) ** 2 for a, b in zip(vector, direction)))
+
+
+def nsga3_environmental_selection(
+    fronts: List[List[ProcessIndividual]],
+    pop_size: int,
+    ref_points: List[List[float]],
+    rng=None,
+) -> List[ProcessIndividual]:
+    """NSGA-III survivor selection (Deb & Jain, 2014, Algorithms 1-4).
+
+    Whole non-dominated fronts are accepted while they fit; the last,
+    partially accepted front is filled by reference-point niching: each
+    candidate is associated with the reference line nearest to it in the
+    normalised objective space, and slots go to the least represented
+    reference lines first (closest member when a niche is still empty,
+    a random member otherwise). Deterministic for a seeded ``rng``.
+    """
+    rng = rng or _rng
+    selected: List[ProcessIndividual] = []
+    last: List[ProcessIndividual] = []
+    for front in fronts:
+        if len(selected) + len(front) <= pop_size:
+            selected.extend(front)
+            if len(selected) == pop_size:
+                return selected
+        else:
+            last = list(front)
+            break
+    if not last or len(selected) >= pop_size:
+        return selected[:pop_size]
+
+    members = selected + last
+    norm = nsga3_normalize([list(ind.fitness_vector) for ind in members])
+    assoc: List[int] = []
+    dist: List[float] = []
+    for v in norm:
+        dists = [perpendicular_distance(v, r) for r in ref_points]
+        j = min(range(len(ref_points)), key=lambda idx: dists[idx])
+        assoc.append(j)
+        dist.append(dists[j])
+
+    niche = [0] * len(ref_points)
+    for i in range(len(selected)):
+        niche[assoc[i]] += 1
+    candidates: Dict[int, List[int]] = {}
+    for i in range(len(selected), len(members)):
+        candidates.setdefault(assoc[i], []).append(i)
+
+    active = set(range(len(ref_points)))
+    chosen: List[ProcessIndividual] = []
+    needed = pop_size - len(selected)
+    while len(chosen) < needed and active:
+        low = min(niche[j] for j in active)
+        j = rng.choice(sorted(j for j in active if niche[j] == low))
+        pool = candidates.get(j)
+        if not pool:
+            active.discard(j)
+            continue
+        if niche[j] == 0:
+            pick = min(pool, key=lambda i: dist[i])
+        else:
+            pick = rng.choice(pool)
+        pool.remove(pick)
+        chosen.append(members[pick])
+        niche[j] += 1
+    return selected + chosen
+
+
+def tchebycheff_normalized(
+    fitness: List[float], weights: List[float], ideal: List[float], nadir: List[float]
+) -> float:
+    """Tchebycheff scalarisation on range-normalised objectives.
+
+    ``max_j w_j * (f_j - z*_j) / (z_nad_j - z*_j)``. Without the division an
+    objective measured in millions (kg CO2e) swamps one measured in percent,
+    and MOEA/D quietly optimises a single objective. Zero weights are floored
+    at 1e-6 so no objective is ignored entirely.
+    """
+    out = 0.0
+    for f, w, z, zn in zip(fitness, weights, ideal, nadir):
+        span = zn - z
+        term = max(w, 1e-6) * abs(f - z) / (span if span > 1e-12 else 1.0)
+        out = max(out, term)
+    return out
+
+
 def run_nsga3_streaming(
     parcel_area: float,
     objective_specs: List[Dict[str, str]] | None = None,
@@ -1611,11 +1762,12 @@ def run_nsga3_streaming(
 
         yield yield_data
 
-        # Offspring generation with genotype repair
+        # Offspring generation with genotype repair. NSGA-III mates randomly
+        # chosen parents (Deb & Jain, 2014): diversity is maintained by the
+        # reference-point niching in survivor selection, not by tournaments.
         offspring: List[ProcessIndividual] = []
         while len(offspring) < pop_size:
-            p1 = binary_tournament_selection(population)
-            p2 = binary_tournament_selection(population)
+            p1, p2 = _rng.sample(population, 2)
 
             if _rng.random() < crossover_rate:
                 child_g = crossover_genotypes(p1.genotype, p2.genotype)
@@ -1630,21 +1782,8 @@ def run_nsga3_streaming(
             offspring.append(child_ind)
 
         combined = population + offspring
-        combined_fronts = fast_non_dominated_sort(combined)
-        new_pop: List[ProcessIndividual] = []
-
-        for front in combined_fronts:
-            if len(new_pop) + len(front) <= pop_size:
-                new_pop.extend(front)
-            else:
-                # Fill remaining slots using crowding distance / reference point selection
-                calculate_crowding_distance(front)
-                front.sort(key=lambda ind: ind.crowding_distance, reverse=True)
-                needed = pop_size - len(new_pop)
-                new_pop.extend(front[:needed])
-                break
-
-        population = new_pop
+        population = nsga3_environmental_selection(
+            fast_non_dominated_sort(combined), pop_size, ref_points)
 
 
 def run_nsga3_optimization(
@@ -1757,8 +1896,10 @@ def run_moead_streaming(
     # Initialize ideal point z*
     ideal_z = [min(ind.fitness_vector[m] for ind in population) for m in range(num_objs)]
 
+    nadir_z = [max(ind.fitness_vector[m] for ind in population) for m in range(num_objs)]
+
     def tchebycheff(ind: ProcessIndividual, weight_vec: List[float]) -> float:
-        return max(weight_vec[m] * abs(ind.fitness_vector[m] - ideal_z[m]) for m in range(num_objs))
+        return tchebycheff_normalized(ind.fitness_vector, weight_vec, ideal_z, nadir_z)
 
     ref_point_hv = [0.0, 0.0]
     if population and len(population[0].fitness_vector) >= 2:
@@ -1800,7 +1941,9 @@ def run_moead_streaming(
 
         yield yield_data
 
-        # MOEA/D subproblem updates
+        # MOEA/D subproblem updates; the nadir estimate is refreshed once per
+        # generation so every comparison inside it uses the same scale
+        nadir_z = [max(ind.fitness_vector[m] for ind in population) for m in range(num_objs)]
         for i in range(pop_size):
             p_indices = _rng.sample(neighborhoods[i], 2)
             p1 = population[p_indices[0]]

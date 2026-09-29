@@ -65,6 +65,18 @@ try:
     assert first["seed"] == 1234
     assert len(first["run_id"]) == 16
 
+    # every selectable solver runs end to end through Processing
+    for algo_index, algo_name in ((1, "SPEA-2"), (2, "NSGA-III"), (3, "MOEA/D")):
+        algo_context = QgsProcessingContext()
+        algo_result, algo_ok = algorithm.run({
+            "INPUT": parcels, "POP_SIZE": 8, "GENERATIONS": 3,
+            "ALGORITHM": algo_index, "MAX_BCR": 0.45, "MAX_FAR": 2.5,
+            "MAX_HEIGHT": 18.0, "SEED": 1234, "OUTPUT": "memory:",
+        }, algo_context, QgsProcessingFeedback())
+        assert algo_ok, f"{algo_name} Processing run failed"
+        algo_layer = algo_context.getMapLayer(algo_result["OUTPUT"])
+        assert algo_layer is not None and algo_layer.featureCount() > 0, f"{algo_name}: empty output"
+
     from parametric_process.academic_processing import parcel_conforming_footprints
     parcel_geometry = feature.geometry()
     for typology in ("Tower", "Courtyard", "LShape", "UShape", "MultiBuildingBlock"):
