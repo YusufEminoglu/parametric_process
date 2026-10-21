@@ -13,3 +13,4 @@ test-results/
 # as optimised JPEGs under docs/PRACTICAL_GUIDE/screenshots/web/.
 docs/PRACTICAL_GUIDE/screenshots/**/*.png
 docs/PRACTICAL_GUIDE/serve.log
+docs/PRACTICAL_GUIDE/serve.pid

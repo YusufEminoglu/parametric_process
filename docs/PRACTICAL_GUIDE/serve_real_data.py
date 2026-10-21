@@ -115,6 +115,10 @@ def main() -> int:
     print(f"REAL_DATA_URL=http://127.0.0.1:{server.port}/index.html", flush=True)
     print(f"features: {geojson.count('\"type\": \"Feature\"')}", flush=True)
 
+    # Record the pid so the launcher can shut the server down cleanly.
+    pid_file = HERE / "serve.pid"
+    pid_file.write_text(str(os.getpid()), encoding="utf-8")
+
     running = True
 
     def stop(_signum, _frame):
@@ -128,6 +132,8 @@ def main() -> int:
             time.sleep(0.2)
     finally:
         server.stop()
+        with suppress(Exception):
+            (HERE / "serve.pid").unlink()
     return 0
 
 

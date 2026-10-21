@@ -853,10 +853,12 @@ def main() -> int:
     manifest = {"generated": "", "qgis_version": qgis.core.Qgis.QGIS_VERSION,
                 "data_notes": data.notes, "modules": {}}
 
+    import time
     for spec in selected:
         mid = spec["id"]
         out_dir = SHOTS / mid
         out_dir.mkdir(parents=True, exist_ok=True)
+        started = time.time()
         try:
             res = spec["fn"](data)
             if res is None:
@@ -875,8 +877,9 @@ def main() -> int:
                                extent=res.get("extent"))
             entry["screenshot"] = str(png.relative_to(HERE)).replace("\\", "/")
             entry["status"] = "ok"
+            entry["seconds"] = round(time.time() - started, 1)
             manifest["modules"][mid] = entry
-            print(f"OK    {mid:<26} → {png.name}", flush=True)
+            print(f"OK    {mid:<26} → {png.name}  ({entry['seconds']}s)", flush=True)
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
             manifest["modules"][mid] = {

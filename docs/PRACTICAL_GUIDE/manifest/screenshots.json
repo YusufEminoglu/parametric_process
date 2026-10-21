@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-21T06:45:00",
+  "generated": "2026-10-21T18:24:40",
   "qgis_version": "3.44.12-Solothurn",
   "data_notes": [
     "Planning master: PLN3113_Tire_Saha_Master_Nihai_Odev10_Birlesik.gpkg (Tire İlçesi cadastral + NIP + street master)",
@@ -17,7 +17,8 @@
       "params": "INPUT            = Tire parseller\nBLOCK_TYPOLOGY   = 0\nSTRATEGY         = 2\nMAX_BCR          = 0.45\nMAX_FAR          = 2.0\nMAX_HEIGHT       = 18.0\nINCREMENTAL_STEPS = 5\nCLIMATE_FEEDBACK = 0",
       "notes": "",
       "screenshot": "screenshots/ppud_pipeline/ppud_pipeline_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 6.7
     },
     "academic_study": {
       "id": "academic_study",
@@ -47,7 +48,8 @@
       "params": "INPUT            = Tire parseller\nPOP_SIZE         = 40\nGENERATIONS      = 12\nALGORITHM        = 0\nMAX_BCR          = 0.45\nMAX_FAR          = 2.5\nMAX_HEIGHT       = 18.0\nSEED             = 42",
       "notes": "",
       "screenshot": "screenshots/parametric_optimization/parametric_optimization_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 169.7
     },
     "algorithm_compare": {
       "id": "algorithm_compare",
@@ -57,7 +59,8 @@
       "params": "Same site, same seed 42, POP 30 x 8 generations.\nEach solver proposes a different design set for the same\n1 362 real Tire blocks. Compare the numbers:\n\nNSGA-II    designs=40860  rank-1=40860  score=76.4  pop=239  CO2=19,812,711 kg  UTCI=63.5  canyon H/W=1.07\nSPEA-2     designs=40857  rank-1=0  score=77.5  pop=249  CO2=22,570,004 kg  UTCI=64.0  canyon H/W=1.04\nNSGA-III   designs=40860  rank-1=40860  score=78.8  pop=290  CO2=23,158,314 kg  UTCI=63.5  canyon H/W=1.14\nMOEA/D     designs=34643  rank-1=34643  score=81.4  pop=145  CO2=11,370,306 kg  UTCI=66.2  canyon H/W=0.66",
       "notes": "",
       "screenshot": "screenshots/algorithm_compare/algorithm_compare_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 525.2
     },
     "urban_physics": {
       "id": "urban_physics",
@@ -67,7 +70,8 @@
       "params": "INPUT            = Tire parseller",
       "notes": "",
       "screenshot": "screenshots/urban_physics/urban_physics_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 0.6
     },
     "urban_morphology": {
       "id": "urban_morphology",
@@ -77,7 +81,8 @@
       "params": "INPUT            = Tire parseller",
       "notes": "",
       "screenshot": "screenshots/urban_morphology/urban_morphology_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 0.3
     },
     "shape_grammar": {
       "id": "shape_grammar",
@@ -87,7 +92,8 @@
       "params": "INPUT            = Tire parseller\nFRONTAGE         = 18.0",
       "notes": "",
       "screenshot": "screenshots/shape_grammar/shape_grammar_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 0.5
     },
     "district_coupling": {
       "id": "district_coupling",
@@ -97,7 +103,8 @@
       "params": "INPUT            = Tire parseller",
       "notes": "",
       "screenshot": "screenshots/district_coupling/district_coupling_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 0.4
     },
     "prepare_input": {
       "id": "prepare_input",
@@ -107,7 +114,8 @@
       "params": "Derived from the Tire cadastral master (1 362 real ada).\nThe engines read this schema:\n\nparcel_id      string\nmahalle        string\nadano          string\nland_use       string\nbuilding_type  string\narea_m2        double\nfloors         integer\nheight_m       double\ntypology       string\nusage          string\nsetback        double\nroof_style     string\nmax_bcr        double\nmax_far        double\ngfa            double",
       "notes": "",
       "screenshot": "screenshots/prepare_input/prepare_input_4panel.png",
-      "status": "ok"
+      "status": "ok",
+      "seconds": 0.3
     }
   }
 }

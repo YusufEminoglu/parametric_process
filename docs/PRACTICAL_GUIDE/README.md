@@ -66,6 +66,23 @@ run_practical_guide.bat                                  REM everything
 run_practical_guide.bat --module parametric_optimization  REM one chapter
 ```
 
+### Expected runtime (measured on QGIS 3.44 LTR, 1 362 Tire blocks)
+
+| Chapter | Time | Note |
+|---|---|---|
+| `prepare_input`, `urban_physics`, `urban_morphology`, `shape_grammar`, `district_coupling` | < 1 s each | |
+| `ppud_pipeline` | ~7 s | |
+| `studio_dock` | ~2 s | |
+| `parametric_optimization` | ~3 min | population 40 × 12 generations |
+| `algorithm_compare` | ~9 min | four solvers, population 30 × 8 generations |
+| `academic_study` | ~16 min | multi-seed study (2 seeds × population 16 × 4 generations) |
+| browser chapters | ~4 min | Playwright, includes a live NSGA-II run |
+
+A full `--all` run is therefore roughly **half an hour**, most of it the two
+multi-seed experiments. The runner prints the elapsed time per chapter and
+records it in `manifest/screenshots.json`, so a partial run always tells you
+what it cost.
+
 Then rebuild the HTML by hand if you only changed the copy:
 
 ```cmd
