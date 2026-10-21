@@ -801,9 +801,18 @@ def run_studio_dock(data):
     for _ in range(10):
         QgsApplication.processEvents()
     with suppress(Exception):
-        idx = dock.layer_combo.findData(data.parcels.id())
+        combo = dock.layer_combo
+        idx = combo.findData(data.parcels.id())
+        if idx < 0:
+            idx = combo.findText(data.parcels.name())
+        if idx < 0:
+            for i in range(combo.count()):
+                layer = combo.layer(i)
+                if layer is not None and layer.id() == data.parcels.id():
+                    idx = i
+                    break
         if idx >= 0:
-            dock.layer_combo.setCurrentIndex(idx)
+            combo.setCurrentIndex(idx)
         QgsApplication.processEvents()
     for _ in range(6):
         QgsApplication.processEvents()
