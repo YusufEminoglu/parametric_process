@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **PPUD aborted on multi-part blocks.** The block splitter took the first
+  part of a multipart feature and assumed it was the block's exterior. Two of
+  the 1 362 real Tire cadastral blocks have a first part that encloses no
+  area, so the run died with "parcel_area must be a finite value greater than
+  zero". The algorithm now evaluates every exterior ring and subdivides the
+  largest one.
+- **"Apply to All Parcels" crashed the cockpit on small or thin parcels.**
+  `offsetPolygonRing` returns null when an inset collapses, and a nested
+  offset then dereferenced that null. The inset helper now rejects an empty
+  ring up front, so the parcel falls back to its default setback instead of
+  breaking the page.
+
+### Documentation
+
+- New **Practical Guide** (`docs/PRACTICAL_GUIDE/`): fourteen chapters, each
+  one a planning question answered with the plugin on the real Tire İlçesi
+  planning master. The map panels are QGIS renders of layers the plugin
+  produced; the browser chapters are Playwright captures of the plugin's own
+  web studio. Parameter tables are extracted from the live Processing registry
+  so the guide cannot drift from the code. Published at
+  `https://geophilo.com/parametric_process/PRACTICAL_GUIDE/`.
+
 ## [3.2.0] - 2026-09-29
 
 ### Fixed

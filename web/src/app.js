@@ -5348,6 +5348,10 @@ function calculateShapeArea(shape) {
 
 // Perform polygon segment corner-bisector offsetting/insetting
 function offsetPolygonRing(ring, distance) {
+    // A null or too-short ring means the previous inset already collapsed
+    // (small or thin parcels). Returning null here keeps nested offsets from
+    // throwing on ring.length and lets the callers use their fallback.
+    if (!ring || !Array.isArray(ring) || ring.length < 3) return null;
     if (Math.abs(distance) <= 0.05) return ring.map(pt => { return {x: pt.x, y: pt.y}; });
 
     // Detect winding order and flip distance if clockwise to ensure consistent inward/outward behavior

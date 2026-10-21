@@ -1,0 +1,587 @@
+{
+  "_meta": {
+    "title_en": "Practical Guide",
+    "title_tr": "Pratik Kılavuz",
+    "subtitle_en": "A screenshot-driven workshop for every Parametric Process capability — built by running the real plugin against the real Tire İlçesi planning master.",
+    "subtitle_tr": "Parametric Process'in her yeteneği için ekran görüntülü atölye — eklentinin gerçek Tire İlçesi planlama master verisi üzerinde gerçekten çalıştırılarak üretildi.",
+    "version": "3.2.0"
+  },
+
+  "studio_dock": {
+    "group": "Getting started",
+    "algo": null,
+    "en": {
+      "title": "The Studio dock — the launcher",
+      "question": "Where do I start, and what do I point at?",
+      "what": "Parametric Process ships as a QGIS dock and a Processing provider. The dock is the launcher: it picks the parcel layer, starts the plugin's local web server and opens the 3D cockpit or the visual workflow modeler. Below it, the Processing Tools tree lists every algorithm — double-click runs it headlessly.",
+      "steps": [
+        "Load your parcel / block layer into QGIS first. The dock only accepts polygon layers.",
+        "Open the dock from Plugins ▸ Parametric Process ▸ Parametric Process Studio.",
+        "Choose the parcel layer in the Parcel / Block Layer combo box.",
+        "Leave the local port at 8090 (or change it if something else holds the port — the dock falls back to a free one).",
+        "Press Launch 3D Cockpit for the generative view, or Workflow Modeler for the node canvas.",
+        "The Processing Tools tree below lists all seven algorithms; double-click any of them to run it against the current project."
+      ],
+      "interpret": "The dock is deliberately thin: it is a bridge to the web studio, not a second implementation. Everything you do in the cockpit can be synced back to QGIS with Sync Parameters, so the design work stays in GIS rather than in a browser tab you cannot query.",
+      "trouble": [
+        "The cockpit opens with a demo city instead of your data — the server could not read the layer; check that the layer is loaded and polygon-typed.",
+        "The port is busy — the dock reports the fallback port in the status line; use that URL.",
+        "The engine path stays empty — an external validation engine is optional; it only matters for cross-checking against an outside model."
+      ]
+    },
+    "tr": {
+      "title": "Studio dock — başlatıcı",
+      "question": "Nereden başlayacağım ve neyi hedefleyeceğim?",
+      "what": "Parametric Process bir QGIS dock'u ve bir Processing sağlayıcısı olarak gelir. Dock başlatıcıdır: parsel katmanını seçer, eklentinin yerel web sunucusunu başlatır ve 3B kokpiti ya da görsel iş akışı modeler'ini açar. Altındaki Processing Tools ağacı her algoritmayı listeler — çift tıkla headless çalıştırır.",
+      "steps": [
+        "Önce parsel / ada katmanınızı QGIS'e yükleyin. Dock yalnızca poligon katmanı kabul eder.",
+        "Dock'u Plugins ▸ Parametric Process ▸ Parametric Process Studio ile açın.",
+        "Parcel / Block Layer kutusunda parsel katmanınızı seçin.",
+        "Yerel portu 8090'da bırakın (ya da bir şey portu tutuyorsa değiştirin — dock boş bir porta düşer).",
+        "Üretken görünüm için Launch 3D Cockpit, düğüm tuvali için Workflow Modeler düğmesine basın.",
+        "Aşağıdaki Processing Tools ağacı yedi algoritmanın tamamını listeler; çift tıklayarak mevcut proje üzerinde çalıştırın."
+      ],
+      "interpret": "Dock bilinçli olarak incedir: bir web stüdyosuna köprüdür, ikinci bir uygulama değil. Kokpitte yaptığınız her şey Sync Parameters ile QGIS'e geri yazılabilir; böylece tasarım çalışması sorgulanabilir bir GIS verisinde kalır.",
+      "trouble": [
+        "Kokpit veriniz yerine demo kent açıyor — sunucu katmanı okuyamadı; katmanın yüklü ve poligon tipinde olduğundan emin olun.",
+        "Port dolu — dock durum satırında yedek portu bildirir; o URL'i kullanın.",
+        "Engine yolu boş kalıyor — harici doğrulama motoru isteğe bağlıdır; yalnızca dış bir modelle çapraz kontrol için gerekir."
+      ]
+    }
+  },
+
+  "prepare_input": {
+    "group": "Getting started",
+    "algo": null,
+    "en": {
+      "title": "Preparing a parcel layer for the engines",
+      "question": "What do the engines actually read from my parcels?",
+      "what": "The generative engines are not map renderers — they are design engines, and they read a fixed schema: floors, height_m, typology, usage, setback, roof_style, max_bcr, max_far and gfa. Your cadastral data rarely carries those names, so the first job is to translate it. This chapter does that with the real Tire master and shows the schema the engines see.",
+      "steps": [
+        "Open the Tire planning master and select the cadastral master layer: 1 362 real ada with land use, dominant building type, average floors and area.",
+        "Read the land-use class into a design envelope. Residential density classes map to a BCR / FAR / height cap, and the dominant building type maps to one of the eight built-in typologies (Tower, Slab, Courtyard, LShape, UShape, PodiumTower, SteppedTower, MultiBuildingBlock).",
+        "Derive the storey count from the average floor count and convert it to height with the local storey height — 3.0 m in this data, 3.5 m for the 2.5D studio elsewhere.",
+        "Set the setback from the use class — 3.0 m for residential, 5.0 m for civic and commercial.",
+        "Write the four fields the engines read: floors, height_m, typology, usage, plus max_bcr, max_far and gfa.",
+        "Run Fix geometries first. A degenerate block cannot be subdivided and will abort a PPUD run with a confusing 'parcel_area must be greater than zero' error."
+      ],
+      "interpret": "The typology column in the screenshot is the single most consequential field: it decides the footprint ratio, the courtyard share and the height modifier of every candidate the solver proposes. Get the typology wrong and the optimiser is answering a different question than you think.",
+      "trouble": [
+        "The run aborts with 'parcel_area must be a finite value greater than zero' — a multi-part block whose first part encloses no area; fix the geometry or take the largest part.",
+        "Every design comes out identical — the layer has no floors/height field, so the genes have no range; check the schema.",
+        "The results look implausible for the site — the BCR/FAR caps came from the wrong density class; the mapping table is in this chapter."
+      ]
+    },
+    "tr": {
+      "title": "Motorların okuyacağı parsel katmanını hazırlamak",
+      "question": "Motorlar parselimden tam olarak ne okuyor?",
+      "what": "Üretken motorlar harita çizicisi değil, tasarım motorudur ve sabit bir şema okur: floors, height_m, typology, usage, setback, roof_style, max_bcr, max_far ve gfa. Kadastro veriniz bu adları genellikle taşımaz; dolayısıyla ilk iş onu çevirmektir. Bu bölüm, gerçek Tire master verisiyle bunu yapar ve motorların gördüğü şemayı gösterir.",
+      "steps": [
+        "Tire planlama master'ını açın ve kadastro master katmanını seçin: arazi kullanımı, baskın yapı tipi, ortalama kat ve alanıyla 1 362 gerçek ada.",
+        "Arazi kullanım sınıfını tasarım zarfına çevirin. Konut yoğunluk sınıfları BCR / FAR / yükseklik tavanına, baskın yapı tipi ise sekiz hazır tiyolojiden birine karşılık gelir (Tower, Slab, Courtyard, LShape, UShape, PodiumTower, SteppedTower, MultiBuildingBlock).",
+        "Kat sayısını ortalama kat bilgisinden türetin ve yerel kat yüksekliğiyle yüksekliğe çevirin — bu veride 3.0 m.",
+        "Çekilme mesafesini kullanım sınıfından belirleyin — konut için 3.0 m, kamu ve ticaret için 5.0 m.",
+        "Motorların okuduğu alanları yazın: floors, height_m, typology, usage, ayrıca max_bcr, max_far ve gfa.",
+        "Önce Fix geometries çalıştırın. Dejenere bir blok bölünemez ve PPUD çalıştırmasını kafa karıştırıcı bir 'parcel_area must be greater than zero' hatasıyla durdurur."
+      ],
+      "interpret": "Ekran görüntüsündeki typology sütunu en belirleyici alandır: çözümün önerdiği her adayın taban alan oranını, avlu payını ve yükseklik çarpanını belirler. Tipoloji yanlışsa optimizör sizden başka bir soruyu yanıtlıyordur.",
+      "trouble": [
+        "Çalıştırma 'parcel_area must be a finite value greater than zero' ile duruyor — ilk parçası alan içermeyen çok parçalı bir blok; geometriyi düzeltin ya da en büyük parçayı alın.",
+        "Bütün tasarımlar aynı çıkıyor — katmanda floors/height alanı yok, dolayısıyla genlerin aralığı yok; şemayı kontrol edin.",
+        "Sonuçlar siteye göre inandırıcı değil — BCR/FAR tavanları yanlış yoğunluk sınıfından geldi; eşleme tablosu bu bölümde."
+      ]
+    }
+  },
+
+  "parametric_optimization": {
+    "group": "Evolutionary Engine",
+    "algo": "parametric_process:parametric_optimization",
+    "en": {
+      "title": "Parametric multi-objective optimization",
+      "question": "Can an evolutionary search find a design set that is dense, comfortable and legal at the same time?",
+      "what": "The core engine proposes candidate massing for every parcel and evolves them against several objectives at once under hard zoning constraints. It is not a greedy optimiser: NSGA-II keeps a non-dominated archive, so the output is a set of trade-off designs rather than one answer.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 1. Parametric Multi-Objective Evolutionary Optimization.",
+        "Set INPUT to the prepared parcel layer, POP_SIZE to 40 and GENERATIONS to 12.",
+        "ALGORITHM: NSGA-II for the fast default, SPEA-2 for fine-grained strength-based ranking, NSGA-III for reference-point niching on many objectives, MOEA/D for range-normalised decomposition.",
+        "Set the hard constraint envelope: MAX_BCR 0.45, MAX_FAR 2.5, MAX_HEIGHT 18.0 (metres). Infeasible candidates are penalised by the exact violation magnitude, not merely rejected.",
+        "Set SEED to 42 for a reproducible run — the same seed and the same input give the same designs.",
+        "Run. The output carries far, bcr, gfa, floors, height_m, typology, plan_score, pop_est, carbon, runoff, utci_score, svf_ratio, canyon_hw, pareto_rank and more."
+      ],
+      "interpret": "Read the output as a set, not a single result: the archive holds every non-dominated design, so the spread of far and plan_score across the layer is the trade-off surface. A run where every parcel has the same far means the constraint envelope was the only active bound — widen max_far or lower max_bcr to let the search breathe.",
+      "trouble": [
+        "The run is rejected — the input CRS is geographic; area would be measured in degrees, so reproject to a metric CRS first.",
+        "Everything is infeasible — max_bcr/max_far are below what the existing fabric already does; raise them to the planning norms and let the penalty guide the search.",
+        "The same input gives different results — the SEED changed; set it explicitly and record it in the report."
+      ]
+    },
+    "tr": {
+      "title": "Parametrik çok amaçlı optimizasyon",
+      "question": "Evrimsel bir arama, aynı anda yoğun, konforlu ve yasal bir tasarım kümesi bulabilir mi?",
+      "what": "Çekirdek motor her parsel için aday kütle önerir ve bunları sert mevzuat kısıtları altında birden çok amaçla birlikte evrimleştirir. Açgözlü bir optimizör değildir: NSGA-II baskın olmayan bir arşiv tutar, dolayısıyla çıktı tek bir yanıt değil, ödünleşim tasarımlar kümesidir.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 1. Parametric Multi-Objective Evolutionary Optimization'i açın.",
+        "INPUT olarak hazırlanmış parsel katmanını, POP_SIZE 40 ve GENERATIONS 12 verin.",
+        "ALGORITHM: hızlı varsayılan için NSGA-II, ince taneli güç sıralaması için SPEA-2, çok amaçta referans noktası nişlemesi için NSGA-III, aralık normalizasyonlu dekompozisyon için MOEA/D.",
+        "Sert kısıt zarfını belirleyin: MAX_BCR 0.45, MAX_FAR 2.5, MAX_HEIGHT 18.0 (metre). Uyumsuz adaylar yalnızca reddedilmez, ihlal miktarıyla cezalandırılır.",
+        "SEED değerini 42 yapın — aynı seed ve aynı girdi aynı tasarımları verir.",
+        "Run'a basın. Çıktı far, bcr, gfa, floors, height_m, typology, plan_score, pop_est, carbon, runoff, utci_score, svf_ratio, canyon_hw, pareto_rank ve daha fazlasını taşır."
+      ],
+      "interpret": "Çıktıyı tek sonuç olarak değil bir küme olarak okuyun: arşiv her baskın olmayan tasarımı tutar, dolayısıyla katman boyunca far ve plan_score yayılımı ödünleşim yüzeyidir. Her parselde far'ın aynı olduğu bir koşu, kısıt zarfının tek etkin sınır olduğunu gösterir — arama nefes alsın diye max_far'ı genişletin veya max_bcr'ı düşürün.",
+      "trouble": [
+        "Çalıştırma reddedildi — girdinin CRS'i coğrafi; alan derece cinsinden ölçüleceği için önce metrik bir CRS'e reprojeksiyonlayın.",
+        "Hepsi uygunsuz — max_bcr/max_far mevcut dokunun zaten yaptığından düşük; planlama normlarına yükseltip cezanın aramayı yönlendirmesine izin verin.",
+        "Aynı girdi farklı sonuç veriyor — SEED değişmiş; açıkça belirleyin ve rapora yazın."
+      ]
+    }
+  },
+
+  "algorithm_compare": {
+    "group": "Evolutionary Engine",
+    "algo": "parametric_process:parametric_optimization",
+    "en": {
+      "title": "Four solvers, one site, real numbers",
+      "question": "Which evolutionary algorithm should I actually use?",
+      "what": "All four solvers were run on the same 1 362 Tire blocks, the same seed and the same budget. The interesting difference is not the map — it is the shape of the solution set each algorithm returns, measured on the metrics the engines actually write.",
+      "steps": [
+        "Run the same job four times with ALGORITHM set to 0, 1, 2 and 3, keeping POP_SIZE, GENERATIONS and SEED identical.",
+        "Compare the output layers on the metrics that matter: mean plan_score, mean pop_est, mean carbon, mean utci_score and mean canyon H/W.",
+        "Watch the design count: MOEA/D returns fewer designs because its decomposition-based niching prunes duplicates more aggressively.",
+        "Watch the canyon H/W: values around 1.0 mean the street canyons stay in the comfortable range; 1.4+ is a wind problem."
+      ],
+      "interpret": "There is no universally best solver — there is a trade-off. MOEA/D found the highest-scoring, lowest-carbon and most open designs, but with far fewer candidate designs and much lower population density. NSGA-III returned the highest population at the cost of the tightest canyons. SPEA-2 sits between them. Choose the algorithm by which of those two axes your plan actually cares about.",
+      "trouble": [
+        "The four outputs look identical on the map — they are the same parcels with different attribute values; compare the numbers, not the colours.",
+        "A solver returns far fewer designs — decomposition-based niching removes near-duplicates; raise POP_SIZE to compensate.",
+        "Results change between runs — the seed is not fixed."
+      ]
+    },
+    "tr": {
+      "title": "Dört çözücü, tek site, gerçek sayılar",
+      "question": "Gerçekte hangi evrimsel algoritmayı kullanmalıyım?",
+      "what": "Dört çözücü de aynı 1 362 Tire adası, aynı seed ve aynı bütçe üzerinde çalıştırıldı. İlginç fark haritada değil; her algoritmanın döndürdüğü çözüm kümesinin biçiminde ve motorların gerçekten yazdığı metriklerde.",
+      "steps": [
+        "Aynı işi dört kez çalıştırın: ALGORITHM 0, 1, 2 ve 3; POP_SIZE, GENERATIONS ve SEED'i aynı tutun.",
+        "Çıktı katmanlarını gerçekten önemli olan metriklerde karşılaştırın: ortalama plan_score, ortalama pop_est, ortalama carbon, ortalama utci_score ve ortalama canyon H/W.",
+        "Tasarım sayısına dikkat edin: MOEA/D daha az tasarım döndürür, çünkü dekompozisyon tabanlı nişlemesi tekrarları daha sert budar.",
+        "Canyon H/W değerine dikkat edin: 1.0 civarı sokak kanallarının konforlu aralıkta kaldığını gösterir; 1.4+ rüzgar sorunudur."
+      ],
+      "interpret": "Evrensel olarak en iyi çözücü yoktur; bir ödünleşim vardır. MOEA/D en yüksek puanlı, en düşük karbonlu ve en açık tasarımları buldu — ama çok daha az aday tasarım ve çok daha düşük nüfus yoğunluğuyla. NSGA-III en yüksek nüfusu, karşılığında en dar kanalları getirdi. SPEA-2 ikisinin arasında. Algoritmayı planınızın gerçekte hangi eksene önem verdiğine göre seçin.",
+      "trouble": [
+        "Dört çıktı haritada aynı görünüyor — aynı parseller farklı öznitelik değerleriyle; renkleri değil sayıları karşılaştırın.",
+        "Bir çözücü çok daha az tasarım döndürüyor — dekompozisyon tabanlı nişleme tekrarları eliyor; POP_SIZE'ı artırın.",
+        "Çalıştırmalar arasında sonuç değişiyor — seed sabitlenmemiş."
+      ]
+    }
+  },
+
+  "urban_physics": {
+    "group": "Physics & Microclimate",
+    "algo": "parametric_process:urban_physics_evaluator",
+    "en": {
+      "title": "Urban physics & microclimate evaluator",
+      "question": "What does a design do to the street — wind, sun, heat and runoff?",
+      "what": "The physics engine scores a design across fifteen microclimate and financial domains: wind ventilation and pedestrian comfort, solar access, air dispersion, sky view factor, sol-air temperature, runoff, carbon, plus the financial side (NPV, IRR, payback). These are transparent screening models with published thresholds, not CFD — the point is comparison between options, not certification.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 2. Urban Physics & Microclimate Multi-Domain Evaluator and set INPUT to your design layer (a solver output or a measured design).",
+        "Run. Every feature is scored and the metrics are written back onto the same geometry.",
+        "Read carbon, wind_score, solar_kwh, utci_score, runoff, svf_ratio, canyon_hw, npv, irr and the rest in the attribute table.",
+        "Compare the design with the existing fabric: run the evaluator on the current condition layer first, then on the proposal, and diff the two."
+      ],
+      "interpret": "The two numbers that most often decide a plan are canyon H/W and UTCI score. H/W around 1.0–1.5 is the comfortable street-canyon range; above 1.5 the street traps wind and loses sun, and both the wind score and the UTCI score fall together. Read them as a pair, never alone.",
+      "trouble": [
+        "Every score is identical — the layer carries no height or floors, so the physics models have no geometry to work with.",
+        "The values look extreme — a screening model assumes a uniform street profile; treat the numbers as comparative, not absolute.",
+        "Solar access is implausibly high — the model needs a latitude and an orientation it read from the layer CRS; check the CRS is geographic-or-local as expected."
+      ]
+    },
+    "tr": {
+      "title": "Kentsel fizik ve mikroiklim değerlendirici",
+      "question": "Bir tasarım caddeye ne yapıyor — rüzgâr, güneş, ısı ve yüzey suyu?",
+      "what": "Fizik motoru bir tasarımı on beş mikroiklim ve finansal alanda puanlar: rüzgâr havalandırması ve yaya konforu, güneş erişimi, hava dispersiyonu, gökyüzü görüş faktörü, sol-air sıcaklığı, yüzey suyu, karbon; finansal tarafta NPV, IRR ve geri ödeme. Bunlar yayımlanmış eşikleri olan şeffaf tarama modelleridir, CFD değil — amaç seçenekler arasında karşılaştırmaktır.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 2. Urban Physics & Microclimate Multi-Domain Evaluator'ı açın ve INPUT olarak tasarım katmanını verin (bir çözücü çıktısı ya da ölçülmüş bir tasarım).",
+        "Run'a basın. Her özellik puanlanır ve metrikler aynı geometriye geri yazılır.",
+        "Öznitelik tablosunda carbon, wind_score, solar_kwh, utci_score, runoff, svf_ratio, canyon_hw, npv, irr ve diğerlerini okuyun.",
+        "Mevcut dokuyu karşılaştırın: önce mevcut durum katmanını, sonra öneriyi çalıştırıp ikisinin farkını alın."
+      ],
+      "interpret": "Bir planı en çok belirleyen iki sayı genellikle canyon H/W ve UTCI skorudur. H/W 1.0–1.5 civarı konforlu sokak kanalı aralığıdır; 1.5'in üzerinde cadde rüzgârı hapser ve güneşi kaybeder — rüzgâr skoru ve UTCI skoru birlikte düşer. İkisini daima çift olarak okuyun.",
+      "trouble": [
+        "Bütün puanlar aynı — katmanda yükseklik veya kat bilgisi yok, fizik modellerinin çalışacağı geometri yok.",
+        "Değerler aşırı görünüyor — tarama modeli düz bir cadde kesiti varsayıyor; sayıları karşılaştırmalı, mutlak değil.",
+        "Güneş erişimi inandırıcı olmayan derecede yüksek — model katmanın CRS'inden enlem ve yön okuyor; CRS'yi kontrol edin."
+      ]
+    }
+  },
+
+  "urban_morphology": {
+    "group": "Physics & Microclimate",
+    "algo": "parametric_process:urban_morphology_analytics",
+    "en": {
+      "title": "Urban morphology & canyon analytics",
+      "question": "What shape is the existing urban fabric, and what does that shape do to the street?",
+      "what": "The morphology engine measures the block itself: footprint coverage, the share of the block given to open space, the street-wall height-to-width ratio, the orientation of the long axis against the sun, and the resulting canyon geometry. It is the diagnostic that tells you *why* a street feels the way it does.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 3. Urban Morphology & Canyon Analytics and set INPUT to the parcel or design layer.",
+        "Run. The engine adds the morphology fields to the same layer.",
+        "Read the canyon ratio and the orientation fields together: a long axis running east–west in a northern-hemisphere city means the sun never reaches the lower floors.",
+        "Use the open-space share to identify the blocks that could absorb more density without losing their courtyards."
+      ],
+      "interpret": "Orientation is the field people forget. Two blocks with identical coverage and identical canyon ratio can behave completely differently if one presents its long face north and the other east. A block that presents its long face to the sun is deep enough to keep daylight in the lower floors; the same block rotated ninety degrees is not.",
+      "trouble": [
+        "The canyon ratio comes out absurd for very small blocks — the ratio needs enough width to be meaningful; filter tiny parcels first.",
+        "Orientation looks random — the engine works on the long axis of the footprint; for L-shaped or crescent parcels that is only an approximation.",
+        "The values differ from a manual measurement — the engine measures the footprint, not the building envelope; a setback moves the number."
+      ]
+    },
+    "tr": {
+      "title": "Kentsel morfoloji ve kanal analitiği",
+      "question": "Mevcut kent dokusu ne biçimde ve bu biçim caddeye ne yapıyor?",
+      "what": "Morfoloji motoru adanın kendisini ölçer: taban alan oranı, adanın açık alana ayrılan payı, sokak cephesi yükseklik/genişlik oranı, uzun eksenin güneşe göre yönü ve bunun ürettiği kanal geometrisi. Bir sokağın neden böyle hissettirdiğini söyleyen tanısal araçtır.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 3. Urban Morphology & Canyon Analytics'i açın ve INPUT olarak parsel ya da tasarım katmanını verin.",
+        "Run'a basın. Motor morfoloji alanlarını aynı katmana ekler.",
+        "Kanal oranını yön alanlarıyla birlikte okuyun: kuzey yarımkürede doğu–batı uzun ekseni güneşin hiç ulaşmadığı anlamına gelir.",
+        "Açık alan payını, avlularını kaybetmeden daha fazla yoğunluk alabilecek adaları bulmak için kullanın."
+      ],
+      "interpret": "Yön en çok unutulan alandır. Kaplama ve kanal oranı birebir aynı iki ada, biri kuzeye diğeri doğuya uzun yüzünü gösteriyorsa tamamen farklı davranır. Uzun yüzünü güneşe gösteren ada alt katlara gün ışığı girmeye devam eder; aynı ada doksan derece döndürülürse girmez.",
+      "trouble": [
+        "Çok küçük adalarda kanal oranı absürt çıkıyor — oran anlamlı bir genişlik ister; önce küçük parselleri filtreleyin.",
+        "Yön rastgele görünüyor — motor taban alanın uzun ekseni üzerinden çalışır; L biçimli veya hilal parseller için bu yalnızca bir yaklaşımdır.",
+        "Değerler elle ölçümden farklı — motor bina zarfını değil taban alanı ölçer; çekilme mesafesi sayıyı değiştirir."
+      ]
+    }
+  },
+
+  "shape_grammar": {
+    "group": "Generative Geometry",
+    "algo": "parametric_process:procedural_shape_grammar",
+    "en": {
+      "title": "Procedural shape grammar — subdividing a block",
+      "question": "How do I split one irregular block into buildable plots?",
+      "what": "The shape grammar turns a single block outline into a set of buildable plots using a rewrite rule set: the block is recursively split along its longest edge, and each fragment is re-evaluated against a target frontage. It is the geometric primitive every generative workflow starts from.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 4. Procedural Shape Grammar Block Subdivider.",
+        "Set INPUT to the block polygon layer and FRONTAGE to the target plot frontage in metres — 18.0 m suits a typical Turkish residential row.",
+        "Run. Each block is replaced by its subdivided plots, carrying the rule trace.",
+        "Feed the result into the PPUD pipeline or the parametric optimiser: the plots are the design units the engines reason about."
+      ],
+      "interpret": "The frontage is the planning variable, not a technical one. Change it and you change the grain of the city: 12 m frontages give small row houses and a dense street wall, 25 m gives wider plots and more parking. Set it from the local housing type, not from the default.",
+      "trouble": [
+        "A block produces a single plot — the block was too small for the frontage, or its outline is degenerate.",
+        "The plots do not tile the block — the longest-edge rule cannot handle very concave outlines; simplify the geometry first.",
+        "The plots have no access to the street — frontage-based subdivision assumes each plot touches the perimeter; blocks with a closed courtyard need the perimeter strategy instead."
+      ]
+    },
+    "tr": {
+      "title": "Prosedürel şekil grameri — adayı bölme",
+      "question": "Tek bir düzensiz adayı yapılaşabilir parsellere nasıl bölerim?",
+      "what": "Şekil grameri tek bir ada sınırını, yeniden yazma kuralı kümesiyle yapılaşabilir parsellere dönüştürür: ada en uzun kenarı boyunca özyinelemeli olarak bölünür ve her parça hedef cephe genişliğine göre yeniden değerlendirilir. Her üretken iş akışının başladığı geometrik temel öğedir.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 4. Procedural Shape Grammar Block Subdivider'ı açın.",
+        "INPUT olarak ada poligon katmanını, FRONTAGE olarak hedef parsel cephe genişliğini metre cinsinden verin — 18.0 m tipik Türk konu sırası için uygundur.",
+        "Run'a basın. Her ada, yeniden yazma iziyle birlikte bölünmüş parselleriyle değiştirilir.",
+        "Sonucu PPUD pipeline'ına veya parametrik optimizöre verin: parseller motorların üzerinde çalıştığı tasarım birimleridir."
+      ],
+      "interpret": "Cephe genişliği bir teknik değil bir planlama değişkenidir. Değiştirdiğinizde kentin dokusunu değiştirirsiniz: 12 m cephe sıralı evler ve yoğun bir sokak cephesi verir, 25 m daha geniş parseller ve daha çok otopark. Varsayılandan değil, yerel konut tipinden belirleyin.",
+      "trouble": [
+        "Bir ada tek parsel üretiyor — ada cepheye göre çok küçüktü ya da sınırı dejenere.",
+        "Parseller adayı tam kaplamıyor — en uzun kenar kuralı çok içbükey sınırları işleyemez; önce geometriyi sadeleştirin.",
+        "Parsellerin caddeye erişimi yok — cepheye dayalı bölme her parselin çevreye değdiğini varsayar; kapalı avlusu olan adalarda çevre stratejisi gerekir."
+      ]
+    }
+  },
+
+  "district_coupling": {
+    "group": "Generative Geometry",
+    "algo": "parametric_process:district_environmental_coupling",
+    "en": {
+      "title": "Multi-parcel district environmental coupling",
+      "question": "What happens when the design of one block changes the performance of its neighbours?",
+      "what": "District coupling evaluates a set of parcels together instead of one at a time: a block's massing changes the wind corridor, the shading and the carbon balance of the blocks around it. This is the module that turns an isolated block study into a neighbourhood study.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 5. Multi-Parcel District Environmental Coupling.",
+        "Set INPUT to the parcel layer of the district you want to evaluate as one system.",
+        "Run. The engine couples the parcels and writes the district-level environmental results onto the layer.",
+        "Compare the coupled result with the same parcels evaluated individually — the difference is the interference effect."
+      ],
+      "interpret": "The gap between the isolated and the coupled result is the finding. If a block scores well on its own but poorly once coupled, the problem is its relationship with the neighbours — usually a massing that closes a wind corridor or shadows a courtyard. No amount of tuning that block in isolation will fix it.",
+      "trouble": [
+        "The results are identical to the single-parcel run — the parcels do not touch, so there is nothing to couple; check the geometry.",
+        "Everything degrades at once — one oversized block is dominating the district; look for the outlier in the attributes.",
+        "The run is slow — coupling is quadratic in the number of interacting parcels; evaluate a neighbourhood-sized subset."
+      ]
+    },
+    "tr": {
+      "title": "Çok parselli kent bölgesi çevresel eşleşmesi",
+      "question": "Bir bloğun tasarımı komşularının performansını değiştirdiğinde ne olur?",
+      "what": "Bölge eşleşmesi parselleri tek tek değil bir arada değerlendirir: bir bloğun kütlesi çevredeki blokların rüzgâr koridorunu, gölgelemesini ve karbon dengesini değiştirir. Bu modül, tekil ada çalışmasını mahalle çalışmasına dönüştüren araçtır.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 5. Multi-Parcel District Environmental Coupling'i açın.",
+        "INPUT olarak tek bir sistem olarak değerlendirmek istediğiniz bölgenin parsel katmanını verin.",
+        "Run'a basın. Motor parselleri eşleştirir ve bölge düzeyindeki çevresel sonuçları katmana yazar.",
+        "Eşleştirilmiş sonucu aynı parsellerin tekil değerlendirmesiyle karşılaştırın — fark müdahale etkisidir."
+      ],
+      "interpret": "Tekil ile eşleştirilmiş sonuç arasındaki fark bulgudur. Bir blok tek başına iyi ama eşleştirilince kötü scorlanıyorsa sorun komşularıyla ilişkisidir — genellikle rüzgâr koridorunu kapatan veya avluyu gölgeleyen bir kütle. Bu bloğu tek başına ayarlamak sorunu çözmez.",
+      "trouble": [
+        "Sonuçlar tekil çalıştırmayla aynı — parseller birbirine değmiyor, eşleşecek bir şey yok; geometriyi kontrol edin.",
+        "Her şey aynı anda bozuluyor — bir bloğun bölgeye hâkim olması söz konusu; özniteliklerdeki aykırıya bakın.",
+        "Çalıştırma yavaş — eşleşme etkileşen parsel sayısında kareseldir; mahalle ölçeğinde bir alt küme değerlendirin."
+      ]
+    }
+  },
+
+  "ppud_pipeline": {
+    "group": "Generative Geometry",
+    "algo": "parametric_process:ppud_pipeline",
+    "en": {
+      "title": "PPUD pipeline — plot, building, fabric",
+      "question": "How does a block actually grow, phase by phase?",
+      "what": "PPUD (Plot–Building–Urban Design) is the plugin's three-stage sequential engine. Stage 1 subdivides each block into plots with a chosen strategy. Stage 2 assigns a building genotype to every plot and optimises it against the zoning envelope. Stage 3 develops the fabric incrementally in randomised phases, recomputing mutual shadowing and canyon wind between phases — and with climate feedback on, later phases adapt their genotype to what the earlier ones already built.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 6. PPUD Sequential Pipeline.",
+        "Set INPUT to the block layer and choose BLOCK_TYPOLOGY: PerimeterBlock, LinearBlock, PavilionBlock, OrganicBlock or HybridBlock.",
+        "Choose STRATEGY: frontage for row-house plots, grid for orthogonal fabric, perimeter for courtyard blocks, organic for medieval irregularity, radial for Beaux-Arts composition, hybrid for perimeter edges with a grid interior.",
+        "Set the zoning envelope (MAX_BCR, MAX_FAR, MAX_HEIGHT) and INCREMENTAL_STEPS — the number of development phases.",
+        "Turn CLIMATE_FEEDBACK on: a plot developed in a later phase that would suffer more than 30 % shadow loss drops a floor and widens its setback; a canyon wind above 8 m/s switches the typology from Slab to SteppedTower.",
+        "Run. OUTPUT_PLOTS gives the subdivided plots with 14 performance metrics and a fabric_step field; OUTPUT_FBC gives the machine-readable form-based code (build-to-line, max floors, max height, setback)."
+      ],
+      "interpret": "The fabric_step field is the point of the whole exercise. Colour the plots by fabric_step and you can see *when* each part of the neighbourhood was built — and therefore which building casts the shadow that made the next one shrink. That is a real planning argument, not a rendering curiosity.",
+      "trouble": [
+        "The run aborts with a parcel-area error — a degenerate multi-part block; fix the geometry or take the largest part.",
+        "Every plot has the same genotype — the block typology's compatible building list is too narrow for the strategy; switch typology.",
+        "The fabric_step field is constant — INCREMENTAL_STEPS is 1; raise it to 5–10 to see the phasing."
+      ]
+    },
+    "tr": {
+      "title": "PPUD pipeline — parsel, bina, doku",
+      "question": "Bir ada fiilen nasıl, evre evre büyüyor?",
+      "what": "PPUD (Plot–Building–Urban Design) eklentinin üç aşamalı sıralı motorudur. 1. aşama her adayı seçilen stratejiyle parsellere böler. 2. aşama her parsele bir bina genotipi atar ve mevzuat zarfına göre optimize eder. 3. aşama dokuyu rastgele sıralı gelişme evrelerinde kademeli olarak inşa eder, evreler arasında karşılıklı gölgeleme ve kanal rüzgârını yeniden hesaplar — iklim geri beslemesi açıkken sonraki evreler genotiplerini önceki evrelerin inşa ettiği şeye göre uyarlar.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 6. PPUD Sequential Pipeline'ı açın.",
+        "INPUT olarak ada katmanını verin ve BLOCK_TYPOLOGY seçin: PerimeterBlock, LinearBlock, PavilionBlock, OrganicBlock veya HybridBlock.",
+        "STRATEGY seçin: sıralı ev parselleri için frontage, ortogonalu doku için grid, avlu blokları için perimeter, ortaçağ düzensizliği için organic, Beaux-Arts bileşimi için radial, çevre sıralı + iç ızgara için hybrid.",
+        "Mevzuat zarfını (MAX_BCR, MAX_FAR, MAX_HEIGHT) ve INCREMENTAL_STEPS'i (gelişme evresi sayısı) belirleyin.",
+        "CLIMATE_FEEDBACK'i açın: sonraki evrede geliştirilen bir parsel %30'dan fazla gölgelenmeyi yaşayacaksa kat azaltır ve çekilmesini genişletir; kanal rüzgârı 8 m/s'nin üzerindeyse tipolojiyi Slab'dan SteppedTower'a geçirir.",
+        "Run'a basın. OUTPUT_PLOTS bölünmüş parselleri 14 performans metriği ve fabric_step alanıyla verir; OUTPUT_FBC makine-okunur form esaslı kodu (yapıya bitişiklik, azami kat, azami yükseklik, çekilme) üretir."
+      ],
+      "interpret": "fabric_step alanı tüm yöntemin noktasıdır. Parselleri fabric_step'e göre boyayın ve mahallenin her parçasının *ne zaman* yapıldığını görürsünüz — dolayısıyla bir sonraki binayı küçülten gölgeyi hangi binanın attığını da görürsünüz. Bu bir çizim merakı değil, gerçek bir planlama argümanıdır.",
+      "trouble": [
+        "Çalıştırma parsel alanı hatasıyla duruyor — dejenere çok parçalı bir blok; geometriyi düzeltin ya da en büyük parçayı alın.",
+        "Bütün parseller aynı genotipi alıyor — blok tipolojisinin uyumlu bina listesi strateji için çok dar; tipolojiyi değiştirin.",
+        "fabric_step alanı sabit — INCREMENTAL_STEPS 1'dir; evrelemeyi görmek için 5–10'a çıkarın."
+      ]
+    }
+  },
+
+  "academic_study": {
+    "group": "Research Protocol",
+    "algo": "parametric_process:academic_urban_design_study",
+    "en": {
+      "title": "Academic urban design study",
+      "question": "Can I defend this design in a thesis, with the whole run reproducible?",
+      "what": "The academic study is the plugin's research protocol: it builds a versioned study object from the site, the street network, the destinations and the green space, then runs the solver across several seeds and reports every alternative, every building, the open space, the rejected designs and a summary. The point is not a picture — it is an auditable record with a manifest.",
+      "steps": [
+        "Open Processing Toolbox ▸ Parametric Process Studio ▸ 7. Academic Urban Design Study.",
+        "SITE: the prepared parcel layer. STREETS: the real street network. DESTINATIONS: schools, health and civic land. GREEN_SPACE: parks and planted areas. All four must share the site's CRS.",
+        "Set SEEDS to several values, e.g. 42,31415,271828 — a multi-seed run is what makes the result defensible, because it shows the answer is not a lucky draw.",
+        "Set the constraint envelope (MAX_BCR, MAX_FAR, MAX_HEIGHT), SETBACK, RAINFALL and CANOPY_TARGET.",
+        "Run. The outputs are ALTERNATIVES, BUILDINGS, OPEN_SPACE, REJECTED and SUMMARY — the rejected set is part of the evidence, not a failure.",
+        "Export the study JSON and its manifest, and read the access and robustness reports before you write a single sentence about the results."
+      ],
+      "interpret": "Three seeds are the minimum for a claim you intend to defend. If the rank-1 design changes completely between seeds, the site does not determine the answer and your text must say so. If it holds, you have a finding. The SUMMARY layer carries the per-parcel feasibility rate — read it together with the alternatives.",
+      "trouble": [
+        "A layer is rejected because its CRS differs — the protocol refuses to compare across projections; reproject it to the site CRS.",
+        "Every design is rejected — the constraint envelope is stricter than the existing fabric; the study is telling you the site cannot be legally redeveloped as parameterised.",
+        "The run is very slow — multi-seed academic runs are expensive; reduce POP_SIZE for the pilot and raise it only for the final run."
+      ]
+    },
+    "tr": {
+      "title": "Akademik kentsel tasarım çalışması",
+      "question": "Bu tasarımı tezde savunabilir miyim, tüm koşum yeniden üretilebilir mi?",
+      "what": "Akademik çalışma eklentinin araştırma protokolüdür: arsa, yol ağı, hedefler ve yeşil alandan sürümlenmiş bir çalışma nesnesi kurar, sonra çözücüyü birkaç seed üzerinde çalıştırır ve her alternatifi, her binayı, açık alanı, reddedilen tasarımları ve bir özeti raporlar. Amaç bir görsel değil, denetlenebilir bir kayıt ve manifesttir.",
+      "steps": [
+        "Processing Toolbox ▸ Parametric Process Studio ▸ 7. Academic Urban Design Study'yi açın.",
+        "SITE: hazırlanmış parsel katmanı. STREETS: gerçek yol ağı. DESTINATIONS: okul, sağlık ve kamu alanları. GREEN_SPACE: park ve ağaçlandırma alanları. Dördü de sahanın CRS'ini paylaşmalıdır.",
+        "SEEDS değerlerini birkaç sayıya ayarlayın, örn. 42,31415,271828 — çok seed'li koşum savunulabilir bir iddianın temelidir, çünkü sonucun şanslı bir çekiliş olmadığını gösterir.",
+        "Kısıt zarfını (MAX_BCR, MAX_FAR, MAX_HEIGHT), SETBACK, RAINFALL ve CANOPY_TARGET değerlerini belirleyin.",
+        "Run'a basın. Çıktılar ALTERNATIVES, BUILDINGS, OPEN_SPACE, REJECTED ve SUMMARY'dir — reddedilen küme kanıtın parçasıdır, başarısızlık değil.",
+        "Çalışma JSON'unu ve manifestini dışa aktarın ve sonuçlar hakkında tek cümle yazmadan önce erişim ve dayanıklılık raporlarını okuyun."
+      ],
+      "interpret": "Savunacağınız bir iddia için en az üç seed gerekir. Rank-1 tasarım seed'ler arasında tamamen değişiyorsa site sonucu belirlemiyor demektir ve metniniz bunu söylemelidir. Değişmiyorsa elinizde bir bulgu vardır. SUMMARY katmanı parsel başına uygunluk oranını taşır; alternatiflerle birlikte okuyun.",
+      "trouble": [
+        "Bir katman CRS farkı nedeniyle reddediliyor — protokol farklı projeksiyonlar arasında karşılaştırmayı kabul etmez; sahanın CRS'ine reprojeksiyonlayın.",
+        "Bütün tasarımlar reddedildi — kısıt zarfı mevcut dokunun katı; çalışma size arsanın parametrik olarak yeniden geliştirilemeyeceğini söylüyor.",
+        "Çalıştırma çok yavaş — çok seed'li akademik koşumlar pahalıdır; pilot için POP_SIZE'ı düşürün, yalnızca son koşumda yükseltin."
+      ]
+    }
+  },
+
+  "ui_cockpit": {
+    "group": "The browser studio",
+    "algo": null,
+    "en": {
+      "title": "The 3D cockpit",
+      "question": "What does my design actually look like on the ground?",
+      "what": "The cockpit is a Three.js city model built from the parcel layer you launched it with. It draws the blocks, extrudes the current massing, keeps the street network visible, and lets you click any parcel to open its design controls: typology, use, roof style, setback, storey count and storey height, with scenario presets and a live score readout.",
+      "steps": [
+        "Launch the cockpit from the dock with your parcel layer selected — the whole layer is exported to the local server and streamed into the scene.",
+        "Orbit with the left mouse button, pan with the right, zoom with the wheel. The HUD keeps the parcel count, the maximum Z and the frame rate visible.",
+        "Click a block. The inspector opens with the parcel's area, the scenario presets and the design sliders.",
+        "Choose a Building Typology (Courtyard, Slab, Tower, PodiumTower, SteppedTower, MultiBuildingBlock), a Primary Use and a Roof Style, then set Setback Distance, Floor Count and Floor Height.",
+        "Watch the live score bar at the bottom: PlanX Score, Compliant share, Total GFA, Population and Carbon all recompute as you move the sliders.",
+        "Press Sync Parameters to QGIS to write the reviewed design back into the layer, or Export Planning Report (CSV) for a table."
+      ],
+      "interpret": "The bottom bar is the decision instrument. A design that raises GFA while its PlanX Score falls is buying floor area with comfort. The Compliant share tells you how much of the fabric still satisfies the zoning envelope after your edit. Change one parcel, watch both, and the trade-off becomes visible in seconds instead of in a report.",
+      "trouble": [
+        "The scene shows a demo city — the server could not read the layer; reload the data from QGIS in the cockpit.",
+        "The model is tiny or collapsed — the layer was exported in degrees; the dock reprojects geographic layers, but a hand-made GeoJSON must be projected.",
+        "The frame rate is low — lower the Quality selector to Low and switch off decorative layers."
+      ]
+    },
+    "tr": {
+      "title": "3B kokpit",
+      "question": "Tasarımım yerde gerçekte nasıl görünüyor?",
+      "what": "Kokpit, kalkıştırdığınız parsel katmanından kurulan bir Three.js kent modelidir. Adaları çizer, mevcut kütleyi yükseltir, yol ağını görünür tutar ve her parsele tıklayarak tasarım kontrollerini açmanızı sağlar: tipoloji, kullanım, çatı stili, çekilme, kat sayısı ve kat yüksekliği; senaryo ön ayarları ve canlı skor göstergesiyle.",
+      "steps": [
+        "Dock'tan parsel katmanınız seçiliyken kokpiti başlatın — katmanın tamamı yerel sunucuya aktarılıp sahneye akıtılır.",
+        "Sol fare ile yörüngele, sağ fare ile kaydırın, tekerlekle yakınlaşın. HUD parsel sayısını, azami Z'yi ve kare hızını görünür tutar.",
+        "Bir bloğa tıklayın. Denetleyici parselin alanıyla, senaryo ön ayarlarıyla ve tasarım kaydırıcılarıyla açılır.",
+        "Building Typology (Courtyard, Slab, Tower, PodiumTower, SteppedTower, MultiBuildingBlock), Primary Use ve Roof Style seçin; ardından Setback Distance, Floor Count ve Floor Height ayarlayın.",
+        "Alttaki canlı skor çubuğunu izleyin: PlanX Score, uyumlu pay, toplam GFA, nüfus ve karbon kaydırıcıları hareket ettikçe yeniden hesaplanır.",
+        "İncelediğiniz tasarımı katmana geri yazmak için Sync Parameters to QGIS, tablo için Export Planning Report (CSV) düğmesine basın."
+      ],
+      "interpret": "Alttaki çubuk karar aracıdır. GFA'yı yükseltirken PlanX Score düşen bir tasarım, konforu kat alanıyla değiş tokuş etmektedir. Düzenlemenizden sonra uyum zarfının ne kadarını sağladığını uyumlu pay söyler. Bir parseli değiştirin, ikisini de izleyin — ödünleşim rapor yerine saniyeler içinde görünür.",
+      "trouble": [
+        "Sahne demo kent gösteriyor — sunucu katmanı okuyamadı; kokpitte Reload Data from QGIS ile yeniden yükleyin.",
+        "Model çok küçük ya da çökmüş — katman derece cinsinden aktarılmış; dock coğrafi katmanları reprojeksiyonlar ama elle üretilmiş bir GeoJSON projeksiyonlu olmalı.",
+        "Kare hızı düşük — Quality seçicisini Low'a alın ve dekoratif katmanları kapatın."
+      ]
+    }
+  },
+
+  "ui_evolutionary": {
+    "group": "The browser studio",
+    "algo": null,
+    "en": {
+      "title": "Evolutionary Studio & the Pareto Analytics Studio",
+      "question": "How do I read a Pareto front instead of just looking at it?",
+      "what": "The Evolutionary Studio is where the multi-objective solver runs: you choose the objectives and whether each is maximised or minimised, pick the algorithm, set population, generations, crossover and mutation, define the gene bounds, and optionally enable the AI surrogate model. When it finishes, the Pareto Analytics Studio opens with six views of the same solution set.",
+      "steps": [
+        "Open the Evolutionary Studio and tick the objectives you care about: GFA, PlanX Score, Wind Vent, Solar Radiation, Air Dispersion, Sky View (SVF). Each has a MAX/MIN switch — decide what 'better' means before you run.",
+        "Choose the algorithm, population size and generations, and set the gene bounds (floors, setback) to the range your zoning allows.",
+        "Press Run Evolutionary Optimization. The progress bar tracks the generation.",
+        "In the Pareto Analytics Studio, read the scatter plot first: X and Y are any two objectives, the colour mode can be Pareto Rank, K-Means cluster or generation trajectory.",
+        "Use the parallel coordinates plot to brush-filter the set across all objectives at once — this is how you find the narrow, defensible region of the front.",
+        "Read the fitness convergence chart to check that the run actually converged, the radar chart for one solution's profile, the cluster view for how many distinct families of solutions exist, and the population table for the ranked list you will present."
+      ],
+      "interpret": "The scatter is the frontier; the parallel coordinates plot is the explanation. A wide cloud means the objectives trade off freely and you must choose. A narrow band means one solution dominates and the search was easy. The convergence chart is your honesty check: if the spread band is still shrinking at the last generation, the run was too short and the front is not final.",
+      "trouble": [
+        "The run finishes but the studio stays empty — the analytics container only opens when a run completes; check the progress text.",
+        "Every point has the same colour — the colour mode is 'Pareto Rank' and everything is rank 1; switch to K-Means or generation trajectory.",
+        "The brush filter selects nothing — the axes are in different units; use the axis selectors to pick comparable metrics."
+      ]
+    },
+    "tr": {
+      "title": "Evrimsel Stüdyo ve Pareto Analitik Stüdyosu",
+      "question": "Bir Pareto cephesini sadece bakmak yerine nasıl okurum?",
+      "what": "Evrimsel Stüdyo çok amaçlı çözücünün çalıştığı yerdir: amaçları ve her birinin mi yoksa ma mı optimize edileceğini seçersiniz, algoritmayı, popülasyonu, nesil sayısını, çaprazlama ve mutasyonu belirlersiniz, gen sınırlarını tanımlarsınız ve isteğe bağlı olarak YZ vekil modelini açarsınız. Bittiğinde Pareto Analitik Stüdyosu aynı çözüm kümesinin altı görünümüyle açılır.",
+      "steps": [
+        "Evrimsel Stüdyo'yu açın ve önemsediğiniz amaçları işaretleyin: GFA, PlanX Score, Wind Vent, Solar Radiation, Air Dispersion, Sky View (SVF). Her birinin MAX/MIN anahtarı var — koşmadan önce 'daha iyi'nin ne demek olduğuna karar verin.",
+        "Algoritmayı, popülasyon büyüklüğünü ve nesil sayısını seçin, gen sınırlarını (kat, çekilme) mevzuatınızın izin verdiği aralığa ayarlayın.",
+        "Run Evolutionary Optimization'a basın. İlerleme çubuğu nesli izler.",
+        "Pareto Analitik Stüdyosu'nda önce dağılım grafiğini okuyun: X ve Y herhangi iki amaçtır, renk modu Pareto Rank, K-Means kümesi ya da nesil yörüngesi olabilir.",
+        "Paralel koordinatlar grafiğini kullanarak tüm amaçlar boyunca aynı anda süpürerek süzün — savunulabilir dar bölgeyi böyle bulursunuz.",
+        "Fitness yakınsama grafiğiyle koşumun gerçekten yakınsadığını denetleyin, radar grafikle bir çözümün profilini, küme görünümüyle kaç ayrı çözüm ailesi olduğunu, nüfus tablosuyla sunacağınız sıralı listeyi okuyun."
+      ],
+      "interpret": "Dağılım grafiği cephedir; paralel koordinatlar grafiği açıklamadır. Geniş bir bulut amaçların serbestçe ödünleştiğini ve siz seçmek zorunda olduğunuzu gösterir. Dar bir bant tek bir çözümün baskın olduğunu ve aramanın kolay olduğunu gösterir. Yakınsama grafiği dürüstlük kontrolünüzdür: yayılım bandı son nesilde hâlâ daralıyorsa koşum çok kısa kalmıştır ve cephe nihai değildir.",
+      "trouble": [
+        "Koşum bitiyor ama stüdyo boş kalıyor — analiz konteyneri yalnızca bir koşum tamamlandığında açılır; ilerleme metnini kontrol edin.",
+        "Bütün noktalar aynı renkte — renk modu 'Pareto Rank' ve hepsi rank 1; K-Means ya da nesil yörüngesine geçin.",
+        "Süpürme süzgeci hiçbir şey seçmiyor — eksenler farklı birimlerde; karşılaştırılabilir metrikler seçmek için eksen seçicilerini kullanın."
+      ]
+    }
+  },
+
+  "ui_workflow": {
+    "group": "The browser studio",
+    "algo": null,
+    "en": {
+      "title": "Visual rule workflow modeler",
+      "question": "Can I chain the engines into a repeatable design procedure?",
+      "what": "The workflow modeler is a Grasshopper-style node canvas. A workflow chains site input, zoning, shape grammar, PPUD, the evolutionary solvers, the district physics, TOPSIS ranking, selection and QGIS output into one executable graph. Templates ship for balanced growth, feasibility-first, low-carbon, climate-responsive, PPUD and district scenarios.",
+      "steps": [
+        "Open the Workflow Modeler from the dock or the top navigation.",
+        "Pick a template from the selector and press the new-workflow button, or add nodes one at a time and connect them by dragging.",
+        "Run the graph. The run log reports each component and the final status.",
+        "Inspect a node to see its parameters and edit them; the inspector shows the component description and its fields.",
+        "Use Preview Result to inspect the produced phenotype, Sync Result to push it back to QGIS, and Export / Import to move a workflow as portable JSON."
+      ],
+      "interpret": "A workflow is a *procedure*, not a picture. The same graph run on a different site gives a comparable answer, and the JSON export is what makes the procedure reviewable: a colleague can open the file, see the zoning parameters, the solver settings and the ranking rule, and re-run it. That is the difference between a design study and a reproducible method.",
+      "trouble": [
+        "A run fails at a node — open the run log; the failing component and its message are written there.",
+        "The graph is empty after loading a template — the template must be applied with the new-workflow button, not just selected.",
+        "The preview is empty — the graph has no QGIS output node, so there is nothing to preview."
+      ]
+    },
+    "tr": {
+      "title": "Görsel kural iş akışı modeler",
+      "question": "Motorları tekrarlanabilir bir tasarım sürecine zincirleyebilir miyim?",
+      "what": "İş akışı modeleri, Grasshopper tarzı bir düğüm tuvalidir. Bir iş akışı; arsa girdisi, mevzuat, şekil grameri, PPUD, evrimsel çözücüler, bölge fiziği, TOPSIS sıralaması, seçim ve QGIS çıktısını tek bir çalıştırılabilir graf olarak zincirler. Dengeli büyüme, önce uygunluk, düşük karbon, iklime duyarlı, PPUD ve bölge senaryoları için şablonlar gelir.",
+      "steps": [
+        "İş akışı modelerini dock'tan ya da üst navigasyondan açın.",
+        "Şablon seçicisinden bir senaryo seçip yeni iş akışı düğmesine basın ya da düğümleri tek tek ekleyip sürükleyerek bağlayın.",
+        "Grafı çalıştırın. Çalışma günlüğü her bileşeni ve nihai durumu raporlar.",
+        "Bir düğümü inceleyerek parametrelerini görün ve düzenleyin; denetleyici bileşen açıklamasını ve alanlarını gösterir.",
+        "Üretilen fenotipi görmek için Preview Result, QGIS'e geri yazmak için Sync Result, iş akışını taşınabilir JSON olarak taşımak için Export / Import kullanın."
+      ],
+      "interpret": "İş akışı bir *prosedürdür*, bir görsel değil. Aynı graf başka bir sitede çalıştırıldığında karşılaştırılabilir bir yanıt verir ve JSON dışa aktarımı prosedürü denetlenebilir kılar: bir meslektaş dosyayı açıp mevzuat parametrelerini, çözücü ayarlarını ve sıralama kuralını görüp yeniden çalıştırabilir. Tasarım çalışması ile yeniden üretilebilir yöntem arasındaki fark budur.",
+      "trouble": [
+        "Bir düğümde çalıştırma başarısız — çalışma günlüğünü açın; hatanın bileşeni ve mesajı orada yazılıdır.",
+        "Şablon yükledikten sonra graf boş — şablon yeni iş akışı düğmesiyle uygulanmalı, sadece seçilmemeli.",
+        "Önizleme boş — grafta QGIS çıktı düğümü yok, önizlenecek bir şey üretilmemiş."
+      ]
+    }
+  },
+
+  "ui_academic": {
+    "group": "The browser studio",
+    "algo": null,
+    "en": {
+      "title": "Academic study workspace",
+      "question": "How do I set up, run and export a reproducible study?",
+      "what": "The Academic Study workspace is the browser half of the research protocol. It creates a versioned study record with its schema badge, sets the CRS, the seeds and the constraint envelope, runs the study, and exports a signed study JSON that carries the study id, the seeds, the assumptions and the provenance of every input.",
+      "steps": [
+        "Open the Academic Study workspace.",
+        "Name the study and set its CRS to the site CRS.",
+        "Enter the seeds as a comma-separated list, then the constraint envelope: BCR, FAR and height, plus the rainfall event and the canopy target.",
+        "Create the study and read the result: the study id and the schema version appear in the panel.",
+        "Export the study JSON. The file name carries the study id, and the record is what an auditor reads."
+      ],
+      "interpret": "The exported JSON is the artefact. It names the study, its schema version, the seeds and the assumptions, so a reader can tell exactly which protocol produced a number — and can tell if a later version changed the rules. Keep it with the figures; a study without its record is an anecdote.",
+      "trouble": [
+        "The export button stays disabled — no study has been created yet.",
+        "The schema badge shows an unexpected version — the plugin was updated since the study was created; create a new study rather than editing an old one.",
+        "The study will not run — check the seeds: they must be a comma-separated list of integers."
+      ]
+    },
+    "tr": {
+      "title": "Akademik çalışma çalışma alanı",
+      "question": "Yeniden üretilebilir bir çalışmayı nasıl kurar, çalıştırır ve dışa aktarırım?",
+      "what": "Akademik Çalışma çalışma alanı araştırma protokolünün tarayıcı tarafıdır. Şema rozetiyle birlikte sürümlenmiş bir çalışma kaydı oluşturur, CRS'yi, seed'leri ve kısıt zarfını belirler, çalışmayı yürütür ve çalışma kimliğini, seed'leri, varsayımları ve her girdinin kökenini taşıyan imzalı bir çalışma JSON'u dışa aktarır.",
+      "steps": [
+        "Academic Study çalışma alanını açın.",
+        "Çalışmaya bir ad verin ve CRS'sini sahanın CRS'i olarak ayarlayın.",
+        "Seed'leri virgülle ayrılmış liste olarak girin, ardından kısıt zarfını: BCR, FAR ve yükseklik, yağış olayı ve hedef ağaç örtüsü.",
+        "Çalışmayı oluşturun ve sonucu okuyun: panelde çalışma kimliği ve şema sürümü görünür.",
+        "Çalışma JSON'unu dışa aktarın. Dosya adı çalışma kimliğini taşır ve bu kayıt denetçinin okuduğu belgedir."
+      ],
+      "interpret": "Dışa aktarılan JSON eserdir. Çalışmayı, şema sürümünü, seed'leri ve varsayımları adlandırır; böylece okuyucu bir sayının hangi protokolle üretildiğini tam olarak bilebilir — ve sonraki bir sürümün kuralları değiştirdiğini de görebilir. Onu şekillerle birlikte saklayın; kaydı olmayan bir çalışma bir anektottur.",
+      "trouble": [
+        "Dışa aktarma düğmesi pasif kalıyor — henüz çalışma oluşturulmadı.",
+        "Şema rozeti beklenmeyen bir sürüm gösteriyor — eklenti çalışma oluşturulduktan sonra güncellendi; eski çalışmayı düzenlemek yerine yenisini oluşturun.",
+        "Çalışma çalışmıyor — seed'leri kontrol edin: virgülle ayrılmış tam sayı listesi olmalı."
+      ]
+    }
+  }
+}

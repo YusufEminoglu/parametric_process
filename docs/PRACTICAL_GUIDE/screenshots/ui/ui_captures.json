@@ -1,0 +1,74 @@
+{
+  "captured": [
+    {
+      "id": "academic_study",
+      "title": "Academic study workspace",
+      "path": "screenshots/ui/academic_study.png"
+    },
+    {
+      "id": "cockpit",
+      "title": "3D cockpit — the real Tire city model",
+      "path": "screenshots/ui/cockpit.png"
+    },
+    {
+      "id": "evolutionary_studio",
+      "title": "Evolutionary Studio — objectives and solver controls",
+      "path": "screenshots/ui/evolutionary_studio.png"
+    },
+    {
+      "id": "parcel_inspector",
+      "title": "Parcel inspector — design parameters for one block",
+      "path": "screenshots/ui/parcel_inspector.png"
+    },
+    {
+      "id": "pareto_cluster",
+      "title": "K-Means clustering of the solution set",
+      "path": "screenshots/ui/pareto_cluster.png"
+    },
+    {
+      "id": "pareto_fitness",
+      "title": "Fitness convergence and standard-deviation band",
+      "path": "screenshots/ui/pareto_fitness.png"
+    },
+    {
+      "id": "pareto_pcp",
+      "title": "Parallel coordinates plot",
+      "path": "screenshots/ui/pareto_pcp.png"
+    },
+    {
+      "id": "pareto_population",
+      "title": "Population browser",
+      "path": "screenshots/ui/pareto_population.png"
+    },
+    {
+      "id": "pareto_radar",
+      "title": "Diamond / radar fitness profile",
+      "path": "screenshots/ui/pareto_radar.png"
+    },
+    {
+      "id": "pareto_scatter",
+      "title": "Pareto front scatter",
+      "path": "screenshots/ui/pareto_scatter.png"
+    },
+    {
+      "id": "wallacei_studio",
+      "title": "Pareto Analytics Studio",
+      "path": "screenshots/ui/wallacei_studio.png"
+    },
+    {
+      "id": "workflow_empty",
+      "title": "Visual rule workflow modeler — empty",
+      "path": "screenshots/ui/workflow_empty.png"
+    },
+    {
+      "id": "workflow_graph",
+      "title": "Visual rule workflow modeler — a loaded rule chain",
+      "path": "screenshots/ui/workflow_graph.png"
+    },
+    {
+      "id": "workflow_result",
+      "title": "Visual rule workflow modeler — executed result",
+      "path": "screenshots/ui/workflow_result.png"
+    }
+  ]
+}

@@ -1168,14 +1168,30 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
             if not geom or geom.isEmpty():
                 continue
 
+            # Collect every exterior ring the feature carries and keep the
+            # largest one. Taking part 0 blindly collapses multi-part blocks
+            # whose first part encloses no area (real cadastral data does
+            # contain them), which surfaced as a confusing
+            # "parcel_area must be a finite value greater than zero" error.
             ring = []
-            polygon_pts = (
-                geom.asMultiPolygon()[0]
-                if geom.isMultipart() and geom.asMultiPolygon()
-                else geom.asPolygon()
-            )
-            if polygon_pts and len(polygon_pts[0]) >= 3:
-                ring = [{'x': pt.x(), 'y': pt.y()} for pt in polygon_pts[0]]
+            candidate_rings = []
+            if geom.isMultipart():
+                for part in geom.asMultiPolygon():
+                    if part and len(part[0]) >= 3:
+                        candidate_rings.append(part[0])
+            else:
+                parts = geom.asPolygon()
+                if parts and len(parts[0]) >= 3:
+                    candidate_rings.append(parts[0])
+
+            if candidate_rings:
+                from .ppud_pipeline import calculate_polygon_area
+                best = max(
+                    candidate_rings,
+                    key=lambda pts: abs(calculate_polygon_area(
+                        [{'x': pt.x(), 'y': pt.y()} for pt in pts])),
+                )
+                ring = [{'x': pt.x(), 'y': pt.y()} for pt in best]
 
             if not ring:
                 continue
