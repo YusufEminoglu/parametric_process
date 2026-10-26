@@ -26,8 +26,11 @@ class _LCG:
         self._state = int(actual_seed) & 0x7FFFFFFF
 
     def random(self):
+        # Divide by the modulus, not by its largest value: the state can reach
+        # 0x7FFFFFFF, and a result of exactly 1.0 sent choice() one past the
+        # end of its sequence.
         self._state = (self._state * 1103515245 + 12345) & 0x7FFFFFFF
-        return self._state / 0x7FFFFFFF
+        return self._state / 0x80000000
 
     def uniform(self, a, b):
         return a + self.random() * (b - a)
@@ -75,7 +78,7 @@ class _ThreadLocalRng:
 
 _rng = _ThreadLocalRng()
 
-MODEL_VERSION = "2.1"
+MODEL_VERSION = "2.2"
 
 
 def validate_model_inputs(parcel_area, max_bcr=0.45, max_far=2.5, max_height=18.0,
@@ -194,7 +197,6 @@ def evaluate_phenotype(
     validate_model_inputs(parcel_area, max_bcr, max_far, max_height, sim_params)
     sim_params = sim_params or {}
     prevailing_wind_deg = float(sim_params.get("wind_deg", 225.0))  # SW default
-    wind_speed_ms = float(sim_params.get("wind_speed", 4.5))       # m/s
     latitude_deg = float(sim_params.get("latitude", 38.4))          # İzmir / Mediterranean default
     const_cost_sqm = float(sim_params.get("const_cost", 750.0))     # $/sqm
     sale_price_sqm = float(sim_params.get("sale_price", 1650.0))   # $/sqm
@@ -259,10 +261,13 @@ def evaluate_phenotype(
     svf = round(min(1.0, max(0.12, 1.0 - (street_canyon_hw * 0.24) + (open_space_ratio * 0.32))), 2)
 
     # 4. Wind ventilation screening index (weighted terms, not CFD)
-    # Calculates wind alignment angle, drag coefficient, and pedestrian comfort
+    # Wind running along the building's long axis passes; wind striking the
+    # long face is blocked. The factor is therefore |cos| of the angle between
+    # wind and axis: 1 when aligned, 0 when perpendicular. (Before 3.3.0 it was
+    # the sine, which rewarded the blocking orientation it was meant to penalise.)
     bldg_orientation_deg = 45.0 if typology in ["LShape", "UShape"] else 0.0
-    wind_incident_angle = math.radians(abs((prevailing_wind_deg - bldg_orientation_deg) % 180))
-    wind_alignment_factor = math.sin(wind_incident_angle)  # Perpendicular causes blockage, oblique allows flow
+    wind_incident_angle = math.radians((prevailing_wind_deg - bldg_orientation_deg) % 180.0)
+    wind_alignment_factor = abs(math.cos(wind_incident_angle))
 
     typo_porosity = {
         "Tower": 0.75,
@@ -353,7 +358,14 @@ def evaluate_phenotype(
     runoff_m3 = round((footprint_area * roof_coeff * 0.8) + (open_space_m2 * 0.3 * 0.8), 1)
 
     # 10. PlanX Composite Urban Quality Score (0-100)
-    density_score = min(100.0, (far / max(0.1, max_far)) * 60.0) if far <= max_far else max(0.0, 100.0 - far_viol * 40.0)
+    # Density earns credit up to the permitted FAR and loses it beyond. The
+    # two branches meet at 100 on the limit; before 3.3.0 the compliant branch
+    # topped out at 60 while a design just over the limit scored ~100, so the
+    # composite score rewarded breaking the FAR.
+    if far <= max_far:
+        density_score = min(100.0, (far / max(0.1, max_far)) * 100.0)
+    else:
+        density_score = max(0.0, 100.0 - far_viol * 40.0)
     open_score = open_space_ratio * 100.0
     mix_bonus = 20.0 if usage == "MixedUse" else (12.0 if usage in ["Residential", "Commercial"] else 5.0)
     compliance_bonus = 20.0 if constraint_penalty == 0 else max(0.0, 20.0 - constraint_penalty * 0.5)
@@ -438,19 +450,25 @@ class ProcessIndividual:
     ) -> None:
         """Evaluates multi-domain physical metrics and constructs fitness vector."""
         self.metrics = evaluate_phenotype(self.genotype, parcel_area, max_bcr, max_far, max_height, sim_params)
+        self._build_fitness(objective_specs)
+
+    def _build_fitness(self, objective_specs: List[Dict[str, str]]) -> None:
+        # An objective the model does not compute used to read as a constant
+        # 0.0, so a typo silently dropped it from the search.
         self.objectives = {}
         self.fitness_vector = []
-
         for spec in objective_specs:
             name = spec["name"]
+            if name not in self.metrics:
+                raise ValueError(
+                    f"Unknown objective '{name}'; available: "
+                    + ", ".join(sorted(self.metrics)))
             direction = spec.get("direction", "max").lower()
-            val = float(self.metrics.get(name, 0.0))
+            if direction not in ("max", "min"):
+                raise ValueError(f"Objective direction must be 'max' or 'min', got '{direction}'")
+            val = float(self.metrics[name])
             self.objectives[name] = val
-
-            if direction == "max":
-                self.fitness_vector.append(-val)
-            else:
-                self.fitness_vector.append(val)
+            self.fitness_vector.append(-val if direction == "max" else val)
 
     def dominates(self, other: ProcessIndividual) -> bool:
         """Returns True if self dominates other in Pareto sense."""
@@ -541,6 +559,10 @@ def mutate_genotype(g: Dict[str, Any], mutation_rate: float = 0.15, bounds: Dict
         mutated["scale_x"] = round(max(0.35, min(1.6, mutated["scale_x"] + _rng.gauss(0, 0.1))), 2)
     if _rng.random() < mutation_rate:
         mutated["scale_y"] = round(max(0.35, min(1.6, mutated["scale_y"] + _rng.gauss(0, 0.1))), 2)
+    # floor_height had no mutation operator, so it could only drift towards
+    # the mean of the initial population through blend crossover.
+    if "floor_height" in mutated and _rng.random() < mutation_rate:
+        mutated["floor_height"] = round(max(2.8, min(4.2, mutated["floor_height"] + _rng.gauss(0, 0.2))), 1)
 
     return mutated
 
@@ -893,7 +915,6 @@ def compute_hypervolume_2d(pareto_front: List[ProcessIndividual], ref_point: Tup
     pts = sorted([(ind.fitness_vector[0], ind.fitness_vector[1]) for ind in pareto_front])
     
     hv = 0.0
-    last_f1 = ref_point[0]
     last_f2 = ref_point[1]
     
     for f1, f2 in pts:
@@ -1129,18 +1150,7 @@ class MultiParcelIndividual(ProcessIndividual):
             "total_site_carbon_kg": round(total_carbon, 1),
             "constraint_penalty": round(total_penalty, 2)
         }
-
-        self.objectives = {}
-        self.fitness_vector = []
-        for spec in objective_specs:
-            name = spec["name"]
-            direction = spec.get("direction", "max").lower()
-            val = float(self.metrics.get(name, 0.0))
-            self.objectives[name] = val
-            if direction == "max":
-                self.fitness_vector.append(-val)
-            else:
-                self.fitness_vector.append(val)
+        self._build_fitness(objective_specs)
 
 
 def run_multiparcel_nsga2_streaming(
@@ -1255,11 +1265,29 @@ def run_multiparcel_nsga2_streaming(
 # SPEA-2 ENGINE
 # ==========================================
 
+def _unit_free_vectors(individuals: List[ProcessIndividual]) -> List[List[float]]:
+    """Fitness vectors rescaled to [0, 1] per objective over ``individuals``.
+
+    SPEA2's density estimate and archive truncation are Euclidean distances in
+    objective space; on raw values an objective in kg CO2e (millions) decides
+    every distance and the percentages never count.
+    """
+    if not individuals:
+        return []
+    n_obj = len(individuals[0].fitness_vector)
+    lows = [min(ind.fitness_vector[m] for ind in individuals) for m in range(n_obj)]
+    spans = [max(ind.fitness_vector[m] for ind in individuals) - lows[m] for m in range(n_obj)]
+    spans = [s if s > 1e-12 else 1.0 for s in spans]
+    return [[(ind.fitness_vector[m] - lows[m]) / spans[m] for m in range(n_obj)]
+            for ind in individuals]
+
+
 def calculate_spea2_fitness(combined: List[ProcessIndividual]) -> None:
     n = len(combined)
     if n == 0: return
     k = int(math.sqrt(n))
     if k >= n: k = n - 1
+    unit = _unit_free_vectors(combined)
 
     dominates_matrix = [[False]*n for _ in range(n)]
     for i in range(n):
@@ -1279,7 +1307,7 @@ def calculate_spea2_fitness(combined: List[ProcessIndividual]) -> None:
         dists = []
         for j in range(n):
             if i != j:
-                d = math.sqrt(sum((combined[i].fitness_vector[m] - combined[j].fitness_vector[m])**2 for m in range(len(combined[i].fitness_vector))))
+                d = math.sqrt(sum((unit[i][m] - unit[j][m]) ** 2 for m in range(len(unit[i]))))
                 dists.append(d)
         dists.sort()
         dk = dists[k-1] if dists and k-1 < len(dists) else (dists[-1] if dists else 0.0)
@@ -1301,15 +1329,21 @@ def environmental_selection_spea2(combined: List[ProcessIndividual], pop_size: i
                     break
         return archive
     else:
+        # Truncation removes the member whose sorted neighbour distances are
+        # lexicographically smallest (Zitzler et al., 2001). The scale is fixed
+        # from the full non-dominated set before any removal.
+        unit_all = _unit_free_vectors(archive)
+        unit_of = {id(ind): vec for ind, vec in zip(archive, unit_all)}
         while len(archive) > pop_size:
             n = len(archive)
             dist_matrix = []
             for i in range(n):
+                vi = unit_of[id(archive[i])]
                 dists = []
                 for j in range(n):
                     if i != j:
-                        d = sum((archive[i].fitness_vector[m] - archive[j].fitness_vector[m])**2 for m in range(len(archive[i].fitness_vector)))
-                        dists.append(d)
+                        vj = unit_of[id(archive[j])]
+                        dists.append(sum((a - b) ** 2 for a, b in zip(vi, vj)))
                 dists.sort()
                 dist_matrix.append((dists, i))
 
@@ -1364,6 +1398,9 @@ def run_spea2_streaming(
     for gen in range(generations):
         combined = population + archive
         archive = environmental_selection_spea2(combined, pop_size)
+        # SPEA2 has no ranks of its own; sort the archive so every reported
+        # solution carries its Pareto rank (it was written out as rank 0).
+        fast_non_dominated_sort(archive)
 
         pareto_front_inds = [ind for ind in archive if getattr(ind, 'spea2_fitness', 1.0) < 1.0]
         if not pareto_front_inds:
@@ -1476,35 +1513,56 @@ def repair_genotype(
     max_far: float = 2.5,
     max_height: float = 18.0,
 ) -> Dict[str, Any]:
-    """Adaptive genotype repair engine projecting building footprints & floors back onto feasible zoning bounds."""
+    """Project a genotype back onto the zoning envelope: height, then BCR, then FAR.
+
+    Each step measures the design with ``evaluate_phenotype`` itself, so the
+    repair and the penalty can never disagree. Height drops floors; BCR
+    shrinks the footprint scale and, where the scale floor stops it, widens
+    the setback; FAR drops floors last, because it depends on both. A
+    genotype that cannot be made feasible (a parcel too small for the 10 m2
+    minimum footprint) keeps its best attempt and its residual penalty.
+    Before 3.3.0 the FAR was never repaired.
+    """
     repaired = dict(g)
+    floor_h = max(1.0, float(repaired.get("floor_height", 3.0)))
     floors = int(repaired.get("floors", 4))
-    floor_h = float(repaired.get("floor_height", 3.0))
 
     if floors * floor_h > max_height:
-        repaired["floors"] = max(1, int(max_height / max(1.0, floor_h)))
+        floors = max(1, int(max_height / floor_h))
+        repaired["floors"] = floors
 
-    scale_x = float(repaired.get("scale_x", 1.0))
-    scale_y = float(repaired.get("scale_y", 1.0))
-    setback = float(repaired.get("setback", 3.0))
-    typology = repaired.get("typology", "Tower")
+    def measure():
+        return evaluate_phenotype(repaired, parcel_area, max_bcr, max_far, max_height)
 
-    side = math.sqrt(max(10.0, parcel_area))
-    eff_x = max(2.0, (side - 2 * setback) * scale_x)
-    eff_y = max(2.0, (side - 2 * setback) * scale_y)
-    raw_fp = eff_x * eff_y
-    typo_mult = {
-        "Tower": 0.85, "Slab": 0.70, "Courtyard": 0.60, "LShape": 0.65,
-        "UShape": 0.65, "PodiumTower": 0.80, "SteppedTower": 0.75, "MultiBuildingBlock": 0.55
-    }.get(typology, 0.75)
+    # The reported ratios are rounded (BCR to 3, FAR to 2 decimals); a value
+    # is only certainly within the limit when it is half a unit below it.
+    def bcr_ok(m):
+        return m["bcr"] + 0.0005 <= max_bcr
 
-    fp = min(parcel_area * 0.90, max(10.0, raw_fp * typo_mult))
-    est_bcr = fp / max(1.0, parcel_area)
+    def far_ok(m):
+        return m["far"] + 0.005 <= max_far
 
-    if est_bcr > max_bcr and est_bcr > 0:
-        ratio = math.sqrt(max_bcr / est_bcr)
-        repaired["scale_x"] = round(max(0.35, min(1.6, scale_x * ratio)), 2)
-        repaired["scale_y"] = round(max(0.35, min(1.6, scale_y * ratio)), 2)
+    metrics = measure()
+    if not bcr_ok(metrics):
+        ratio = math.sqrt(max(0.0, max_bcr - 0.0005) / max(1e-9, metrics["bcr"]))
+        repaired["scale_x"] = round(max(0.35, min(1.6, float(repaired.get("scale_x", 1.0)) * ratio)), 2)
+        repaired["scale_y"] = round(max(0.35, min(1.6, float(repaired.get("scale_y", 1.0)) * ratio)), 2)
+        metrics = measure()
+        # Two-decimal rounding or the 0.35 scale floor can leave it just over.
+        side = math.sqrt(max(10.0, parcel_area))
+        for _ in range(60):
+            if bcr_ok(metrics) or float(repaired.get("setback", 0.0)) * 2 >= side - 2.0:
+                break
+            repaired["setback"] = round(float(repaired.get("setback", 0.0)) + 0.5, 1)
+            metrics = measure()
+
+    if not far_ok(metrics) and repaired["floors"] > 1:
+        per_floor = metrics["far"] / max(1, int(repaired["floors"]))
+        repaired["floors"] = max(1, min(int(repaired["floors"]), int(max_far / max(1e-9, per_floor))))
+        metrics = measure()
+        while not far_ok(metrics) and repaired["floors"] > 1:
+            repaired["floors"] = int(repaired["floors"]) - 1
+            metrics = measure()
 
     return repaired
 
@@ -1908,12 +1966,16 @@ def run_moead_streaming(
         ref_point_hv = [max_f1 + abs(max_f1)*0.1 + 1.0, max_f2 + abs(max_f2)*0.1 + 1.0]
 
     for gen in range(generations):
-        fronts = fast_non_dominated_sort(population)
-        gen_individuals = [ind.to_dict() for ind in population]
+        # One child may win several neighbouring subproblems, so the same
+        # individual can sit in more than one slot. Report each design once;
+        # the Pareto output used to list such a design several times.
+        distinct = list(dict.fromkeys(population))
+        fronts = fast_non_dominated_sort(distinct)
+        gen_individuals = [ind.to_dict() for ind in distinct]
         pareto_front_inds = fronts[0] if fronts else []
         pareto_rank1 = [ind.to_dict() for ind in pareto_front_inds]
 
-        stats = compute_generation_statistics(population, objective_specs)
+        stats = compute_generation_statistics(distinct, objective_specs)
         hv = compute_hypervolume_2d(pareto_front_inds, ref_point_hv)
         elapsed = time.time() - start_time
 
@@ -1927,10 +1989,10 @@ def run_moead_streaming(
         }
 
         if gen == generations - 1:
-            all_sols = [ind.to_dict() for ind in population]
+            all_sols = [ind.to_dict() for ind in distinct]
             opt_k = find_optimal_k(all_sols, max_k=min(10, len(all_sols)))
             clusters = kmeans_cluster(all_sols, k=opt_k)
-            sens = compute_sensitivity(population, objective_specs)
+            sens = compute_sensitivity(distinct, objective_specs)
 
             yield_data["all_solutions"] = all_sols
             yield_data["pareto_solutions"] = pareto_rank1
@@ -2199,37 +2261,55 @@ class PurePythonSurrogateModel:
 # CITYJSON 3D DIGITAL TWIN EXPORTER (v0.6.0)
 # ==========================================
 
+CITYJSON_SCALE = 0.001  # vertices are stored as integer millimetres
+
+
 def export_to_cityjson(solutions: List[Dict[str, Any]], site_name: str = "PlanX Master Plan") -> Dict[str, Any]:
-    """Exports Pareto solutions to standard CityJSON 1.0 / 1.1 urban digital twin format."""
+    """Export solutions as a valid CityJSON 1.1 file of LoD1 block massings.
+
+    CityJSON 1.1 requires a ``transform`` and integer vertices; earlier
+    versions wrote floats with no transform, which validators reject. Each
+    solution is an alternative for the same parcel, so the massings are laid
+    out side by side in a row (local metres, 10 m apart) instead of being
+    stacked on one origin. The coordinates are local; no CRS is claimed.
+    """
     city_objects: Dict[str, Any] = {}
-    vertices: List[List[float]] = []
+    vertices: List[List[int]] = []
     vertex_map = {}
 
     def get_vertex_index(x: float, y: float, z: float) -> int:
-        pt = (round(x, 3), round(y, 3), round(z, 3))
+        pt = (int(round(x / CITYJSON_SCALE)), int(round(y / CITYJSON_SCALE)),
+              int(round(z / CITYJSON_SCALE)))
         if pt not in vertex_map:
             vertex_map[pt] = len(vertices)
             vertices.append([pt[0], pt[1], pt[2]])
         return vertex_map[pt]
 
+    offset_x = 0.0
     for idx, sol in enumerate(solutions):
-        bldg_id = sol.get("id", f"Building_{idx+1}")
+        bldg_id = str(sol.get("id", f"Building_{idx+1}"))
         metrics = sol.get("metrics", {})
         genotype = sol.get("genotype", {})
 
-        height = float(metrics.get("height_m", 12.0))
+        height = max(0.1, float(metrics.get("height_m", 12.0)))
         side = math.sqrt(max(10.0, float(metrics.get("footprint_area", 400.0))))
 
         half = side / 2.0
-        v0 = get_vertex_index(-half, -half, 0.0)
-        v1 = get_vertex_index(half, -half, 0.0)
-        v2 = get_vertex_index(half, half, 0.0)
-        v3 = get_vertex_index(-half, half, 0.0)
+        cx = offset_x + half
+        offset_x += side + 10.0
 
-        v4 = get_vertex_index(-half, -half, height)
-        v5 = get_vertex_index(half, -half, height)
-        v6 = get_vertex_index(half, half, height)
-        v7 = get_vertex_index(-half, half, height)
+        def v(x, y, z):
+            return get_vertex_index(cx + x, y, z)
+
+        v0 = v(-half, -half, 0.0)
+        v1 = v(half, -half, 0.0)
+        v2 = v(half, half, 0.0)
+        v3 = v(-half, half, 0.0)
+
+        v4 = v(-half, -half, height)
+        v5 = v(half, -half, height)
+        v6 = v(half, half, height)
+        v7 = v(-half, half, height)
 
         boundaries = [
             [[v3, v2, v1, v0]],
@@ -2256,7 +2336,7 @@ def export_to_cityjson(solutions: List[Dict[str, Any]], site_name: str = "PlanX 
             "geometry": [
                 {
                     "type": "Solid",
-                    "lod": "2.0",
+                    "lod": "1",
                     "boundaries": [boundaries]
                 }
             ]
@@ -2265,10 +2345,8 @@ def export_to_cityjson(solutions: List[Dict[str, Any]], site_name: str = "PlanX 
     return {
         "type": "CityJSON",
         "version": "1.1",
-        "metadata": {
-            "title": site_name,
-            "referenceSystem": "urn:ogc:def:crs:EPSG::3857"
-        },
+        "transform": {"scale": [CITYJSON_SCALE] * 3, "translate": [0.0, 0.0, 0.0]},
+        "metadata": {"title": site_name},
         "CityObjects": city_objects,
         "vertices": vertices
     }
@@ -2283,7 +2361,13 @@ def calculate_sensitivity_matrix(
     var_names: Optional[List[str]] = None,
     obj_names: Optional[List[str]] = None
 ) -> Dict[str, Any]:
-    """Computes Morris/Sobol variance-based sensitivity indices showing impact of decision variables on objectives."""
+    """Absolute Pearson correlation between each decision variable and each metric.
+
+    A screening measure over the evaluated population, not a Morris or Sobol
+    index: it sees only linear association and inherits whatever correlation
+    the search itself introduced between variables. Use the academic study's
+    Morris screening for designed sensitivity experiments.
+    """
     if not solutions:
         return {"variables": [], "objectives": [], "sensitivity_matrix": []}
 

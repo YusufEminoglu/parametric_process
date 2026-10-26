@@ -8,9 +8,10 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qgis.core import (
-    QgsApplication, QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer,
+    QgsApplication, QgsFeature, QgsField, QgsGeometry, QgsPointXY, QgsVectorLayer,
     QgsProcessingContext, QgsProcessingFeedback,
 )
+from qgis.PyQt.QtCore import QVariant
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -76,6 +77,86 @@ try:
         assert algo_ok, f"{algo_name} Processing run failed"
         algo_layer = algo_context.getMapLayer(algo_result["OUTPUT"])
         assert algo_layer is not None and algo_layer.featureCount() > 0, f"{algo_name}: empty output"
+
+    registry = QgsApplication.processingRegistry()
+
+    def run_alg(alg_id, params):
+        alg_context = QgsProcessingContext()
+        alg_result, alg_ok = registry.algorithmById(
+            f"parametric_process:{alg_id}").createInstance().run(
+                params, alg_context, QgsProcessingFeedback())
+        assert alg_ok, f"{alg_id} failed"
+        return alg_context, alg_result
+
+    def polygon_layer(name, rings, fields=()):
+        layer = QgsVectorLayer("Polygon?crs=EPSG:32635", name, "memory")
+        if fields:
+            layer.dataProvider().addAttributes([QgsField(n, t) for n, t in fields])
+            layer.updateFields()
+        for ring, values in rings:
+            feat = QgsFeature(layer.fields())
+            feat.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(x, y) for x, y in ring]]))
+            for key, value in values.items():
+                feat[key] = value
+            layer.dataProvider().addFeature(feat)
+        return layer
+
+    def box(x0, y0, w, h):
+        return [(x0, y0), (x0 + w, y0), (x0 + w, y0 + h), (x0, y0 + h), (x0, y0)]
+
+    # Evaluators accept a layer with none of the genotype fields (used to
+    # raise KeyError) and read the genotype Algorithm 1 wrote, floor_h included.
+    for alg_id in ("urban_physics_evaluator", "urban_morphology_analytics"):
+        ctx, res = run_alg(alg_id, {"INPUT": parcels, "OUTPUT": "memory:"})
+        assert ctx.getMapLayer(res["OUTPUT"]).featureCount() == 1, alg_id
+    ctx, res = run_alg("urban_physics_evaluator", {"INPUT": output, "OUTPUT": "memory:"})
+    from parametric_process.nsga2_engine import evaluate_phenotype
+    for evaluated, original in zip(ctx.getMapLayer(res["OUTPUT"]).getFeatures(), output.getFeatures()):
+        genotype = {
+            "setback": original["setback"], "floors": original["floors"],
+            "typology": original["typology"], "usage": original["usage"],
+            "roof_style": original["roof_style"], "scale_x": original["scale_x"],
+            "scale_y": original["scale_y"], "floor_height": original["floor_h"],
+        }
+        expected = evaluate_phenotype(genotype, original.geometry().area(),
+                                      original["max_bcr"], original["max_far"], original["max_height"])
+        assert abs(evaluated["plan_score"] - expected["planx_score"]) < 1e-6, "evaluator ignored the genotype"
+
+    # floors stored as a real number (8.0) is 8 storeys, not the old default 4
+    real_floors = polygon_layer("real_floors", [(box(0, 0, 40, 30), {"floors": 8.0, "setback": 3.0})],
+                                (("floors", QVariant.Double), ("setback", QVariant.Double)))
+    ctx, res = run_alg("urban_morphology_analytics", {"INPUT": real_floors, "OUTPUT": "memory:"})
+    morph = next(ctx.getMapLayer(res["OUTPUT"]).getFeatures())
+    assert abs(morph["canyon_hw"] - 2.0) < 1e-9, morph["canyon_hw"]
+
+    # Shape grammar on a concave block: every sub-lot stays inside the block
+    l_block = [(0, 0), (120, 0), (120, 40), (40, 40), (40, 120), (0, 120), (0, 0)]
+    blocks = polygon_layer("l_block", [(l_block, {})])
+    ctx, res = run_alg("procedural_shape_grammar", {"INPUT": blocks, "FRONTAGE": 18.0, "OUTPUT": "memory:"})
+    lots = ctx.getMapLayer(res["OUTPUT"])
+    block_geom = next(blocks.getFeatures()).geometry()
+    assert lots.featureCount() > 1
+    for lot in lots.getFeatures():
+        outside = lot.geometry().difference(block_geom).area()
+        assert outside < 1e-6, f"sub-lot reaches {outside:.1f} m2 outside its block"
+        assert abs(lot["lot_area"] - lot.geometry().area()) < 0.1
+
+    # District coupling is per building: a tall block south of a low one
+    # shades it at noon; the tall one is not shaded; values differ by feature.
+    district = polygon_layer("district", [
+        (box(0, 0, 20, 20), {"height_m": 6.0}),
+        (box(0, -45, 20, 20), {"height_m": 45.0}),
+        (box(400, 0, 20, 20), {"height_m": 6.0}),
+    ], (("height_m", QVariant.Double),))
+    ctx, res = run_alg("district_environmental_coupling", {
+        "INPUT": district, "SUN_ALTITUDE": 30.0, "SUN_AZIMUTH": 180.0,
+        "WIND_SPEED": 3.5, "OUTPUT": "memory:"})
+    coupled = {f.id(): f for f in ctx.getMapLayer(res["OUTPUT"]).getFeatures()}
+    values = list(coupled.values())
+    assert values[0]["shadow_loss"] > 0.0, values[0]["shadow_loss"]
+    assert values[1]["shadow_loss"] == 0.0
+    assert values[2]["shadow_loss"] == 0.0
+    assert values[0]["nn_gap_m"] != values[2]["nn_gap_m"]
 
     from parametric_process.academic_processing import parcel_conforming_footprints
     parcel_geometry = feature.geometry()

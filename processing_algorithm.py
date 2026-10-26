@@ -5,6 +5,7 @@ Provides headless evolutionary optimization and multi-domain urban physics evalu
 """
 from __future__ import annotations
 
+import math
 import os
 
 from qgis.core import (
@@ -21,6 +22,8 @@ from qgis.core import (
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterNumber,
+    QgsSpatialIndex,
+    QgsWkbTypes,
 )
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QIcon
@@ -50,6 +53,95 @@ def _ring_to_geometry(ring: list) -> QgsGeometry:
     if pts[0] != pts[-1]:
         pts.append(pts[0])
     return QgsGeometry.fromPolygonXY([pts])
+
+
+def _plot_geometry(ring: list, block: QgsGeometry) -> QgsGeometry:
+    """A generated plot ring as a multipolygon clipped to its parent block.
+
+    The subdividers join edge points to the block centroid, which on a
+    concave block can reach outside it; clipping keeps every plot inside.
+    """
+    geom = _ring_to_geometry(ring)
+    if geom.isEmpty():
+        return geom
+    if block is not None and not block.isEmpty():
+        clipped = geom.intersection(block)
+        if clipped and not clipped.isEmpty():
+            polygons = clipped.convertToType(QgsWkbTypes.PolygonGeometry, True)
+            geom = polygons if polygons and not polygons.isEmpty() else QgsGeometry()
+        else:
+            geom = QgsGeometry()
+    if not geom.isEmpty():
+        geom.convertToMultiType()
+    return geom
+
+
+def _largest_exterior_ring(geom: QgsGeometry) -> list:
+    """Exterior ring of the largest part, as [{"x", "y"}] dicts ([] if none).
+
+    Taking part 0 of a multipart feature blindly collapses blocks whose first
+    part encloses no area; real cadastral data does contain them.
+    """
+    candidates = []
+    if geom.isMultipart():
+        for part in geom.asMultiPolygon():
+            if part and len(part[0]) >= 3:
+                candidates.append(part[0])
+    else:
+        parts = geom.asPolygon()
+        if parts and len(parts[0]) >= 3:
+            candidates.append(parts[0])
+    if not candidates:
+        return []
+    best = max(candidates, key=lambda pts: abs(QgsGeometry.fromPolygonXY([pts]).area()))
+    return [{'x': pt.x(), 'y': pt.y()} for pt in best]
+
+
+def _is_null(value) -> bool:
+    if value is None:
+        return True
+    is_null = getattr(value, 'isNull', None)  # QVariant NULL on QGIS 3
+    return bool(is_null()) if callable(is_null) else False
+
+
+def _attr(feature: QgsFeature, name: str, default, cast=float):
+    """Field value cast to ``cast``, or ``default`` when the field is absent,
+    NULL, unparsable or non-finite.
+
+    ``feature.attribute(name)`` raises KeyError for a missing field, and the
+    previous ``str(v).isdigit()`` test read a floors value of 4.0 as invalid
+    and silently replaced it by 4 storeys.
+    """
+    if feature.fields().indexOf(name) < 0:
+        return default
+    value = feature.attribute(name)
+    if _is_null(value):
+        return default
+    try:
+        if cast is int:
+            number = float(value)
+            return int(round(number)) if math.isfinite(number) else default
+        if cast is float:
+            number = float(value)
+            return number if math.isfinite(number) else default
+        text = str(value).strip()
+        return text if text else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _genotype_from_feature(feature: QgsFeature) -> dict:
+    """Read a design genotype from the fields Algorithm 1 writes."""
+    return {
+        'setback': max(0.0, _attr(feature, 'setback', 3.0)),
+        'floors': max(1, _attr(feature, 'floors', 4, int)),
+        'typology': _attr(feature, 'typology', 'Tower', str),
+        'usage': _attr(feature, 'usage', 'MixedUse', str),
+        'roof_style': _attr(feature, 'roof_style', 'Flat', str),
+        'scale_x': _attr(feature, 'scale_x', 1.0),
+        'scale_y': _attr(feature, 'scale_y', 1.0),
+        'floor_height': max(1.0, _attr(feature, 'floor_h', 3.0)),
+    }
 
 
 class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
@@ -209,8 +301,6 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
             )
 
         features = list(source.getFeatures()) if source else []
-        total_area = sum(f.geometry().area() for f in features) if features else 1200.0
-        avg_area = total_area / max(1, len(features))
 
         fields = QgsFields()
         fields.append(QgsField('far', QVariant.Double))
@@ -280,15 +370,18 @@ class ParametricOptimizationAlgorithm(QgsProcessingAlgorithm):
             if parcel_area <= 0:
                 continue
 
-            res = solver_fn(
-                parcel_area=parcel_area,
-                pop_size=pop_size,
-                generations=generations,
-                max_bcr=max_bcr,
-                max_far=max_far,
-                max_height=max_height,
-                seed=seed + f_idx,
-            )
+            try:
+                res = solver_fn(
+                    parcel_area=parcel_area,
+                    pop_size=pop_size,
+                    generations=generations,
+                    max_bcr=max_bcr,
+                    max_far=max_far,
+                    max_height=max_height,
+                    seed=seed + f_idx,
+                )
+            except ValueError as exc:
+                raise QgsProcessingException(f'Feature {feature.id()}: {exc}') from exc
 
             pareto_sols = res.get('pareto_solutions', [])
             manifest = res.get('run_manifest', {})
@@ -381,12 +474,13 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
             "(b) building porosity (35% weight) — typology-dependent: Tower 0.75, "
             "MultiBuildingBlock 0.70, Slab 0.35, Courtyard 0.15, reflecting the degree "
             "to which the massing obstructs prevailing wind; (c) wind alignment factor "
-            "(20% weight) — the sine of the angle between prevailing wind direction "
+            "(20% weight) — |cos| of the angle between prevailing wind direction "
             "(default 225 deg SW) and the building's long-axis orientation (L-shape and "
-            "U-shape forms get a 45 deg rotation). Street canyon H/W penalty subtracts "
-            "up to 8 points per unit H/W. Pedestrian wind comfort follows the Lawson "
-            "criteria (Lawson & Penwarden, 1975 — Proceedings of the 4th International Conference on Wind Effects on Buildings and Structures): "
-            "comfort decreases with building height and increases with porosity; scores "
+            "U-shape forms get a 45 deg rotation): wind along the axis passes, wind across "
+            "the long face is blocked (before 3.3.0 the sine rewarded the blocking case). Street canyon H/W penalty subtracts "
+            "up to 8 points per unit H/W. Pedestrian wind comfort is related only qualitatively "
+            "to the Lawson criteria (Lawson & Penwarden, 1975 — Proceedings of the 4th International Conference on Wind Effects on Buildings and Structures); "
+            "no wind speed is computed: 95 - 1.2*H*(1 - porosity), bounded [15, 100], so comfort decreases with building height and increases with porosity; scores "
             "below 40 indicate uncomfortable conditions for standing/ sitting activities.</p>"
 
             "<p><b>Solar irradiance & rooftop PV.</b> Annual solar irradiance (kWh/m<sup>2</sup>/yr) "
@@ -451,6 +545,13 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, 'INPUT', context)
+        if source is None:
+            raise QgsProcessingException('A polygon input layer is required')
+        if source.sourceCrs().isGeographic():
+            raise QgsProcessingException(
+                'Input CRS is geographic; area would be measured in degrees. '
+                'Reproject to a projected CRS in metres.'
+            )
 
         fields = QgsFields()
         for field in source.fields():
@@ -490,26 +591,21 @@ class UrbanPhysicsEvaluatorAlgorithm(QgsProcessingAlgorithm):
                 break
 
             geom = f.geometry()
-            area = geom.area() if geom and not geom.isEmpty() else 1000.0
+            area = geom.area() if geom and not geom.isEmpty() else 0.0
+            if area <= 0:
+                feedback.pushWarning(f'Feature {f.id()} has no area; skipped.')
+                continue
 
-            floors = int(f.attribute('floors')) if f.attribute('floors') is not None and str(f.attribute('floors')).isdigit() else 4
-            setback = float(f.attribute('setback')) if f.attribute('setback') is not None else 3.0
-            typology = str(f.attribute('typology')) if f.attribute('typology') is not None else 'Tower'
-            usage = str(f.attribute('usage')) if f.attribute('usage') is not None else 'MixedUse'
-            roof_style = str(f.attribute('roof_style')) if f.attribute('roof_style') is not None else 'Flat'
-
-            genotype = {
-                'setback': setback,
-                'floors': floors,
-                'typology': typology,
-                'usage': usage,
-                'roof_style': roof_style,
-                'scale_x': 1.0,
-                'scale_y': 1.0,
-                'floor_height': 3.0,
-            }
-
-            metrics = evaluate_phenotype(genotype, parcel_area=area)
+            # Every genotype field Algorithm 1 writes is read back, including
+            # floor_h and the scale factors (previously forced to 3.0 / 1.0),
+            # and the zoning envelope stored on the feature when present.
+            genotype = _genotype_from_feature(f)
+            metrics = evaluate_phenotype(
+                genotype, parcel_area=area,
+                max_bcr=min(1.0, max(0.01, _attr(f, 'max_bcr', 0.45))),
+                max_far=max(0.01, _attr(f, 'max_far', 2.5)),
+                max_height=max(0.1, _attr(f, 'max_height', 18.0)),
+            )
 
             new_f = QgsFeature(fields)
             new_f.setGeometry(geom)
@@ -633,6 +729,13 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         from .morphology_engine import calculate_urban_morphology_suite
         source = self.parameterAsSource(parameters, 'INPUT', context)
+        if source is None:
+            raise QgsProcessingException('A polygon input layer is required')
+        if source.sourceCrs().isGeographic():
+            raise QgsProcessingException(
+                'Input CRS is geographic; area would be measured in degrees. '
+                'Reproject to a projected CRS in metres.'
+            )
 
         fields = QgsFields(source.fields())
         fields.append(QgsField('canyon_hw', QVariant.Double))
@@ -652,12 +755,14 @@ class UrbanMorphologyAnalyticsAlgorithm(QgsProcessingAlgorithm):
                 break
 
             geom = f.geometry()
-            area = geom.area() if geom and not geom.isEmpty() else 1000.0
-            floors = int(f.attribute('floors')) if f.attribute('floors') is not None and str(f.attribute('floors')).isdigit() else 4
-            setback = float(f.attribute('setback')) if f.attribute('setback') is not None else 3.0
-            typology = str(f.attribute('typology')) if f.attribute('typology') is not None else 'Tower'
-
-            m = calculate_urban_morphology_suite({'floors': floors, 'setback': setback, 'typology': typology}, parcel_area=area)
+            area = geom.area() if geom and not geom.isEmpty() else 0.0
+            if area <= 0:
+                feedback.pushWarning(f'Feature {f.id()} has no area; skipped.')
+                continue
+            genotype = _genotype_from_feature(f)
+            m = calculate_urban_morphology_suite(
+                {key: genotype[key] for key in ('floors', 'setback', 'typology', 'floor_height')},
+                parcel_area=area)
 
             new_f = QgsFeature(fields)
             new_f.setGeometry(geom)
@@ -765,7 +870,8 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'FRONTAGE', 'Target Frontage Width (m)', type=QgsProcessingParameterNumber.Type.Double, defaultValue=18.0
+                'FRONTAGE', 'Target Frontage Width (m)', type=QgsProcessingParameterNumber.Type.Double,
+                defaultValue=18.0, minValue=1.0
             )
         )
         self.addParameter(
@@ -773,16 +879,18 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        from .procedural_grammar import subdivide_parcel_block, calculate_polygon_area
+        from .procedural_grammar import subdivide_parcel_block
         source = self.parameterAsSource(parameters, 'INPUT', context)
         frontage = self.parameterAsDouble(parameters, 'FRONTAGE', context)
+        if source is None:
+            raise QgsProcessingException('A polygon input layer is required')
 
         fields = QgsFields(source.fields())
         fields.append(QgsField('sublot_id', QVariant.Int))
         fields.append(QgsField('lot_area', QVariant.Double))
 
         (sink, dest_id) = self.parameterAsSink(
-            parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
+            parameters, 'OUTPUT', context, fields, QgsWkbTypes.MultiPolygon, source.sourceCrs()
         )
 
         features = list(source.getFeatures())
@@ -796,23 +904,25 @@ class ProceduralShapeGrammarAlgorithm(QgsProcessingAlgorithm):
             if not geom or geom.isEmpty():
                 continue
 
-            ring = []
-            polygon_pts = geom.asMultiPolygon()[0] if geom.isMultipart() and geom.asMultiPolygon() else geom.asPolygon()
-            if polygon_pts and len(polygon_pts[0]) >= 3:
-                ring = [{'x': pt.x(), 'y': pt.y()} for pt in polygon_pts[0]]
+            ring = _largest_exterior_ring(geom)
+            if not ring:
+                continue
 
             sublots = subdivide_parcel_block(ring, target_frontage=frontage)
 
-            for s_idx, lot_ring in enumerate(sublots, start=1):
-                lot_area = calculate_polygon_area(lot_ring)
+            s_idx = 0
+            for lot_ring in sublots:
+                plot_geom = _plot_geometry(lot_ring, geom)
+                if plot_geom.isEmpty() or plot_geom.area() <= 0:
+                    continue
+                s_idx += 1
                 new_f = QgsFeature(fields)
-                plot_geom = _ring_to_geometry(lot_ring) if lot_ring else geom
                 new_f.setGeometry(plot_geom)
                 for field in source.fields():
                     new_f.setAttribute(field.name(), f.attribute(field.name()))
 
                 new_f.setAttribute('sublot_id', s_idx)
-                new_f.setAttribute('lot_area', round(lot_area, 1))
+                new_f.setAttribute('lot_area', round(plot_geom.area(), 1))
                 sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
 
             feedback.setProgress(int(((i + 1) / total) * 100))
@@ -843,30 +953,35 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
             "<h3>5. Multi-Parcel District Environmental Coupling</h3>"
 
             "<p><b>Inter-building solar obstruction.</b> The solar envelope concept "
-            "(Knowles, 2003 — 'The Solar Envelope: Its Meaning for Urban Growth and "
-            "Form', Solar Energy 74:201-211) defines the maximum 3D volume a building "
+            "(Knowles, 2003 — 'The solar envelope: its meaning for energy and buildings', "
+            "Energy and Buildings 35:15-25) defines the maximum 3D volume a building "
             "can occupy without casting shadow on neighbouring parcels during a specified "
             "time window. This tool computes pairwise directional shadow loss between "
-            "all building pairs: shadow_length = h1 / tan(sun_altitude), azimuth-weighted "
-            "by cos(|sun_azimuth - 180|) to model directional shadow casting. The overlap "
-            "of the effective shadow with the receiving building (h2) yields a shadow_loss "
-            "percentage (0-65% range). Following Compagnon (2004 — Energy & Buildings "
-            "36:691-699), the model assumes a single representative sun position (default "
-            "45 deg altitude, 180 deg azimuth = due south at mid-morning) suitable for "
-            "comparative design evaluation rather than annual irradiation calculation.</p>"
+            "neighbouring buildings: shadow_length = h_caster / tan(sun_altitude), projected "
+            "onto the line from the receiver to the caster (cos of the angle between that "
+            "bearing and the sun azimuth; a caster on the side away from the sun casts "
+            "nothing). The part of the projected shadow that crosses the edge-to-edge gap "
+            "yields an obstruction percentage; obstructions from several casters combine as "
+            "1 - prod(1 - s_j), capped at 65%. Following Compagnon (2004 — Energy & Buildings "
+            "36:321-328), the model uses a single representative sun position (default "
+            "45 deg altitude, 180 deg azimuth = due south at solar noon) suitable for "
+            "comparative design evaluation rather than annual irradiation calculation. "
+            "Building heights come from height_m, else floors x floor_h, else 12 m.</p>"
 
-            "<p><b>Canyon wind wake & pedestrian comfort.</b> Inter-building wind "
-            "acceleration is modelled using the canyon H/W ratio: H/W = avg(h1,h2) / "
-            "gap_width. When H/W > 1.5 (narrow gap relative to height), a Venturi "
+            "<p><b>Canyon wind wake & pedestrian comfort.</b> Each building is paired with "
+            "its nearest neighbour; wind acceleration is modelled using the canyon H/W "
+            "ratio: H/W = avg(h1,h2) / edge-to-edge gap. When H/W > 1.5 (narrow gap relative to height), a Venturi "
             "acceleration factor of 1.0 + 0.35*H/W (max 2.2x ambient wind speed) is "
-            "applied, following wind-tunnel measurements by Blocken, Stathopoulos & "
-            "Carmeliet (2007 — Atmospheric Environment 41:2307-2321). When H/W < 0.67 "
-            "(wide gap), a deceleration factor of 1.0 - 0.2/H/W (min 0.6x) models the "
-            "wake recovery zone. Pedestrian comfort scores are computed against Lawson "
-            "criteria thresholds: sitting (0-3.0 m/s), standing (3.0-5.5 m/s), "
-            "uncomfortable (5.5-8.0 m/s), dangerous (> 8.0 m/s).</p>"
+            "applied; the factor is a screening heuristic, not calibrated against "
+            "wind-tunnel or CFD results (Blocken, Stathopoulos & Carmeliet, 2007 — "
+            "Atmospheric Environment 41:238-252, review the modelling of such flows). "
+            "Otherwise a deceleration factor of 1.0 - 0.2/(H/W) (min 0.6x) models the "
+            "wake recovery zone. The comfort score falls linearly from 100 at 3 m/s "
+            "(100 - 15*(U - 3)); for orientation, the Lawson bands are sitting "
+            "(0-3.0 m/s), standing (3.0-5.5 m/s), uncomfortable (5.5-8.0 m/s) and "
+            "dangerous (> 8.0 m/s). nn_gap_m reports the edge-to-edge gap used.</p>"
 
-            "<p><b>District stormwater retention.</b> Runoff retention (%) is estimated "
+            "<p><b>District stormwater retention (web studio only).</b> Runoff retention (%) is estimated "
             "from the district-scale BCR: retention = (1 - bcr) * 85%, bounded [20%, 90%]. "
             "This follows the green infrastructure hydrology literature (Berland et al., "
             "2017 — Landscape & Urban Planning 162:167-177) where unbuilt area serves as "
@@ -900,32 +1015,98 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
+            QgsProcessingParameterNumber(
+                'SUN_ALTITUDE', 'Sun altitude (deg)', QgsProcessingParameterNumber.Type.Double,
+                45.0, minValue=10.0, maxValue=90.0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'SUN_AZIMUTH', 'Sun azimuth (deg, clockwise from north)',
+                QgsProcessingParameterNumber.Type.Double, 180.0, minValue=0.0, maxValue=360.0
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                'WIND_SPEED', 'Ambient wind speed (m/s)', QgsProcessingParameterNumber.Type.Double,
+                3.5, minValue=0.0, maxValue=60.0
+            )
+        )
+        self.addParameter(
             QgsProcessingParameterFeatureSink('OUTPUT', 'Coupled District Layer')
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        from .district_engine import evaluate_district_coupling
+        from .district_engine import evaluate_building_coupling
         source = self.parameterAsSource(parameters, 'INPUT', context)
+        if source is None:
+            raise QgsProcessingException('A polygon input layer is required')
+        if source.sourceCrs().isGeographic():
+            raise QgsProcessingException(
+                'Input CRS is geographic; distances would be measured in degrees. '
+                'Reproject to a projected CRS in metres.'
+            )
+        sun_altitude = self.parameterAsDouble(parameters, 'SUN_ALTITUDE', context)
+        sun_azimuth = self.parameterAsDouble(parameters, 'SUN_AZIMUTH', context)
+        wind_speed = self.parameterAsDouble(parameters, 'WIND_SPEED', context)
 
         fields = QgsFields(source.fields())
-        fields.append(QgsField('shadow_loss', QVariant.Double))
-        fields.append(QgsField('canyon_wind', QVariant.Double))
-        fields.append(QgsField('comfort_score', QVariant.Double))
+        for name in ('shadow_loss', 'canyon_wind', 'comfort_score', 'nn_gap_m'):
+            if fields.indexOf(name) == -1:
+                fields.append(QgsField(name, QVariant.Double))
 
         (sink, dest_id) = self.parameterAsSink(
             parameters, 'OUTPUT', context, fields, source.wkbType(), source.sourceCrs()
         )
 
-        features = list(source.getFeatures())
-        total = len(features) if features else 1
-
-        building_list = []
+        # Every feature used to receive the same district average, computed
+        # from no positions at all (a fixed 5000 m2 site and footprint = gfa/4).
+        # Each building now gets its own values from its real neighbours.
+        features = [f for f in source.getFeatures() if f.hasGeometry() and not f.geometry().isEmpty()]
+        buildings = []
+        assumed_height = 0
         for f in features:
-            height = float(f.attribute('height_m')) if f.attribute('height_m') is not None else 18.0
-            gfa = float(f.attribute('gfa')) if f.attribute('gfa') is not None else 800.0
-            building_list.append({'metrics': {'height_m': height, 'gfa': gfa, 'footprint_area': gfa / 4.0, 'planx_score': 82.0}})
+            height = _attr(f, 'height_m', None)
+            if height is None or height <= 0:
+                floors = _attr(f, 'floors', None, int)
+                if floors is not None and floors > 0:
+                    height = floors * max(1.0, _attr(f, 'floor_h', 3.0))
+                else:
+                    height = 12.0
+                    assumed_height += 1
+            centroid = f.geometry().centroid().asPoint()
+            buildings.append({'x': centroid.x(), 'y': centroid.y(), 'height_m': float(height)})
+        if assumed_height:
+            feedback.pushWarning(
+                f'{assumed_height} feature(s) have neither height_m nor floors; 12 m assumed.')
 
-        district_metrics = evaluate_district_coupling(building_list, site_area=5000.0)
+        index = QgsSpatialIndex()
+        geoms = [f.geometry() for f in features]
+        for i, geom in enumerate(geoms):
+            index.insertFeature(i, geom.boundingBox())
+
+        max_height = max((b['height_m'] for b in buildings), default=0.0)
+        shadow_reach = max_height / math.tan(math.radians(max(10.0, sun_altitude)))
+        neighbours = {}
+        for i, geom in enumerate(geoms):
+            if feedback.isCanceled():
+                break
+            box = geom.boundingBox()
+            box.grow(shadow_reach + 1.0)
+            pairs = []
+            for j in index.intersects(box):
+                if j != i:
+                    pairs.append((j, geom.distance(geoms[j])))
+            if not pairs:
+                # nearest neighbour for the wind pairing, however far away
+                for j in index.nearestNeighbor(geom.centroid().asPoint(), 2):
+                    if j != i:
+                        pairs.append((j, geom.distance(geoms[j])))
+            neighbours[i] = pairs
+            feedback.setProgress(int((i + 1) / max(1, len(geoms)) * 50))
+
+        coupled = evaluate_building_coupling(
+            buildings, neighbours, sun_altitude, sun_azimuth, wind_speed)
 
         for i, f in enumerate(features):
             if feedback.isCanceled():
@@ -936,12 +1117,14 @@ class MultiParcelDistrictCouplingAlgorithm(QgsProcessingAlgorithm):
             for field in source.fields():
                 new_f.setAttribute(field.name(), f.attribute(field.name()))
 
-            new_f.setAttribute('shadow_loss', float(district_metrics.get('district_avg_solar_shadow_loss_pct', 0)))
-            new_f.setAttribute('canyon_wind', float(district_metrics.get('district_canyon_wind_speed_ms', 3.5)))
-            new_f.setAttribute('comfort_score', float(district_metrics.get('district_pedestrian_comfort', 80.0)))
+            result = coupled[i]
+            new_f.setAttribute('shadow_loss', float(result['shadow_loss_pct']))
+            new_f.setAttribute('canyon_wind', float(result['canyon_wind_speed_ms']))
+            new_f.setAttribute('comfort_score', float(result['pedestrian_comfort_score']))
+            new_f.setAttribute('nn_gap_m', result['nearest_gap_m'])
 
             sink.addFeature(new_f, QgsFeatureSink.Flag.FastInsert)
-            feedback.setProgress(int(((i + 1) / total) * 100))
+            feedback.setProgress(50 + int(((i + 1) / max(1, len(features))) * 50))
 
         return {'OUTPUT': dest_id}
 
@@ -1070,23 +1253,26 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Type.Double, 0.45
+                'MAX_BCR', 'Max BCR', QgsProcessingParameterNumber.Type.Double, 0.45,
+                minValue=0.01, maxValue=1.0
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Type.Double, 2.0
+                'MAX_FAR', 'Max FAR', QgsProcessingParameterNumber.Type.Double, 2.0,
+                minValue=0.01
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
-                'MAX_HEIGHT', 'Max Height (m)', QgsProcessingParameterNumber.Type.Double, 18.0
+                'MAX_HEIGHT', 'Max Height (m)', QgsProcessingParameterNumber.Type.Double, 18.0,
+                minValue=0.1
             )
         )
         self.addParameter(
             QgsProcessingParameterNumber(
                 'INCREMENTAL_STEPS', 'Incremental Development Steps',
-                QgsProcessingParameterNumber.Type.Integer, 5
+                QgsProcessingParameterNumber.Type.Integer, 5, minValue=1, maxValue=50
             )
         )
         self.addParameter(
@@ -1141,7 +1327,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
 
         (sink_plots, dest_plots) = self.parameterAsSink(
             parameters, 'OUTPUT_PLOTS', context, plot_fields,
-            source.wkbType(), source.sourceCrs()
+            QgsWkbTypes.MultiPolygon, source.sourceCrs()
         )
 
         fbc_fields = QgsFields()
@@ -1154,7 +1340,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
 
         (sink_fbc, dest_fbc) = self.parameterAsSink(
             parameters, 'OUTPUT_FBC', context, fbc_fields,
-            source.wkbType(), source.sourceCrs()
+            QgsWkbTypes.MultiPolygon, source.sourceCrs()
         )
 
         pipeline = PpudPipeline()
@@ -1168,31 +1354,7 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
             if not geom or geom.isEmpty():
                 continue
 
-            # Collect every exterior ring the feature carries and keep the
-            # largest one. Taking part 0 blindly collapses multi-part blocks
-            # whose first part encloses no area (real cadastral data does
-            # contain them), which surfaced as a confusing
-            # "parcel_area must be a finite value greater than zero" error.
-            ring = []
-            candidate_rings = []
-            if geom.isMultipart():
-                for part in geom.asMultiPolygon():
-                    if part and len(part[0]) >= 3:
-                        candidate_rings.append(part[0])
-            else:
-                parts = geom.asPolygon()
-                if parts and len(parts[0]) >= 3:
-                    candidate_rings.append(parts[0])
-
-            if candidate_rings:
-                from .ppud_pipeline import calculate_polygon_area
-                best = max(
-                    candidate_rings,
-                    key=lambda pts: abs(calculate_polygon_area(
-                        [{'x': pt.x(), 'y': pt.y()} for pt in pts])),
-                )
-                ring = [{'x': pt.x(), 'y': pt.y()} for pt in best]
-
+            ring = _largest_exterior_ring(geom)
             if not ring:
                 continue
 
@@ -1222,7 +1384,10 @@ class PpudPipelineAlgorithm(QgsProcessingAlgorithm):
 
                 # Build plot geometry from its subdivided ring
                 plot_ring = cp.get("ring", [])
-                plot_geom = _ring_to_geometry(plot_ring) if plot_ring else geom
+                plot_geom = _plot_geometry(plot_ring, geom) if plot_ring else QgsGeometry()
+                if plot_geom.isEmpty():
+                    plot_geom = QgsGeometry(geom)
+                    plot_geom.convertToMultiType()
 
                 new_f = QgsFeature(plot_fields)
                 new_f.setGeometry(plot_geom)
