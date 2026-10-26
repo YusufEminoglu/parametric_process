@@ -1,9 +1,64 @@
 # Changelog - Parametric Process
 
-## [Unreleased]
+## [3.3.0] - 2026-10-26
+
+Model version 2.2 (recorded in every run manifest): runs are not comparable
+with model-version 2.1 runs, because several of the terms below changed.
 
 ### Fixed
 
+- **The wind alignment term rewarded the orientation it was meant to
+  penalise.** The code comment, the Processing help and the manual all say
+  wind along the building's long axis ventilates and wind across the long
+  face blocks; the factor was the *sine* of that angle, which is largest for
+  the blocking case. It is now `|cos|`.
+- **The composite score rewarded breaking the FAR.** The density term topped
+  out at 60 for a compliant design but jumped to about 100 just over the
+  limit, so `planx_score` was higher for a violating design than for the
+  same design at the limit. Both branches now meet at 100 on the limit.
+- **Floor height was never mutated.** It could only drift toward the mean of
+  the initial population through blend crossover; it now has a bounded
+  Gaussian mutation like the other continuous genes.
+- **Genotype repair ignored the FAR.** NSGA-III and MOEA/D repaired height
+  and BCR only. Repair now measures the design with the evaluator itself and
+  fixes height, then BCR (scale, then setback), then FAR (floors), with a
+  half-unit margin so rounded metrics cannot report a phantom violation.
+- **SPEA2 density and archive truncation used raw objective values**, so an
+  objective in kg CO2e decided every distance. Distances are now taken on
+  range-normalised objectives (the same fix 3.2.0 made for MOEA/D).
+- **SPEA2 output carried Pareto rank 0** in `pareto_rank`; the archive is now
+  ranked.
+- **MOEA/D listed one design several times** when a child won several
+  neighbouring subproblems; each design is now reported once.
+- **An unknown objective name read as a constant 0** and silently dropped out
+  of the search; it is now an error naming the available metrics.
+- **The random generator could return exactly 1.0** (once in 2^31 draws),
+  which sent `choice()` past the end of its sequence.
+- **District Environmental Coupling wrote the same value onto every
+  feature.** It ignored geometry, assumed a 5 000 m2 site and footprint =
+  gfa/4, and averaged. Each building now gets its own shadow loss (from
+  neighbours on the sun side, projected along the joining line, across the
+  edge-to-edge gap), canyon wind and comfort (from its nearest neighbour),
+  plus `nn_gap_m`. Sun altitude, sun azimuth and wind speed are parameters.
+- **The Physics Evaluator and Morphology Analytics failed on any layer
+  without `floors`, `setback` and `typology` fields** (KeyError), read a
+  `floors` value of `4.0` as invalid and replaced it by 4, and ignored
+  `floor_h`, `scale_x`, `scale_y` and the stored zoning limits. They now read
+  every genotype field Algorithm 1 writes and fall back per field.
+- **Shape-grammar and PPUD plots could extend outside a concave block.** They
+  are clipped to the block and written as multipolygons; `lot_area` is the
+  clipped area. The shape grammar also took the first part of a multipart
+  block blindly, the defect already fixed for PPUD.
+- **CityJSON export was not valid CityJSON 1.1** (no `transform`, float
+  vertices), declared LoD 2.0 for a box and EPSG:3857 for local coordinates,
+  and stacked every alternative on one origin. It now writes integer
+  vertices with a transform, LoD 1, no CRS claim, alternatives side by side.
+- **The local studio server accepted requests from any web site.** A page
+  open in the browser could POST to `/sync` (text/plain needs no CORS
+  preflight) and add fields to and edit the active QGIS layer; a
+  DNS-rebinding page could read `/data.geojson`. The server now requires its
+  own Host, rejects a foreign Origin and requires JSON POST bodies. On
+  Windows it binds the port exclusively, so the free-port probe works.
 - **PPUD aborted on multi-part blocks.** The block splitter took the first
   part of a multipart feature and assumed it was the block's exterior. Two of
   the 1 362 real Tire cadastral blocks have a first part that encloses no
@@ -16,8 +71,24 @@
   ring up front, so the parcel falls back to its default setback instead of
   breaking the page.
 
+### Added
+
+- `tests/test_model_integrity.py`: 15 property tests, each failing on the
+  3.2.0 code (wind direction, FAR continuity, repair feasibility, SPEA2 unit
+  independence, CityJSON validity, per-building coupling, server origin
+  checks). The QGIS smoke test now runs the evaluators on a layer without
+  genotype fields, the shape grammar on a concave block and District
+  Coupling on a north/south pair, on QGIS 3.44 and 4.x.
+
 ### Documentation
 
+- The reference manual no longer calls the screening indices "validated
+  reduced-order models", no longer describes SBX/polynomial mutation the code
+  does not use, lists the real typology/usage/roof classes, and its District
+  Coupling chapter now documents what the algorithm computes (it described
+  hourly integration, an emergence threshold and outputs that never existed).
+  Processing help citations for Knowles (2003), Compagnon (2004) and Blocken
+  et al. (2007) corrected.
 - New **Practical Guide** (`docs/PRACTICAL_GUIDE/`): fourteen chapters, each
   one a planning question answered with the plugin on the real Tire İlçesi
   planning master. The map panels are QGIS renders of layers the plugin
