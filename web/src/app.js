@@ -7704,7 +7704,7 @@ if (btnStopWallacei) {
     btnStopWallacei.addEventListener('click', async () => {
         if (!streamingRunId) return;
         try {
-            await fetch(`/api/optimize/stop/${streamingRunId}`, { method: 'POST' });
+            await fetch(`/api/optimize/stop/${streamingRunId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
             showToast('Stop requested...', 'info');
         } catch (err) {
             console.error('Stop error', err);

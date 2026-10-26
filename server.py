@@ -9,6 +9,7 @@ import html
 import json
 import math
 import os
+import socket
 import tempfile
 import time
 import uuid
@@ -53,11 +54,47 @@ class RunState:
 
 
 class ReusableThreadingHTTPServer(ThreadingHTTPServer):
-    allow_reuse_address = True
+    # On Windows SO_REUSEADDR lets a second socket bind a port that is already
+    # listening, so the free-port probe in start() never failed and two
+    # servers could share one port. Windows gets an exclusive bind instead.
+    allow_reuse_address = os.name != 'nt'
+
+    def server_bind(self):
+        if os.name == 'nt' and hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
     MAX_REQUEST_BYTES = 10 * 1024 * 1024
+
+    def _local_hosts(self):
+        port = self.server.server_address[1]
+        return {f'127.0.0.1:{port}', f'localhost:{port}'}
+
+    def _reject_foreign_request(self, require_json=False):
+        """Refuse requests that did not come from the studio page itself.
+
+        Binding to 127.0.0.1 keeps other machines out, not other web sites:
+        any page open in the user's browser can send a "simple" cross-origin
+        POST (text/plain, no preflight) to this port, and /sync writes into
+        the active QGIS layer. A DNS-rebinding page can also read
+        /data.geojson. The Host must name this server, a present Origin must
+        be this server, and POST bodies must be declared JSON, which a
+        foreign page cannot do without a preflight this server never grants.
+        """
+        hosts = self._local_hosts()
+        host = (self.headers.get('Host') or '').strip().lower()
+        origin = (self.headers.get('Origin') or '').strip().lower()
+        if host not in hosts or (origin and origin not in {f'http://{h}' for h in hosts}):
+            self.send_error(403, 'Forbidden')
+            return True
+        if require_json:
+            ctype = (self.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+            if ctype != 'application/json':
+                self.send_error(415, 'Content-Type must be application/json')
+                return True
+        return False
 
     def _send_json(self, payload, status=200):
         encoded = _json_bytes(payload)
@@ -100,10 +137,14 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
         super().end_headers()
 
     def do_OPTIONS(self):
+        if self._reject_foreign_request():
+            return
         self.send_response(204)
         self.end_headers()
 
     def do_GET(self):
+        if self._reject_foreign_request():
+            return
         url = self.path.split('?')[0]
 
         if url == '/api/workflow/catalog':
@@ -201,6 +242,8 @@ class SyncHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(f.read())
 
     def do_POST(self):
+        if self._reject_foreign_request(require_json=True):
+            return
         url = self.path.split('?')[0]
         try:
             declared_length = int(self.headers.get('Content-Length', 0))
