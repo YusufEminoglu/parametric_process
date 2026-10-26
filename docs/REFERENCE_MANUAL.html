@@ -843,7 +843,7 @@ body {
 <p>All four solvers employ <strong>Deb's constrained-dominance principle</strong> (Deb, 2000): a solution $i$ is said to constrained-dominate solution $j$ if any of the following conditions hold: (1) $i$ is feasible and $j$ is infeasible; (2) both are infeasible but $i$ has a smaller overall constraint violation; or (3) both are feasible and $i$ dominates $j$ in the usual Pareto sense. This principle is applied at every selection step, ensuring that feasible solutions are always preferred over infeasible ones and that the search is guided toward the feasible region.</p>
 
 <h4>Genotype Encoding</h4>
-<p>The decision space comprises eight variables: <em>setback</em> (continuous, 0&ndash;15 m), <em>floors</em> (integer, 1&ndash;30), <em>typology</em> (nominal, 8 classes: Tower, Slab, Courtyard, MultiBuildingBlock, L-Shape, U-Shape, Pavilion, Atrium), <em>usage</em> (nominal, 5 classes: Residential, Mixed-Use, Office, Retail, Community), <em>roof_style</em> (nominal, 4 styles: Flat, Pitched, Green, Terrace), <em>scale_x</em> (continuous, 0.35&ndash;1.60), <em>scale_y</em> (continuous, 0.35&ndash;1.60), and <em>floor_height</em> (continuous, 2.8&ndash;4.2 m). The genotype is encoded as a real-valued vector with categorical variables handled via integer indices; simulated binary crossover (SBX) and polynomial mutation are applied with variable-specific bounds and type-aware repair operators.</p>
+<p>The decision space comprises eight variables: <em>setback</em> (continuous, 0&ndash;12 m by default), <em>floors</em> (integer, 1&ndash;24 by default), <em>typology</em> (nominal, 8 classes: Tower, Slab, Courtyard, LShape, UShape, PodiumTower, SteppedTower, MultiBuildingBlock), <em>usage</em> (nominal, 5 classes: Residential, Commercial, MixedUse, Civic, Park), <em>roof_style</em> (nominal, 4 styles: Flat, Hipped, Gable, Mansard), <em>scale_x</em> and <em>scale_y</em> (continuous, 0.35&ndash;1.60) and <em>floor_height</em> (continuous, 2.8&ndash;4.2 m). Continuous genes are recombined by arithmetic blend crossover and perturbed by bounded Gaussian mutation; integer and categorical genes are inherited from either parent and resampled on mutation. NSGA-III and MOEA/D additionally project every child onto the zoning envelope with a repair operator (height by floors, BCR by footprint scale and setback, FAR by floors).</p>
 
 <h3 id="alg1-equations">Key Equations</h3>
 
@@ -994,19 +994,19 @@ where $p_1, p_2$ are parent values, and $\beta$ is a random variable drawn from 
 
 <h3 id="alg2-theory">Theoretical Background</h3>
 
-<p>This algorithm provides a multi-domain physics evaluation of building configurations across seven environmental performance dimensions. Rather than relying on computationally expensive CFD or building energy simulation, it employs validated reduced-order models that capture the first-order physical behaviour of urban environments at a fraction of the computational cost, enabling their use within iterative optimisation loops.</p>
+<p>This algorithm provides a multi-domain physics evaluation of building configurations across seven environmental performance dimensions. It does not run CFD or building energy simulation. Each dimension is a screening index: a deterministic, weighted combination of geometric terms chosen to move in the physically expected direction, cheap enough to evaluate inside an optimisation loop. The indices are not calibrated or validated against measurements; use them to compare alternatives, not to predict absolute values.</p>
 
 <h4>Wind Ventilation Assessment</h4>
-<p>The wind ventilation score is a weighted composite of three sub-indicators: <strong>open-space ratio</strong> (45% weight), which measures the proportion of the parcel not covered by building footprints; <strong>building porosity</strong> (35% weight), which captures the permeability of the building mass to airflow as a function of typology; and <strong>wind alignment factor</strong> (20% weight), which rewards building orientations that are aligned with the prevailing wind direction. Porosity values are assigned per typology following the building aerodynamics literature: Tower (0.75), MultiBuildingBlock (0.70), Slab (0.35), and Courtyard (0.15), reflecting the degree to which each typology obstructs cross-ventilation at pedestrian level.</p>
+<p>The wind ventilation score is a weighted composite of three sub-indicators: <strong>open-space ratio</strong> (45% weight), which measures the proportion of the parcel not covered by building footprints; <strong>building porosity</strong> (35% weight), which captures the permeability of the building mass to airflow as a function of typology; and <strong>wind alignment factor</strong> (20% weight), $|\cos\theta|$ of the angle between the prevailing wind and the building's long axis, which rewards orientations aligned with the wind and penalises a long face turned across it (before version 3.3.0 the sine was used, which rewarded the blocking orientation). Porosity values are assigned per typology following the building aerodynamics literature: Tower (0.75), MultiBuildingBlock (0.70), Slab (0.35), and Courtyard (0.15), reflecting the degree to which each typology obstructs cross-ventilation at pedestrian level.</p>
 
 <h4>Pedestrian Wind Comfort (Lawson Criteria)</h4>
-<p>The Lawson criteria (Lawson &amp; Penwarden, 1975) classify pedestrian wind conditions into comfort categories based on the probability of exceeding threshold wind speeds. The algorithm computes an effective pedestrian-level wind speed as a function of the canyon H/W ratio and the upstream reference wind speed, then maps the result to a comfort score on a 0&ndash;100 scale anchored to the Lawson thresholds for sitting (&#8804; 3.6 m/s), standing (&#8804; 5.3 m/s), and walking (&#8804; 7.6 m/s) activities.</p>
+<p>The Lawson criteria (Lawson &amp; Penwarden, 1975) classify pedestrian wind conditions into comfort categories based on the probability of exceeding threshold wind speeds. The per-building score used here does not compute a wind speed: it is $95 - 1.2\,H\,(1 - p)$ bounded to $[15, 100]$, where $H$ is the building height and $p$ the typology porosity, so comfort falls with height and rises with porosity. It is related to the Lawson categories only qualitatively. Algorithm 5 estimates passage wind speeds between neighbouring buildings.</p>
 
 <h4>Solar Irradiance</h4>
 <p>Solar irradiance is modelled using the clear-sky model of Duffie and Beckman (2013), with latitude-dependent baseline irradiation (calibrated to 1500 kWh/m<sup>2</sup>/yr at 35&deg;N). The model accounts for building orientation, roof geometry, and inter-building shading through a simplified ray-casting procedure that computes the direct and diffuse components of irradiation on each building surface, adjusted for the Sky View Factor at each receptor point.</p>
 
 <h4>Sky View Factor</h4>
-<p>The Sky View Factor (SVF) at pedestrian level is computed using the empirical parameterisation of Johnson and Watson (1984), which expresses SVF as a function of the canyon height-to-width ratio and the open-space ratio of the surrounding urban tissue. This model has been validated against fisheye photography measurements across a range of urban morphologies and provides an estimate suitable for comparative urban design analysis.</p>
+<p>The Sky View Factor (SVF) at pedestrian level is computed using the empirical parameterisation of Johnson and Watson (1984), which expresses SVF as a function of the canyon height-to-width ratio and the open-space ratio of the surrounding urban tissue. The coefficients ($1 - 0.24\,H/W + 0.32\,\text{open-space ratio}$, bounded to $[0.12, 1]$) are a first-order linear stand-in, not a fit to Johnson and Watson's analytical expression; treat SVF as a relative indicator.</p>
 
 <h4>Thermal Comfort (MRT and UTCI)</h4>
 <p>Mean Radiant Temperature (MRT) is computed following the methodology of the COST Action 730 (Jendritzky <em>et al.</em>, 2012), starting from a Mediterranean summer baseline of 32&deg;C air temperature and adjusting for SVF (reduced longwave radiative cooling in narrow canyons), surface albedo, and anthropogenic heat flux. The Universal Thermal Climate Index (UTCI) is derived from MRT, air temperature, humidity, and wind speed using the operational UTCI regression model, yielding a temperature-equivalent comfort indicator.</p>
@@ -1403,54 +1403,57 @@ where $A_i$ is the area and $P_i$ is the perimeter of sub-lot $i$. $R_i \in (0, 
 <p>While Algorithms 1&ndash;3 evaluate the environmental performance of individual buildings and parcels, many physical phenomena in the urban environment are inherently <strong>emergent</strong> &mdash; they arise from the interactions among multiple buildings and do not manifest when each building is considered in isolation. Algorithm 5 captures three such inter-building coupling effects at the district scale.</p>
 
 <h4>Inter-Building Solar Obstruction</h4>
-<p>Knowles (2003) articulated the concept of "solar envelope" &mdash; the volumetric constraint that ensures neighbouring buildings retain adequate solar access. Compagnon (2004) developed a computational method for assessing solar availability on building facades in dense urban environments, accounting for obstruction by surrounding buildings. Algorithm 5 implements a <strong>pair-wise directional shadow casting</strong> procedure: for each pair of buildings $(i, j)$, the shadow cast by building $i$ on building $j$ is computed as a function of building heights, inter-building distance, and solar azimuth and altitude at representative hours (solstices and equinoxes). The shadow loss for each building is the proportion of its facade area that lies in the cast shadow of one or more neighbouring buildings, aggregated over the year.</p>
+<p>Knowles (2003) articulated the concept of "solar envelope" &mdash; the volumetric constraint that ensures neighbouring buildings retain adequate solar access. Compagnon (2004) developed a computational method for assessing solar availability on building facades in dense urban environments. Algorithm 5 applies a far simpler screening version of that idea: one representative sun position (altitude and azimuth are parameters), a shadow projected from every neighbour that stands on the sun side of a building, and the part of that shadow which crosses the edge-to-edge gap between the two footprints. It is a comparison aid between design alternatives, not a solar-access calculation.</p>
 
 <h4>Canyon Wind Wake Effects</h4>
-<p>Blocken, Stathopoulos, and Carmeliet (2007) provided a comprehensive review of pedestrian-level wind conditions around buildings, documenting the Venturi effect (wind acceleration in narrow passages between buildings), corner streams (high-speed flow around building corners), and downwash (vertical deflection of wind at building windward faces). Algorithm 5 models these effects at the district scale using <strong>Venturi acceleration</strong> theory: when two buildings are separated by a distance of less than 2.5 times the building width, the airflow between them accelerates, with a maximum speed-up factor of 2.2&times; the upstream reference wind speed. The algorithm also applies the Lawson pedestrian comfort thresholds (Lawson &amp; Penwarden, 1975) to classify wind conditions at pedestrian level throughout the district.</p>
+<p>Each building is paired with its nearest neighbour, and the canyon height-to-width ratio of that passage scales the ambient wind speed: up when the passage is deep and narrow, down when it is wide. The factor is a screening heuristic in the spirit of the passage-flow literature (Blocken, Stathopoulos &amp; Carmeliet, 2007, review the modelling of such flows); it is not calibrated against wind-tunnel or CFD results, and corner streams and downwash are not represented.</p>
 
 <h4>District Stormwater Retention</h4>
-<p>At the district scale, stormwater behaviour is not simply the sum of per-parcel runoff: the spatial arrangement of impervious surfaces, the connectivity of drainage paths, and the presence of green infrastructure all influence the timing and volume of runoff at the district outlet. Berland <em>et al.</em> (2017) reviewed the role of urban trees and green infrastructure in stormwater management. Algorithm 5 computes a <strong>BCR-based runoff proxy</strong> that accounts for upstream&ndash;downstream parcel relationships: a downstream parcel with low BCR (high perviousness) can partially attenuate runoff generated by upstream parcels with high BCR (high imperviousness), yielding a district-scale retention efficiency that exceeds the area-weighted average of per-parcel retention values.</p>
+<p>The web studio's district panel additionally reports a BCR-based retention proxy, $(1 - \text{BCR}_\text{district}) \times 85\%$ bounded to $[20\%, 90\%]$ (Berland et al., 2017, review the role of unbuilt and tree-covered ground). The Processing algorithm does not write it.</p>
 
-<h4>Emergence Condition</h4>
-<p>A defining feature of Algorithm 5 is the <strong>emergence threshold</strong>: inter-building coupling effects are computed only when the district contains more than five buildings. Below this threshold, the algorithm falls back to the per-parcel evaluations provided by Algorithm 2, as the coupling effects are not statistically distinguishable from the individual-building baselines. This threshold is based on sensitivity analyses showing that district-scale environmental metrics stabilise (coefficient of variation < 5%) only when the building count exceeds five.</p>
+<h4>Per-Building Results</h4>
+<p>Every output feature carries its own values, computed from the real positions and footprints of its neighbours. Up to version 3.2.0 the algorithm ignored geometry, assumed a 5&nbsp;000&nbsp;m&sup2; site, and wrote one district average onto every feature, so a map of <code>shadow_loss</code> showed a single colour.</p>
 
 <h3 id="alg5-equations">Key Equations</h3>
 
 <div class="equation-block">
 <div class="equation-label">Equation 5.1 &mdash; Shadow Length (Planar Projection)</div>
 $$L_{\text{shadow}} = \frac{H}{\tan \alpha}$$
-where $H$ is the building height and $\alpha$ is the solar altitude angle. At the winter solstice at 40&deg;N ($\alpha \approx 26.5^\circ$ at noon), $L_{\text{shadow}} \approx 2.0H$; at the summer solstice ($\alpha \approx 73.5^\circ$), $L_{\text{shadow}} \approx 0.3H$.
+where $H$ is the building height and $\alpha$ is the solar altitude angle (floored at 10&deg;). At the winter solstice at 40&deg;N ($\alpha \approx 26.5^\circ$ at noon), $L_{\text{shadow}} \approx 2.0H$; at the summer solstice ($\alpha \approx 73.5^\circ$), $L_{\text{shadow}} \approx 0.3H$.
 </div>
 
 <div class="equation-block">
-<div class="equation-label">Equation 5.2 &mdash; Pair-Wise Shadow Loss</div>
-$$\text{SL}_{ij} = \frac{A_{j}^{\text{shadowed}}}{A_{j}^{\text{total}}} = \frac{1}{N_{\text{hr}}} \sum_{h=1}^{N_{\text{hr}}} \mathbb{1}\!\left[ d_{ij} \cdot \tan\alpha_h < H_i - H_j \cdot \delta_{\text{elev}} \right] \cdot f_{\text{overlap}}$$
-where $A_{j}^{\text{shadowed}}$ is the facade area of building $j$ in shadow at representative hour $h$, $d_{ij}$ is the inter-building distance, $\alpha_h$ is the solar altitude at hour $h$, $H_i$ and $H_j$ are building heights, $\delta_{\text{elev}}$ accounts for elevation differences, $\mathbb{1}[\cdot]$ is the indicator function, and $f_{\text{overlap}}$ is the fraction of the facade azimuth range that overlaps with the shadow direction.
+<div class="equation-label">Equation 5.2 &mdash; Directional Obstruction by One Neighbour</div>
+$$s_{ij} = \min\!\left(65,\; 38 \cdot \frac{\max\!\left(0,\; L_{\text{shadow},j} \cos(\beta_{ij} - \gamma) - g_{ij}\right)}{\max(1, H_i)}\right)\ \%,\qquad s_{ij} = 0 \text{ if } \cos(\beta_{ij} - \gamma) \le 0$$
+where $\beta_{ij}$ is the bearing from receiver $i$ to caster $j$ (clockwise from north), $\gamma$ the sun azimuth, $g_{ij}$ the edge-to-edge gap between the two footprints and $H_i$ the receiver's height. The constants 38 and 65 % are screening scale factors, not physical constants.
 </div>
 
 <div class="equation-block">
-<div class="equation-label">Equation 5.3 &mdash; Venturi Acceleration Factor</div>
-$$U_{\text{ped}} = U_{\text{ref}} \cdot \max\!\left(1.0,\; \min\!\left(2.2,\; \frac{W_{\text{gap}}}{W_{\text{building}}} \right)^{-1} \right)$$
-where $U_{\text{ped}}$ is the pedestrian-level wind speed, $U_{\text{ref}}$ is the reference wind speed at 10 m height in open terrain, $W_{\text{gap}}$ is the distance between adjacent buildings, and $W_{\text{building}}$ is the mean building width normal to the flow. The acceleration factor is clamped to $[1.0, 2.2]$ based on the documented Venturi effect range in the literature.
+<div class="equation-label">Equation 5.3 &mdash; Combined Obstruction</div>
+$$\text{shadow\_loss}_i = \min\!\left(65,\; 100\left[1 - \prod_{j} \left(1 - \frac{s_{ij}}{100}\right)\right]\right)$$
+Neighbours are searched within the longest shadow any building in the layer can cast.
 </div>
 
 <div class="equation-block">
-<div class="equation-label">Equation 5.4 &mdash; District Stormwater Retention Efficiency</div>
-$$\eta_{\text{district}} = 1 - \frac{\sum_{k=1}^{N} Q_k \cdot (1 - r_k)}{\sum_{k=1}^{N} Q_k}$$
-where $Q_k$ is the runoff generated on parcel $k$ (from the Rational Method), $r_k \in [0, 1]$ is the retention fraction of parcel $k$ (proportional to $1 - \text{BCR}_k$), and the double summation accounts for upstream&ndash;downstream cascading: a downstream parcel with high retention capacity can capture runoff from upstream parcels.
+<div class="equation-label">Equation 5.4 &mdash; Canyon Wind Factor (Nearest Neighbour)</div>
+$$\frac{H}{W} = \frac{(H_i + H_{nn})/2}{\max(2, g_{i,nn})},\qquad
+U_{\text{canyon}} = U_{\text{amb}} \times \begin{cases} \min(2.2,\; 1 + 0.35\,H/W) & H/W > 1.5 \\ \max\!\left(0.6,\; 1 - \dfrac{0.2}{\max(0.5,\, H/W)}\right) & \text{otherwise} \end{cases}$$
 </div>
 
 <div class="equation-block">
-<div class="equation-label">Equation 5.5 &mdash; District Comfort Score Aggregation</div>
-$$C_{\text{district}} = \frac{1}{|\mathcal{P}|} \sum_{p \in \mathcal{P}} w_p \cdot c_p, \quad w_p = \frac{1}{1 + \exp(-\kappa (U_{\text{ped},p} - U_{\text{threshold}}))}$$
-where $\mathcal{P}$ is the set of pedestrian-level sampling points across the district, $c_p$ is the Lawson comfort score at point $p$, $w_p$ is a sigmoid weight that down-weights points where $U_{\text{ped},p}$ exceeds the comfort threshold (5.3 m/s for standing), and $\kappa = 2$ controls the sharpness of the threshold.
+<div class="equation-label">Equation 5.5 &mdash; Comfort Score</div>
+$$C_i = \operatorname{clamp}_{[0,100]}\!\left(100 - 15\,(U_{\text{canyon},i} - 3)\right)$$
+A linear mapping that reaches 100 at 3 m/s and 0 near 9.7 m/s; it is anchored only loosely to the Lawson sitting / standing / walking bands.
 </div>
 
 <h3 id="alg5-params">Parameters</h3>
 <table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>Input District Layer</td><td>Polygon Layer</td><td>District boundary polygon containing 5+ building footprints</td></tr>
+<tr><td>Input District Layer</td><td>Polygon Layer</td><td>Building footprints in a projected CRS in metres. Height is read from <code>height_m</code>, else <code>floors</code> &times; <code>floor_h</code> (3 m if absent), else 12 m with a warning.</td></tr>
+<tr><td>Sun altitude</td><td>Number (10&ndash;90&deg;, default 45)</td><td>Representative solar altitude.</td></tr>
+<tr><td>Sun azimuth</td><td>Number (0&ndash;360&deg;, default 180)</td><td>Clockwise from north; 180&deg; is due south at solar noon in the northern hemisphere.</td></tr>
+<tr><td>Ambient wind speed</td><td>Number (m/s, default 3.5)</td><td>Reference wind speed scaled by the canyon factor.</td></tr>
 </tbody>
 </table>
 
@@ -1458,19 +1461,19 @@ where $\mathcal{P}$ is the set of pedestrian-level sampling points across the di
 <table>
 <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>shadow_loss</code></td><td>Float (0&ndash;1)</td><td>Proportion of building facade area lost to inter-building shadowing (annual average)</td></tr>
-<tr><td><code>canyon_wind</code></td><td>Float (m/s)</td><td>Pedestrian-level wind speed after canyon and Venturi adjustments</td></tr>
-<tr><td><code>comfort_score</code></td><td>Float (0&ndash;100)</td><td>District-aggregated pedestrian wind comfort score (Lawson criteria)</td></tr>
+<tr><td><code>shadow_loss</code></td><td>Float (0&ndash;65 %)</td><td>Combined obstruction received from neighbours at the chosen sun position</td></tr>
+<tr><td><code>canyon_wind</code></td><td>Float (m/s)</td><td>Ambient wind scaled by the canyon factor of the passage to the nearest neighbour</td></tr>
+<tr><td><code>comfort_score</code></td><td>Float (0&ndash;100)</td><td>Linear comfort score from <code>canyon_wind</code></td></tr>
+<tr><td><code>nn_gap_m</code></td><td>Float (m)</td><td>Edge-to-edge distance to the nearest neighbour (NULL for an isolated building)</td></tr>
 </tbody>
 </table>
 
 <h3 id="alg5-interp">Interpretation Guidance</h3>
 
-<p><strong>Shadow Loss Thresholds.</strong> Shadow loss values below 0.15 indicate that inter-building obstruction is not a significant constraint on solar access at the district scale. Values in the 0.15&ndash;0.30 range suggest moderate obstruction that may require attention to building orientation and spacing. Values above 0.30 indicate substantial mutual shadowing; such districts may benefit from height variation strategies (stepping down toward the south in northern hemisphere sites) or increased inter-building spacing.</p>
+<p><strong>Shadow Loss.</strong> Read <code>shadow_loss</code> comparatively: between alternatives for the same district and the same sun position. Values near 0 % mean no neighbour's shadow reaches the building at that sun position; high values flag buildings standing close behind taller neighbours on the sun side, which height stepping (lower toward the sun) or wider spacing relieves. For a regulatory solar-access check use an hourly shadow or irradiance simulation.</p>
 
-<p><strong>Venturi Wind and Comfort.</strong> Pedestrian wind speeds exceeding the Lawson thresholds for sustained periods indicate locations where wind amelioration measures (street trees, canopies, building setbacks, podium massing) should be considered. The algorithm identifies specific inter-building gaps where $U_{\text{ped}} / U_{\text{ref}} > 1.5$, which are candidates for wind mitigation. The comfort score integrates over all sampling points; a score below 50 indicates that more than half of the pedestrian realm exceeds comfort thresholds.</p>
+<p><strong>Canyon Wind and Comfort.</strong> High <code>canyon_wind</code> marks deep, narrow passages; it identifies where a wind study is worth commissioning, not what that study would find.</p>
 
-<p><strong>Emergence and Sample Size.</strong> The emergence condition ($N_{\text{buildings}} > 5$) is critical: below this threshold, inter-building effects are too noisy to be reliably distinguished from the per-building baselines. Users evaluating small clusters (2&ndash;5 buildings) should rely on Algorithm 2 (per-building physics) and interpret Algorithm 5 outputs with caution if the threshold is not met. The algorithm will emit a warning in the QGIS log when the building count is marginal.</p>
 
 <h3 id="alg5-refs">References</h3>
 <ol class="ref-list">
