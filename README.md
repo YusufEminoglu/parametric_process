@@ -140,7 +140,7 @@ $$H' = -\sum_{i=1}^{S} p_i \ln p_i$$
 
 ## 📄 License & Attribution
 
-- **Author:** Yusuf Eminoğlu ([yusuf.eminoglu@deu.edu.tr](mailto:yusuf.eminoglu@deu.edu.tr))
+- **Author:** Geophilo ([yusuf.eminoglu@deu.edu.tr](mailto:yusuf.eminoglu@deu.edu.tr))
 - **License:** GPL-3.0-or-later
 - **Repository:** [YusufEminoglu/parametric_process](https://gitlab.com/geophilo1/parametric_process)
 

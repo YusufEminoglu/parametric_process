@@ -4,7 +4,7 @@ qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
 description=Parametric Generative Design and Multi-Objective Evolutionary Optimization Studio for QGIS.
 version=3.3.0
-author=Yusuf Eminoglu
+author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
 
 about=Parametric Process is a standalone generative urban design and multi-objective evolutionary optimization lab for QGIS. Build reusable Grasshopper-style visual rule workflows, select urban block/parcel layers, run NSGA-II evolutionary simulations across density, daylight, carbon, and urban quality metrics, analyze Pareto trade-offs, preview 3D phenotypes in real time, and sync reviewed solutions directly into QGIS vector layers. Online User Manual & Documentation: https://geophilo.com/parametric_process/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geophilo1/parametric_process)!
