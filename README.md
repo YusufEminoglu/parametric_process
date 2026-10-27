@@ -23,9 +23,9 @@
 
 **[Comprehensive Academic Reference Manual](https://geophilo.com/parametric_process/)** — complete documentation of every feature, parameter, and workflow. Hosted on Web Documentation.
 
-**[Practical Guide](https://geophilo.com/parametric_process/PRACTICAL_GUIDE/practical_guide.html)** — fourteen hands-on chapters driven on the real Tire İlçesi planning master: 1 362 cadastral blocks, 1 210 zoning lots, 3 074 streets. Every map panel is a QGIS render of a layer the plugin produced; every browser panel is a Playwright capture of the plugin's own web studio (3D cockpit, Pareto analytics, workflow modeler, academic study).
+**[Practical Guide](https://geophilo.com/parametric_process/guide/)** — fourteen hands-on chapters driven on the real Tire İlçesi planning master: 1 362 cadastral blocks, 1 210 zoning lots, 3 074 streets. Every map panel is a QGIS render of a layer the plugin produced; every browser panel is a Playwright capture of the plugin's own web studio (3D cockpit, Pareto analytics, workflow modeler, academic study).
 
-> **Türkçe:** [Pratik Kılavuz (PDF/print)](https://geophilo.com/parametric_process/PRACTICAL_GUIDE/practical_guide_static.html) · [English print version](https://geophilo.com/parametric_process/PRACTICAL_GUIDE/practical_guide_static_en.html)
+> **Türkçe:** [Pratik Kılavuz (PDF/print)](https://geophilo.com/parametric_process/guide/print-tr.html) · [English print version](https://geophilo.com/parametric_process/guide/print.html)
 
 
 ## 🌟 Overview

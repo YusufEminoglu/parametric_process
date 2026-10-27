@@ -2,19 +2,21 @@
 name=Parametric Process
 qgisMinimumVersion=3.28
 qgisMaximumVersion=4.99
-description=Parametric Generative Design and Multi-Objective Evolutionary Optimization Studio for QGIS.
+description=Generative urban design with multi-objective optimisation: build node-based rule workflows for blocks and parcels, evolve thousands of options with NSGA-II and pick from the Pareto front in 3D.
 version=3.3.0
 author=Geophilo
 email=yusuf.eminoglu@deu.edu.tr
 
-about=Parametric Process is a standalone generative urban design and multi-objective evolutionary optimization lab for QGIS. Build reusable Grasshopper-style visual rule workflows, select urban block/parcel layers, run NSGA-II evolutionary simulations across density, daylight, carbon, and urban quality metrics, analyze Pareto trade-offs, preview 3D phenotypes in real time, and sync reviewed solutions directly into QGIS vector layers. Online User Manual & Documentation: https://geophilo.com/parametric_process/ | If you find this plugin helpful, please consider starring the repository on GitLab (https://gitlab.com/geophilo1/parametric_process)!
+about=Parametric Process lets you describe a design as rules and let the computer search the options. Build reusable node-based workflows on block and parcel layers, then run NSGA-II evolutionary optimisation across density, daylight, carbon and urban-quality objectives.
+    Explore the trade-offs on the Pareto front and in a parallel-coordinates plot, preview each candidate in 3D as it evolves, and write the solutions you approve back to QGIS as ordinary vector layers. Each building is scored against its own district context rather than one city-wide average.
+    Manual: https://geophilo.com/parametric_process/manual.html
 
 tracker=https://gitlab.com/geophilo1/parametric_process/-/issues
 repository=https://gitlab.com/geophilo1/parametric_process
 homepage=https://geophilo.com/parametric_process/
 
 category=Vector
-tags=parametric,generative,urban,design,3d,evolutionary,optimization,nsga2,pareto,planning,massing,workflow,graph,grasshopper
+tags=parametric,generative,urban,design,3d,evolutionary,optimization,nsga2,pareto,planning,massing,workflow,graph,node editor,geophilo
 icon=icons/icon.png
 
 experimental=False
